@@ -19,22 +19,32 @@
 
 package net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution;
 
-import net.sf.mzmine.datamodel.Feature;
-import net.sf.mzmine.modules.MZmineModule;
-import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.Task;
+import net.sf.mzmine.util.R.RSessionWrapper;
 
-public interface PeakResolver extends MZmineModule {
+/**
+ * PeakResolver requiring R support.
+ */
+public interface RbasedPeakResolver extends PeakResolver {
 
     /**
-     * Resolve a peaks found within given chromatogram. For easy use, three
-     * arrays (scanNumbers, retentionTimes and intensities) are provided,
-     * although the contents of these arrays can also be obtained from the
-     * chromatogram itself. The size of these arrays must be same, and must be
-     * equal to the number of scans covered by given chromatogram.
+     * Gets R required packages for the resolver's method.
      */
-    public Feature[] resolvePeaks(Task task, Feature chromatogram,
-            int scanNumbers[], double retentionTimes[], double intensities[],
-            ParameterSet parameters);
+    public String[] getRequiredRPackages();
+
+    /**
+     * Gets R required packages versions for the resolver's method.
+     */
+    public String[] getRequiredRPackagesVersions();
+
+    /**
+     * Set Rsession.
+     */
+    public void setRsession(RSessionWrapper rSession, Task task);
+
+    /**
+     * Get Rsession.
+     */
+    public RSessionWrapper getRsession(Task task);
 
 }
