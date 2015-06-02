@@ -294,14 +294,17 @@ public class DeconvolutionTask extends AbstractTask {
     public void cancel() {
 
         super.cancel();
+
         // Turn off R instance, if already existing.
-        try {
-            RSessionWrapper rSession = ((RbasedPeakResolver) resolverModule)
-                    .getRsession(this);
-            if (rSession != null)
-                rSession.close(true);
-        } catch (RSessionWrapperException e) {
-            // Silent, always...
+        if (resolverModule instanceof RbasedPeakResolver) {
+            try {
+                RSessionWrapper rSession = ((RbasedPeakResolver) resolverModule)
+                        .getRsession(this);
+                if (rSession != null)
+                    rSession.close(true);
+            } catch (RSessionWrapperException e) {
+                // Silent, always...
+            }
         }
     }
 }
