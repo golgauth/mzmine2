@@ -34,6 +34,7 @@ import net.sf.mzmine.modules.peaklistmethods.dataanalysis.rtmzplots.logratioplot
 import net.sf.mzmine.modules.peaklistmethods.filtering.duplicatefilter.DuplicateFilterModule;
 import net.sf.mzmine.modules.peaklistmethods.filtering.peakfilter.PeakFilterModule;
 import net.sf.mzmine.modules.peaklistmethods.filtering.rowsfilter.RowsFilterModule;
+// GLG Standby: import net.sf.mzmine.modules.peaklistmethods.filtering.shapefilter.ShapeFilterModule;
 import net.sf.mzmine.modules.peaklistmethods.gapfilling.peakfinder.PeakFinderModule;
 import net.sf.mzmine.modules.peaklistmethods.gapfilling.samerange.SameRangeGapFillerModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.adductsearch.AdductSearchModule;
@@ -56,7 +57,9 @@ import net.sf.mzmine.modules.peaklistmethods.io.xmlexport.XMLExportModule;
 import net.sf.mzmine.modules.peaklistmethods.io.xmlimport.XMLImportModule;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.deisotoper.IsotopeGrouperModule;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopeprediction.IsotopePatternCalculator;
+import net.sf.mzmine.modules.peaklistmethods.merging.rt.PeakMergerModule;
 import net.sf.mzmine.modules.peaklistmethods.normalization.linear.LinearNormalizerModule;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsSearchAndAdjustModule;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtnormalizer.RTNormalizerModule;
 import net.sf.mzmine.modules.peaklistmethods.normalization.standardcompound.StandardCompoundNormalizerModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsModule;
@@ -161,6 +164,18 @@ public class MZmineModulesList {
 	    DuplicateFilterModule.class,
 	    RowsFilterModule.class,
 	    PeakFilterModule.class,
+            // GLG HACK: Add peaks "shape filtering" features to peak list methods.
+            // GLG Standby: ShapeFilterModule.class,
+            
+            
+            // GLG HACK: Add peaks "Merging" features to peak list methods.
+            PeakMergerModule.class,             // PEAKLISTPICKING
+            // GLG HACK: Add peaks "RT adjuster" features to peak list methods.
+            //RTAdjusterModule.class,           // NORMALIZATION
+            // GLG TODO: Make this module available for simple identification
+            //                          (independently from above "RTAdjuster")...
+            //                          See: how 'OnlineDBSearchModule' is working by itself. 
+            JDXCompoundsSearchAndAdjustModule.class, // IDENTIFICATION + NORMALIZATION
 
 	    // Normalization
 	    RTNormalizerModule.class,
