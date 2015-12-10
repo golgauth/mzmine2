@@ -53,8 +53,8 @@ public class BatchTask extends AbstractTask {
     private final MZmineProject project;
     private final BatchQueue queue;
 
-    private final List<RawDataFile> createdDataFiles;
-    private final List<PeakList> createdPeakLists;
+    private final List<RawDataFile> createdDataFiles, previousCreatedDataFiles;
+    private final List<PeakList> createdPeakLists, previousCreatedPeakLists;
 
     BatchTask(MZmineProject project, ParameterSet parameters) {
         this.project = project;
@@ -63,6 +63,8 @@ public class BatchTask extends AbstractTask {
         totalSteps = queue.size();
         createdDataFiles = new ArrayList<>();
         createdPeakLists = new ArrayList<>();
+        previousCreatedDataFiles = new ArrayList<>();
+        previousCreatedPeakLists = new ArrayList<>();
     }
 
     public void run() {
@@ -114,6 +116,13 @@ public class BatchTask extends AbstractTask {
                 .getModule();
         ParameterSet batchStepParameters = currentStep.getParameterSet();
 
+        // If the last step did not produce any data files or peak lists, use
+        // the ones from the previous step
+        if (createdDataFiles.isEmpty())
+            createdDataFiles.addAll(previousCreatedDataFiles);
+        if (createdPeakLists.isEmpty())
+            createdPeakLists.addAll(previousCreatedPeakLists);
+
         // Update the RawDataFilesParameter parameters to reflect the current
         // state of the batch
         for (Parameter<?> p : batchStepParameters.getParameters()) {
@@ -136,9 +145,20 @@ public class BatchTask extends AbstractTask {
             }
         }
 
+<<<<<<< HEAD
 //        // Clear the saved data files and peak lists
 //        createdDataFiles.clear();
 //        createdPeakLists.clear();
+=======
+        // Clear the saved data files and peak lists. Save them to the
+        // "previous" lists, in case the next step does not produce any new data
+        previousCreatedDataFiles.clear();
+        previousCreatedDataFiles.addAll(createdDataFiles);
+        previousCreatedPeakLists.clear();
+        previousCreatedPeakLists.addAll(createdPeakLists);
+        createdDataFiles.clear();
+        createdPeakLists.clear();
+>>>>>>> 100e94b71fd9160ac74ff82da927a554f37fa3f9
 
         // Check if the parameter settings are valid
         ArrayList<String> messages = new ArrayList<String>();
@@ -146,9 +166,9 @@ public class BatchTask extends AbstractTask {
                 .checkParameterValues(messages);
         if (!paramsCheck) {
             setStatus(TaskStatus.ERROR);
-            setErrorMessage("Invalid parameter settings for module "
-                    + method.getName() + ": "
-                    + Arrays.toString(messages.toArray()));
+            setErrorMessage(
+                    "Invalid parameter settings for module " + method.getName()
+                            + ": " + Arrays.toString(messages.toArray()));
         }
 
         ArrayList<Task> currentStepTasks = new ArrayList<Task>();
@@ -177,8 +197,8 @@ public class BatchTask extends AbstractTask {
         }
 
         // Submit the tasks to the task controller for processing
-        MZmineCore.getTaskController().addTasks(
-                currentStepTasks.toArray(new Task[0]));
+        MZmineCore.getTaskController()
+                .addTasks(currentStepTasks.toArray(new Task[0]));
 
         while (!allTasksFinished) {
 
