@@ -31,7 +31,6 @@ import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.MZmineProcessingModule;
 import net.sf.mzmine.modules.MZmineProcessingStep;
-import net.sf.mzmine.modules.rawdatamethods.peakpicking.massdetection.MassDetectionTask;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
@@ -145,11 +144,6 @@ public class BatchTask extends AbstractTask {
             }
         }
 
-<<<<<<< HEAD
-//        // Clear the saved data files and peak lists
-//        createdDataFiles.clear();
-//        createdPeakLists.clear();
-=======
         // Clear the saved data files and peak lists. Save them to the
         // "previous" lists, in case the next step does not produce any new data
         previousCreatedDataFiles.clear();
@@ -158,7 +152,6 @@ public class BatchTask extends AbstractTask {
         previousCreatedPeakLists.addAll(createdPeakLists);
         createdDataFiles.clear();
         createdPeakLists.clear();
->>>>>>> 100e94b71fd9160ac74ff82da927a554f37fa3f9
 
         // Check if the parameter settings are valid
         ArrayList<String> messages = new ArrayList<String>();
@@ -186,15 +179,6 @@ public class BatchTask extends AbstractTask {
             return;
 
         boolean allTasksFinished = false;
-
-        // Clear the saved data files and peak lists only if the 
-        // current task is not a task that does not produces any
-        // (allows to get next step to keep going with the last
-        // created DF and PL from steps older than the previous one)
-        if (!(currentStepTasks.get(0) instanceof MassDetectionTask)) {
-            createdDataFiles.clear();
-            createdPeakLists.clear();
-        }
 
         // Submit the tasks to the task controller for processing
         MZmineCore.getTaskController()
