@@ -623,7 +623,7 @@ public class Rsession implements Logger {
             // RserverConf.getNewAvailablePort();
             if (port_tmp != port) {
                 // Keep sink file specific to current Rserve instance
-            	SINK_FILE = SINK_FILE_BASE + "-" + port;
+                SINK_FILE = SINK_FILE_BASE + "-" + port;
                 println("WARNING: Changed the original requested port from "
                         + port_tmp + " to " + port + "!", Level.WARNING);
             }
