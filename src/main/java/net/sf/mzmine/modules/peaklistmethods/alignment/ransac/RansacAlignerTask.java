@@ -244,7 +244,7 @@ class RansacAlignerTask extends AbstractTask {
 		try {
 		    score = new RowVsRowScore(row, candidate,
 			    RangeUtils.rangeLength(mzRange) / 2.0,
-			    RangeUtils.rangeLength(rtRange) / 2.0, rt);
+			    RangeUtils.rangeLength(rtRange) / 2.0, rt, true);
 
 		    scoreSet.add(score);
 		    setErrorMessage(score.getErrorMessage());

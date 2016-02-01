@@ -50,7 +50,7 @@ public class JDXCompound extends SimplePeakIdentity {
 	// Logger.
 	private static final Logger LOG = Logger.getLogger(JDXCompound.class.getName());
 
-	public static final int MAX_MZ = 400;
+	public static final int MAX_MZ = 400; 
 	
     //private final URL compoundUrl;
     private final /*URL*/ File compoundJDXfile;
@@ -67,6 +67,8 @@ public class JDXCompound extends SimplePeakIdentity {
     
     private int minX, maxX;
 
+    public static final JDXCompound UNKNOWN_JDX_COMP = new JDXCompound("Unknown", null, null, null, null);
+    
     /**
      * @param db      the database the compound is from.
      * @param id      the compound's ID in the database.

@@ -41,10 +41,22 @@ public class JDXCompoundsSearchAndAdjustModule implements MZmineProcessingModule
 	// GLG TODO: separate the 'search' and the 'adjust' part of this module (split into TWO modules).
 	//				The 'adjust' one would use the 'search' one.
 	
+    // Moved to "IDENTIFICATION" category: For the time being, only
+    // dual compound identification of the module is functional.
 //	private static final String MODULE_NAME = "RT Adjuster: 2pts std compounds - search & adjust";
 //	private static final String MODULE_DESCRIPTION = "This module attempts to find two standard compounds in these peak lists (best scoring peaks) and using them for scaling.";
-    private static final String MODULE_NAME = "Retention time adjuster";
-    private static final String MODULE_DESCRIPTION = "The retention time adjuster attempts to reduce the deviation of retention times between peak lists, by searching for two standard compounds in these peak lists (best scoring peaks) and using them for scaling.";
+////    private static final String MODULE_NAME = "Retention time adjuster";
+////    private static final String MODULE_DESCRIPTION = "The retention time adjuster attempts to reduce the deviation of retention times between peak lists, by searching for two standard compounds in these peak lists (best scoring peaks) and using them for scaling.";
+    private static final String MODULE_NAME = "Two standard compounds finder";
+    private static final String MODULE_DESCRIPTION = "This module attempts to find two standard compounds in these peak lists (best scoring peaks).";
+
+    @Override
+    public @Nonnull MZmineModuleCategory getModuleCategory() {
+        // Moved to "IDENTIFICATION" category: For the time being, only
+        // dual compound identification of the module is functional.
+        //return MZmineModuleCategory.NORMALIZATION;
+        return MZmineModuleCategory.IDENTIFICATION;
+    }
 
 	@Override
 	public @Nonnull String getName() {
@@ -105,12 +117,6 @@ public class JDXCompoundsSearchAndAdjustModule implements MZmineProcessingModule
 //					new SingleRowIdentificationTask(parameters.cloneParameter(), row));
 //		}
 //	}
-
-	@Override
-	public @Nonnull MZmineModuleCategory getModuleCategory() {
-//		return MZmineModuleCategory.IDENTIFICATION;
-		return MZmineModuleCategory.NORMALIZATION;
-	}
 
 	@Override
 	public @Nonnull Class<? extends ParameterSet> getParameterSetClass() {

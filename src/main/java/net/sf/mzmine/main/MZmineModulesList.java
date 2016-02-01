@@ -22,7 +22,8 @@ package net.sf.mzmine.main;
 import net.sf.mzmine.modules.batchmode.BatchModeModule;
 import net.sf.mzmine.modules.masslistmethods.chromatogrambuilder.ChromatogramBuilderModule;
 import net.sf.mzmine.modules.masslistmethods.shoulderpeaksfilter.ShoulderPeaksFilterModule;
-import net.sf.mzmine.modules.peaklistmethods.alignment.join.JoinAlignerModule;
+import net.sf.mzmine.modules.peaklistmethods.alignment.join.JoinAlignerLcModule;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.ransac.RansacAlignerModule;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringModule;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.heatmaps.HeatMapModule;
@@ -123,7 +124,9 @@ public class MZmineModulesList {
             OrderDataFilesModule.class,
 
             // Alignment
-            OrderPeakListsModule.class, JoinAlignerModule.class,
+            OrderPeakListsModule.class,
+            JoinAlignerLcModule.class,
+            JoinAlignerGcModule.class,
             RansacAlignerModule.class,
             // PathAlignerModule.class,
 

@@ -184,7 +184,11 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
 				final JDXCompound[] findCompounds = { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
 				final Range[] findRTranges = { rtSearchRangeC1, rtSearchRangeC2 };
-			    String[] columnNames = { "Data file", jdxComp1.getName(), jdxComp1.getName() + " score", jdxComp2.getName(), jdxComp2.getName() + " score" };
+				
+			    String[] columnNames = { "Data file", 
+			            jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+			            jdxComp2.getName(), /*jdxComp2.getName() +*/ " score" , /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+			    };
 			    ScoresResultWindow window = new ScoresResultWindow(columnNames, this);
 			    //window.setColumnNames(columnNames);
 			    window.setVisible(true);

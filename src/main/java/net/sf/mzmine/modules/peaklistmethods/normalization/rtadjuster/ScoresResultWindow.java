@@ -27,6 +27,8 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.URL;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Vector;
@@ -35,6 +37,8 @@ import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultCellEditor;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -76,6 +80,10 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 	private PeakListRow peakListRow;
 	private JTableXY piafsScoresTable;
 	private Task searchTask;
+	
+        private FormattedCellRenderer scoreRenderer, rtRenderer, areaRenderer, dfltRenderer;
+	private static final Icon widthIcon = new ImageIcon("icons/widthicon.png");
+
 
 	//	public ScoresResultWindow(ArrayList<LinkedHashMap<PeakListRow, LinkedHashMap<JDXCompound, Double>>> piafsRowScores, 
 	//			PeakListRow peakListRow, double searchedMass, Task searchTask) {
@@ -118,39 +126,42 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 		//		piafsScoresTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		//		piafsScoresTable.getTableHeader().setReorderingAllowed(false);
 
-		//		// Set comboboxes
-		////		String[] values = new String[] { "1", "2", "3" };
-		//		TableColumn col1 = piafsScoresTable.getColumnModel().getColumn(1);
-		//		TableColumn col3 = piafsScoresTable.getColumnModel().getColumn(1);
-		////	    col.setCellEditor(new ScoresResultTableModel.MyComboBoxEditor(values));
-		////	    col.setCellRenderer(new ScoresResultTableModel.MyComboBoxRenderer(values));
-		//////	    col = piafsScoresTable.getColumnModel().getColumn(3);
-		//////	    col.setCellEditor(new ScoresResultTableModel.MyComboBoxEditor(values));
-		//////	    col.setCellRenderer(new ScoresResultTableModel.MyComboBoxRenderer(values));
-		////        //Set up the editor for the sport cells.
-		//		
-		//		
-		//        JComboBox comboBox = new JComboBox();
-		//        comboBox.addItem("Snowboarding");
-		//        comboBox.addItem("Rowing");
-		//        comboBox.addItem("Knitting");
-		//        comboBox.addItem("Speed reading");
-		//        comboBox.addItem("Pool");
-		//        comboBox.addItem("None of the above");
-		//        col.setCellEditor(new DefaultCellEditor(comboBox));
-		//
-		//        //Set up tool tips for the sport cells.
-		//        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
-		//        renderer.setToolTipText("Click for combo box");
-		//        col.setCellRenderer(renderer);
+		//RtDecimalFormatRenderer rtFormatRenderer = new RtDecimalFormatRenderer();
+		NumberFormat scoreFormat = new DecimalFormat("0.0000");
+	        NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
+	        NumberFormat areaFormat = MZmineCore.getConfiguration()
+	                .getIntensityFormat();
+		scoreRenderer = new FormattedCellRenderer(scoreFormat);
+                rtRenderer = new FormattedCellRenderer(rtFormat);
+                areaRenderer = new FormattedCellRenderer(areaFormat);
+                dfltRenderer = new FormattedCellRenderer(null);
+                piafsScoresTable.getColumnModel().getColumn(2).setCellRenderer(
+                        scoreRenderer );
+                piafsScoresTable.getColumnModel().getColumn(6).setCellRenderer(
+                        scoreRenderer );
+                piafsScoresTable.getColumnModel().getColumn(3).setCellRenderer(
+                        rtRenderer );
+                piafsScoresTable.getColumnModel().getColumn(7).setCellRenderer(
+                        rtRenderer );
+                piafsScoresTable.getColumnModel().getColumn(4).setCellRenderer(
+                        areaRenderer );
+                piafsScoresTable.getColumnModel().getColumn(8).setCellRenderer(
+                        areaRenderer );
+                //--- Non-number columns
+//                piafsScoresTable.getColumnModel().getColumn(0).setCellRenderer(
+//                        dfltRenderer );
+//                piafsScoresTable.getColumnModel().getColumn(1).setCellRenderer(
+//                        dfltRenderer );
+//                piafsScoresTable.getColumnModel().getColumn(5).setCellRenderer(
+//                        dfltRenderer );
 
-
+                piafsScoresTable.setRowHeight(25);
 
 		//		TableRowSorter<ScoresResultTableModel> sorter = new TableRowSorter<ScoresResultTableModel>(listElementModel);
 		//		piafsList.setRowSorter(sorter);
 
 		JScrollPane listScroller = new JScrollPane(piafsScoresTable);
-		listScroller.setPreferredSize(new Dimension(350, 100));
+		listScroller.setPreferredSize(new Dimension(500, 100));
 		listScroller.setAlignmentX(LEFT_ALIGNMENT);
 		JPanel listPanel = new JPanel();
 		listPanel.setLayout(new GridLayout(2,0));//new BoxLayout(listPanel, BoxLayout.PAGE_AXIS));
@@ -173,7 +184,8 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 		GUIUtils.addButton(pnlButtons, "Apply Identification", null, this, "APPLY_ID");
 		GUIUtils.addButton(pnlButtons, "Apply & Adjust RT", null, this, "APPLY_RT");
 		GUIUtils.addButton(pnlButtons, "View spectra (Actual VS JDX Compound)", null, this, "VIEW_SPECTRA");
-		GUIUtils.addButton(pnlButtons, "Cancel", null, this, "CANCEL");
+                GUIUtils.addButton(pnlButtons, "Resize Columns", widthIcon, this, "AUTOCOLUMNWIDTH", "Auto resize columns");
+                GUIUtils.addButton(pnlButtons, "Cancel", null, this, "CANCEL");
 
 		//		setLayout(new BorderLayout());
 		//		setSize(500, 200);
@@ -195,6 +207,9 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 		//        //Display the window.
 		//		this.pack();
 		//		this.setVisible(true);
+
+		resizeColumns();
+		//listScroller.setPreferredSize(new Dimension(500, 20 + piafsScoresTable.getRowCount() * piafsScoresTable.getRowHeight()));
 	}
 
 	//    /*
@@ -250,6 +265,25 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 	//    }
 
 
+	private void resizeColumns() {
+	           // Auto size column width based on data
+            for (int column = 0; column < piafsScoresTable.getColumnCount(); column++) {
+                TableColumn tableColumn = piafsScoresTable.getColumnModel().getColumn(
+                        column);
+                TableCellRenderer renderer = tableColumn
+                        .getHeaderRenderer();
+                if (renderer == null) {
+                    renderer = piafsScoresTable.getTableHeader().getDefaultRenderer();
+                }
+                Component component = renderer
+                        .getTableCellRendererComponent(piafsScoresTable,
+                                tableColumn.getHeaderValue(), false, false,
+                                -1, column);
+                int preferredWidth = component.getPreferredSize().width + 20;
+                tableColumn.setPreferredWidth(preferredWidth);
+            }
+
+	}
 
 	public void actionPerformed(ActionEvent e) {
 
@@ -264,12 +298,14 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 
 			for (Vector<Object> tableRow : tableData) {
 				PeakList pl = (PeakList) tableRow.get(0);
+					
+				logger.info("Apply identities to list: " + pl.getName());
 				
 				JComboBox<ComboboxPeak> cb1 = (JComboBox<ComboboxPeak>) tableRow.get(1);
-				JComboBox<ComboboxPeak> cb3 = (JComboBox<ComboboxPeak>) tableRow.get(3);
+				JComboBox<ComboboxPeak> cb5 = (JComboBox<ComboboxPeak>) tableRow.get(5);
 				
 				ComboboxPeak peak1 = (ComboboxPeak) cb1.getSelectedItem();
-				ComboboxPeak peak2 = (ComboboxPeak) cb3.getSelectedItem();
+				ComboboxPeak peak2 = (ComboboxPeak) cb5.getSelectedItem();
 				JDXCompound unknownComp = new JDXCompound("Unknown", null, null, null, null);
 
 				
@@ -322,8 +358,8 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 						a_pl_row.setPreferredPeakIdentity(peak2.getJDXCompound());
 					} 
 					// Erase / reset identity.
-					else if (a_pl_row.getPreferredPeakIdentity() == peak1.getJDXCompound()
-							|| a_pl_row.getPreferredPeakIdentity() == peak2.getJDXCompound()) {
+					else if (a_pl_row.getPreferredPeakIdentity().getName().equals(peak1.getJDXCompound().getName())
+							|| a_pl_row.getPreferredPeakIdentity().getName().equals(peak2.getJDXCompound().getName())) {
 						a_pl_row.setPreferredPeakIdentity(unknownComp);
 					}
 					
@@ -342,6 +378,9 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 		}
 		if (command.equals("VIEW_SPECTRA")) {
 			// TODO ...
+		}
+		if (command.equals("AUTOCOLUMNWIDTH")) {
+		        resizeColumns();
 		}
 
 		//		if (command.equals("ADD")) {

@@ -37,6 +37,7 @@ import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsParameters;
 import net.sf.mzmine.modules.rawdatamethods.orderdatafiles.OrderDataFilesModule;
@@ -115,6 +116,8 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
 
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list table", this,
                 "SHOW_PEAKLIST_TABLES");
+        GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list a'la Jul", this,
+                "SHOW_PEAKLIST_TABLES_ALA_JUL");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list info", this,
                 "SHOW_PEAKLIST_INFO");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show scatter plot", this,
@@ -292,7 +295,15 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 PeakListTableModule.showNewPeakListVisualizerWindow(peakList);
             }
         }
-
+        if (command.equals("SHOW_PEAKLIST_TABLES_ALA_JUL")) {
+            PeakList[] selectedPeakLists = tree
+                    .getSelectedObjects(PeakList.class);
+            for (PeakList peakList : selectedPeakLists) {
+                //PeakListTableModule.showNewPeakListVisualizerWindow(peakList);
+                JoinAlignerGcModule.showNewPeakListVisualizerWindow(peakList);
+            }
+        }
+        
         if (command.equals("SHOW_PEAKLIST_INFO")) {
             PeakList[] selectedPeakLists = tree
                     .getSelectedObjects(PeakList.class);

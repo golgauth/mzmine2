@@ -22,6 +22,8 @@ package net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
+import java.text.Format;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +40,7 @@ import javax.swing.DefaultCellEditor;
 import javax.swing.JComboBox;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
@@ -92,7 +95,29 @@ public class ScoresResultTableModel extends DefaultTableModel {
 	//		}
 	//	}
 
+//	static class RtDecimalFormatRenderer extends DefaultTableCellRenderer {
+//	    //private static final DecimalFormat formatter = new DecimalFormat( "#.00" );
+//	    Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
+//	    //String s = timeFormat.format(18.12132123131);
+//
+//	    public Component getTableCellRendererComponent(
+//	            JTable table, Object value, boolean isSelected,
+//	            boolean hasFocus, int row, int column) {
+//
+//	        // First format the cell value as required
+//
+//	        value = rtFormat.format((Number)value);
+//
+//	        // And pass it on to parent class
+//
+//	        return super.getTableCellRendererComponent(
+//	                table, value, isSelected, hasFocus, row, column );
+//	    }
+//	}
 
+	private NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
+        NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
+	
 	//
 	private static String[] columnNames = null; //{ "Piaf", "Compound 1", "Score C1", "Compound 2", "Score C2" };
 	//
@@ -234,7 +259,9 @@ public class ScoresResultTableModel extends DefaultTableModel {
 //		}
 		if (value instanceof ComboboxPeak) {
 			//super.setValueAt(value, row, col);
-			super.setValueAt(((ComboboxPeak) value).getScore(), row, col+1);
+                    super.setValueAt(((ComboboxPeak) value).getScore(), row, col+1);
+                    super.setValueAt(((ComboboxPeak) value).getRT(), row, col+2);
+                    super.setValueAt(((ComboboxPeak) value).getArea(), row, col+3);
 		}
 		
 //		else {
@@ -263,7 +290,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 	}
 
 	public boolean isCellEditable(int row, int col) {
-		if (col == 1 || col == 3) return true;
+		if (col == 1 || col == 5) return true;
 		else return false;
 //		return true;
 	}
@@ -389,7 +416,8 @@ public class ScoresResultTableModel extends DefaultTableModel {
 		
 		@Override
 		public String toString() {
-			return "Peak " + this.peakListRow.getID() + " @" + this.getRT() + " #" + this.score;
+                    //return "Peak " + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()); //+ " #" + this.score;
+                    return "#" + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()) + " / " + areaFormat.format(this.getArea()); //+ " #" + this.score;
 		}
 
 	}
@@ -461,8 +489,14 @@ public class ScoresResultTableModel extends DefaultTableModel {
 //	                }            
 //	        );
 
+			// Add peak chooser combobox
 			objects.add(comboBox);
+			// Add score of selected peak
 			objects.add(mtx[0][i+1]);
+                        // Add RT  of selected peak
+                        objects.add(((ComboboxPeak) comboBox.getSelectedItem()).getRT());
+                        // Add area  of selected peak
+                        objects.add(((ComboboxPeak) comboBox.getSelectedItem()).getArea());
 			//step += 2;
 			//comboBox.setSelectedIndex(0);
 			//((ComboboxPeak) comboBox.getItemAt(0)).getPeakListRow().setPreferredPeakIdentity(identity)
