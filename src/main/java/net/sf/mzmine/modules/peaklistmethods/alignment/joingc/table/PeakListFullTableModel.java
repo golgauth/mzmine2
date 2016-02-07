@@ -161,10 +161,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
             
             
             Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
-            int nbDetected = 0;
             
             for (int j=0; j < nbCols; ++j) {
-//                super.addRow(objects);
                 // Set row headers
                 if (j == 0) {
                     switch (i) {
@@ -217,6 +215,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
             super.addRow(objects);               
         }
         
+        // Update number of detected
         for (int i=0; i < row2.length; ++i) {
             //super.setValueAt("" + row2[i] + "/" + peakList.getNumberOfRawDataFiles(), 2, i+1);
             super.setValueAt(row2[i], 2, i+1);

@@ -410,110 +410,110 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
      }
 
     
-    boolean exportToCSV(boolean separatedOutputs) {
-        
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setMultiSelectionEnabled(false);
-        FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV FILES", "csv");
-        fileChooser.setFileFilter(filter);
-
-        String currentPath = csvFilename;
-        if (currentPath.length() > 0) {
-            File currentFile = new File(currentPath);
-            File currentDir = currentFile.getParentFile();
-            if (currentDir != null && currentDir.exists())
-                fileChooser.setCurrentDirectory(currentDir);
-        }
-
-        int returnVal = fileChooser.showDialog(null, "Select file");
-
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            String selectedPath = fileChooser.getSelectedFile().getPath();
-            
-            // Unified output file
-            if (!selectedPath.endsWith(".csv"))
-                selectedPath += ".csv";
-            // Separated output files (rt + area)
-            String basePath = null, rtPath = null, areaPath = null;
-            if (separatedOutputs) {
-                basePath = selectedPath.substring(0, selectedPath.length()-4);
-                rtPath = basePath + "-rt.csv";
-                areaPath = basePath + "-area.csv";
-            }
-            
-            // Try 
-            try {
-                // Open file
-                FileWriter fileWriter = new FileWriter(selectedPath);
-                BufferedWriter writer = new BufferedWriter(fileWriter);
-                // Open rt + area files
-                FileWriter fileWriterRt, fileWriterArea;
-                BufferedWriter writerRt = null, writerArea = null;
-                if (separatedOutputs) {
-                    fileWriterRt = new FileWriter(rtPath);
-                    writerRt = new BufferedWriter(fileWriterRt);
-                    fileWriterArea = new FileWriter(areaPath);
-                    writerArea = new BufferedWriter(fileWriterArea);
-                }
-
-                // Export table values
-                String sepStr = " / ";
-                for (int i=0; i < tm.getRowCount(); ++i) {
-                    for (int j=0; j < tm.getColumnCount(); ++j) {
-                        
-                        String str = tm.getValueAt(i, j).toString();
-                        
-                        writer.write(str);
-                        if (separatedOutputs) {
-                            String rtStr, areaStr;
-                            
-                            int sepIdx = str.lastIndexOf(sepStr);
-                            if (sepIdx != -1) {
-                                rtStr = str.substring(0, sepIdx);
-                                areaStr = str.substring(sepIdx + sepStr.length(), str.length());
-                                writerRt.write(rtStr);
-                                writerArea.write(areaStr);
-                            } else {
-                                writerRt.write(str);
-                                writerArea.write(str);
-                            }
-                        }
-                        
-                        if (j != tm.getColumnCount() - 1) {
-                            writer.write(";");
-                            if (separatedOutputs) {
-                                writerRt.write(";");
-                                writerArea.write(";");
-                            }
-                        }
-                    }
-                    writer.newLine();
-                    if (separatedOutputs) {
-                        writerRt.newLine();
-                        writerArea.newLine();                        
-                    }
-                }
-
-                // Close file
-                writer.close();
-                if (separatedOutputs) {
-                    writerRt.close();
-                    writerArea.close();                                            
-                }
-                
-                csvFilename = selectedPath;
-                csvFilenames = new String[] { selectedPath, rtPath, areaPath };
-                
-                return true;
-                
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-       
-        return false;
-    }
+//    boolean exportToCSV(boolean separatedOutputs) {
+//        
+//        JFileChooser fileChooser = new JFileChooser();
+//        fileChooser.setMultiSelectionEnabled(false);
+//        FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV FILES", "csv");
+//        fileChooser.setFileFilter(filter);
+//
+//        String currentPath = csvFilename;
+//        if (currentPath.length() > 0) {
+//            File currentFile = new File(currentPath);
+//            File currentDir = currentFile.getParentFile();
+//            if (currentDir != null && currentDir.exists())
+//                fileChooser.setCurrentDirectory(currentDir);
+//        }
+//
+//        int returnVal = fileChooser.showDialog(null, "Select file");
+//
+//        if (returnVal == JFileChooser.APPROVE_OPTION) {
+//            String selectedPath = fileChooser.getSelectedFile().getPath();
+//            
+//            // Unified output file
+//            if (!selectedPath.endsWith(".csv"))
+//                selectedPath += ".csv";
+//            // Separated output files (rt + area)
+//            String basePath = null, rtPath = null, areaPath = null;
+//            if (separatedOutputs) {
+//                basePath = selectedPath.substring(0, selectedPath.length()-4);
+//                rtPath = basePath + "-rt.csv";
+//                areaPath = basePath + "-area.csv";
+//            }
+//            
+//            // Try 
+//            try {
+//                // Open file
+//                FileWriter fileWriter = new FileWriter(selectedPath);
+//                BufferedWriter writer = new BufferedWriter(fileWriter);
+//                // Open rt + area files
+//                FileWriter fileWriterRt, fileWriterArea;
+//                BufferedWriter writerRt = null, writerArea = null;
+//                if (separatedOutputs) {
+//                    fileWriterRt = new FileWriter(rtPath);
+//                    writerRt = new BufferedWriter(fileWriterRt);
+//                    fileWriterArea = new FileWriter(areaPath);
+//                    writerArea = new BufferedWriter(fileWriterArea);
+//                }
+//
+//                // Export table values
+//                String sepStr = " / ";
+//                for (int i=0; i < tm.getRowCount(); ++i) {
+//                    for (int j=0; j < tm.getColumnCount(); ++j) {
+//                        
+//                        String str = tm.getValueAt(i, j).toString();
+//                        
+//                        writer.write(str);
+//                        if (separatedOutputs) {
+//                            String rtStr, areaStr;
+//                            
+//                            int sepIdx = str.lastIndexOf(sepStr);
+//                            if (sepIdx != -1) {
+//                                rtStr = str.substring(0, sepIdx);
+//                                areaStr = str.substring(sepIdx + sepStr.length(), str.length());
+//                                writerRt.write(rtStr);
+//                                writerArea.write(areaStr);
+//                            } else {
+//                                writerRt.write(str);
+//                                writerArea.write(str);
+//                            }
+//                        }
+//                        
+//                        if (j != tm.getColumnCount() - 1) {
+//                            writer.write(";");
+//                            if (separatedOutputs) {
+//                                writerRt.write(";");
+//                                writerArea.write(";");
+//                            }
+//                        }
+//                    }
+//                    writer.newLine();
+//                    if (separatedOutputs) {
+//                        writerRt.newLine();
+//                        writerArea.newLine();                        
+//                    }
+//                }
+//
+//                // Close file
+//                writer.close();
+//                if (separatedOutputs) {
+//                    writerRt.close();
+//                    writerArea.close();                                            
+//                }
+//                
+//                csvFilename = selectedPath;
+//                csvFilenames = new String[] { selectedPath, rtPath, areaPath };
+//                
+//                return true;
+//                
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                return false;
+//            }
+//        }
+//       
+//        return false;
+//    }
     
     String getCSVfilename() {
         return PeakListTable.csvFilename;

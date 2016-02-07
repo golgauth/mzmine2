@@ -24,6 +24,7 @@ import net.sf.mzmine.modules.masslistmethods.chromatogrambuilder.ChromatogramBui
 import net.sf.mzmine.modules.masslistmethods.shoulderpeaksfilter.ShoulderPeaksFilterModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.join.JoinAlignerLcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportAlaJulModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.ransac.RansacAlignerModule;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringModule;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.heatmaps.HeatMapModule;
@@ -131,7 +132,8 @@ public class MZmineModulesList {
             // PathAlignerModule.class,
 
             // I/O
-            CSVExportModule.class, MetaboAnalystExportModule.class,
+            CSVExportModule.class, CSVExportAlaJulModule.class, 
+            MetaboAnalystExportModule.class,
             MzTabExportModule.class, SQLExportModule.class,
             XMLExportModule.class, CasmiImportModule.class,
             MzTabImportModule.class, XMLImportModule.class,

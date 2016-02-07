@@ -97,7 +97,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //    private final JMenuItem exportIsotopesItem;
 //    private final JMenuItem exportMSMSItem;
     
-    private final JMenuItem exportTableToCSVunified;
+    ////private final JMenuItem exportTableToCSVunified;
     private final JMenuItem exportTableToCSV;
     
 //    private final JMenuItem manuallyDefineItem;
@@ -163,10 +163,12 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //                "Isotope pattern", this);
 //        exportMSMSItem = GUIUtils
 //                .addMenuItem(exportMenu, "MS/MS pattern", this);
-        exportTableToCSVunified = GUIUtils.addMenuItem(exportMenu,
-                "Table to CSV (at once)", this);
+        ////exportTableToCSVunified = GUIUtils.addMenuItem(exportMenu,
+        ////        "Table to CSV (at once)", this);
+        ////exportTableToCSV = GUIUtils.addMenuItem(exportMenu,
+        ////        "Table to CSV (2 files: \"-rt.csv\" + \"-area.csv\")", this);
         exportTableToCSV = GUIUtils.addMenuItem(exportMenu,
-                "Table to CSV (2 files: \"-rt.csv\" + \"-area.csv\")", this);
+                "Export table to CSV... (Cancelled: Use \"Peak list methods > Export\" menu instead)", this);
 
 //        // Identities menu.
 //        idsMenu = new JMenu("Identities");
@@ -550,23 +552,22 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //            MSMSExportModule.exportMSMS(clickedPeakListRow);
 //        }
 
-        if (exportTableToCSVunified.equals(src)) {
-            boolean success = this.table.exportToCSV(false);
-            if (success)
-                logger.log(Level.INFO, "Table saved to file: " + this.table.getCSVfilename());
-            else
-                logger.log(Level.SEVERE, "Could not write to file: " + this.table.getCSVfilename());
-        }
-
-        if (exportTableToCSV.equals(src)) {
-            boolean success = this.table.exportToCSV(true);
-            if (success)
-                logger.log(Level.INFO, "Table saved to files: " 
-                        + this.table.getCSVfilenames()[1] + " | " + this.table.getCSVfilenames()[2]);
-            else
-                logger.log(Level.SEVERE, "Could not write to files: " 
-                        + this.table.getCSVfilenames()[1] + " | " + this.table.getCSVfilenames()[2]);
-        }
+//        if (exportTableToCSVunified.equals(src)) {
+//            boolean success = this.table.exportToCSV(false);
+//            if (success)
+//                logger.log(Level.INFO, "Table saved to file: " + this.table.getCSVfilename());
+//            else
+//                logger.log(Level.SEVERE, "Could not write to file: " + this.table.getCSVfilename());
+//        }
+//        if (exportTableToCSV.equals(src)) {
+//            boolean success = this.table.exportToCSV(true);
+//            if (success)
+//                logger.log(Level.INFO, "Table saved to files: " 
+//                        + this.table.getCSVfilenames()[1] + " | " + this.table.getCSVfilenames()[2]);
+//            else
+//                logger.log(Level.SEVERE, "Could not write to files: " 
+//                        + this.table.getCSVfilenames()[1] + " | " + this.table.getCSVfilenames()[2]);
+//        }
 
 //        if (clearIdsItem.equals(src)) {
 //
