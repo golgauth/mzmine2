@@ -442,12 +442,12 @@ class JoinAlignerTask extends AbstractTask {
                     if (!PeakUtils.containsIdentity(targetRow, identity))
                         targetRow.addPeakIdentity(identity, false);
                 }
-                // Notify the GUI about the change in the project
+                // Notify MZmine about the change in the project
                 // TODO: Get the "project" from the instantiator of this class instead.
                 // Still necessary ???????
                 MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
                 project.notifyObjectChanged(targetRow, false);
-                MZmineCore.getDesktop().getMainWindow().repaint();
+                //MZmineCore.getDesktop().getMainWindow().repaint();
                 
                 processedRows++;
 

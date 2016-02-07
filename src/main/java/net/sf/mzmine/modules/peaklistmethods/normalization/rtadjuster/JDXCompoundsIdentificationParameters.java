@@ -68,7 +68,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
-	                + "(displaying validation table) first");
+	                + "(displaying validation table) first", false);
 	
 	public JDXCompoundsIdentificationParameters() {
 		super(new Parameter[] { PEAK_LISTS,

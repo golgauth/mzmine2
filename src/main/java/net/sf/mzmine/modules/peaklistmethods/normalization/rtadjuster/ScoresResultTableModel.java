@@ -115,8 +115,6 @@ public class ScoresResultTableModel extends DefaultTableModel {
 //	    }
 //	}
 
-	private NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
-        NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
 	
 	//
 	private static String[] columnNames = null; //{ "Piaf", "Compound 1", "Score C1", "Compound 2", "Score C2" };
@@ -379,7 +377,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 //		}
 //	}
 
-	public class ComboboxPeak extends SimpleFeature {
+	public static class ComboboxPeak extends SimpleFeature {
 
 		//private Feature peak;
 		private PeakList peakList;
@@ -416,6 +414,8 @@ public class ScoresResultTableModel extends DefaultTableModel {
 		
 		@Override
 		public String toString() {
+		    NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
+		    NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
                     //return "Peak " + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()); //+ " #" + this.score;
                     return "#" + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()) + " / " + areaFormat.format(this.getArea()); //+ " #" + this.score;
 		}
@@ -458,7 +458,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 
 			final int col = objects.size();
 
-			// Sort matrix for compound i
+			// Sort matrix for compound i (by score - descending order)
 			Double[][] mtx = new Double[scoreMatrix.length][scoreMatrix[0].length]; //scoreMatrix;
 			CollectionUtils.matrixCopy(scoreMatrix, mtx);
 			Arrays.sort(mtx, new ArrayComparator(i+1, false)); // +1: skip first column (row number)
