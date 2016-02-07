@@ -81,6 +81,70 @@ public class RubberBandCorrector extends BaselineCorrector {
 
         return baseline;
     }
+//    public class RubberBandCorrector extends BaselineCorrector {
+//
+//        @Override
+//        public String[] getRequiredRPackages() {
+//            return new String[] { /* "rJava", "Rserve", */"hyperSpec" };
+//        }
+//
+//        @Override
+//        public double[] computeBaseline(final RSessionWrapper rSession,
+//                final RawDataFile origDataFile, double[] chromatogram,
+//                ParameterSet parameters) throws RSessionWrapperException {
+//
+//            // Rubber Band parameters.
+//            double noise = parameters.getParameter(
+//                    RubberBandCorrectorParameters.NOISE).getValue();
+//            boolean autoNoise = parameters.getParameter(
+//                    RubberBandCorrectorParameters.AUTO_NOISE).getValue();
+//            double df = parameters.getParameter(RubberBandCorrectorParameters.DF)
+//                    .getValue();
+//            boolean spline = parameters.getParameter(
+//                    RubberBandCorrectorParameters.SPLINE).getValue();
+//            double bend = parameters.getParameter(
+//                    RubberBandCorrectorParameters.BEND_FACTOR).getValue();
+//
+//            final double[] baseline;
+//
+//            // Set chromatogram.
+//            rSession.assign("chromatogram", chromatogram);
+//            // Transform chromatogram.
+////          # na.approx on the entire matrix does not work
+////          na.approx(m)
+////          # Error in approx(x[!na], y[!na], xout, ...) : 
+////          #   need at least two non-NA values to interpolate
+//    //
+////          # find columns with at least two non-NA values
+////          idx <- colSums(!is.na(m)) > 1
+////          idx
+////          # [1] FALSE FALSE  TRUE  TRUE  TRUE
+//    //
+////          # interpolate 'TRUE columns' only
+////          m[ , idx] <- na.approx(m[ , idx])
+//            // That is: make sure mat is OK with NA values in every column
+//            rSession.eval("mat <- matrix(chromatogram, nrow=1)");
+//            rSession.eval("idx <- colSums(!is.na(mat)) > 1");
+////            rSession.eval("paste(idx, collapse=\" \")");
+////            rSession.eval("stop(idx)");
+//           rSession.eval("mat <- mat[ , idx]");
+//            rSession.eval("spc <- new (\"hyperSpec\", spc = mat, wavelength = as.numeric(seq("
+//                    + 1 + ", " + chromatogram.length + ")))");
+////            rSession.eval("spc <- new (\"hyperSpec\", spc = mat, wavelength = as.numeric(seq("
+////                    + 1 + ", nrow(mat))))");
+//            // Auto noise ?
+//            rSession.eval("noise <- " + ((autoNoise) ? "min(mat)" : "" + noise));
+//            // Bend
+//            rSession.eval("bend <- " + bend
+//                    + " * wl.eval(spc, function(x) x^2, normalize.wl=normalize01)");
+//            // Calculate baseline.
+////            rSession.eval("baseline <- spc.rubberband(spc + bend, noise = noise, df = " + df + ", spline=" + (spline ? "T" : "F") + ") - bend");
+//            rSession.eval("if (!is.null(mat)) { baseline <- spc.rubberband(spc + bend, noise = noise, df = " + df + ", spline=" + (spline ? "T" : "F") + ") - bend; } else { baseline <- matrix(rep(min(chromatogram), length(chromatogram)), nrow=1); }");
+//            rSession.eval("baseline <- orderwl(baseline)[[1]]");
+//            baseline = ((double[][]) rSession.collect("baseline"))[0];
+//
+//            return baseline;
+//        }
 
     @Override
     public @Nonnull

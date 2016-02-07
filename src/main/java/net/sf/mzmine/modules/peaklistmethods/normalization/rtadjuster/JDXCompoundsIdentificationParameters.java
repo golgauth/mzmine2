@@ -23,6 +23,7 @@ import net.sf.mzmine.datamodel.IonizationType;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
+import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
 import net.sf.mzmine.parameters.parametertypes.filenames.FileNameParameter;
@@ -65,12 +66,17 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 			"Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is Similarity Only)",
 			MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
 	
+	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
+	        "Apply without checking", "Apply best scoring compounds without checking manually " 
+	                + "(displaying validation table) first");
+	
 	public JDXCompoundsIdentificationParameters() {
 		super(new Parameter[] { PEAK_LISTS,
 				SUFFIX,
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
-				SIMILARITY_METHOD, MIX_FACTOR });
+				SIMILARITY_METHOD, MIX_FACTOR,
+				APPLY_WITHOUT_CHECK });
 	}
 
 }

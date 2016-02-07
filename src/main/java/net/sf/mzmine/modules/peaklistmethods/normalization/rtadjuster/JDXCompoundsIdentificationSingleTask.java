@@ -100,6 +100,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 	private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
 	private SimilarityMethodType simMethodType;
 	private double areaMixFactor;
+	private boolean applyWithoutCheck;
 	
 //	private HashMap<JDXCompound, Double> compoundsRowScores = new HashMap<JDXCompound, Double>();
 	
@@ -148,6 +149,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 		rtSearchRangeC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C2).getValue();
 		simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
 		areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
+		applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
 		
 		jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
 		jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
