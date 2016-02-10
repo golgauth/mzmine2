@@ -150,9 +150,6 @@ public class RndResampleFilter implements ScanFilter {
                 done = true;
             }
             
-//            if (done) {
-//                logger.log(Level.SEVERE, "OK: #'" + scan.getScanNumber() + "', dp rounded to: '" + newMz + "'");
-            
             
 //            if (i > 0 && /*i != 0 &&*/ !done && i < dps.length-1) {
 //                int nextMz = (int) Math.round(dps[i+1].getMZ());
@@ -182,6 +179,7 @@ public class RndResampleFilter implements ScanFilter {
             newDps[i] = new SimpleDataPoint(newMz, dps[i].getIntensity());
         }
         
+        // Post-treatments
         // Cleanup: Remove duplicates/overlap and zero intensity dps
         ArrayList<SimpleDataPoint> dpsList = new ArrayList<SimpleDataPoint>();
         double prevMz = -1.0, curMz = -1.0;
@@ -208,19 +206,6 @@ public class RndResampleFilter implements ScanFilter {
                 }
             }
             prevMz = newDps[i].getMZ();
-            
-//            if (sum_duplicates && i > 0) {
-//                if (curMz == prevMz) {
-//                    sum = dpsList.get(dpsList.size()-1).getIntensity() + newDps[i].getIntensity();
-//                    dpsList.set(i, new SimpleDataPoint(prevMz, sum));
-//                } else {
-//                    dpsList.add(newDps[i]);
-//                }
-//            } else {
-//                if (i == 0 || newDps[i-1].getMZ() != newDps[i].getMZ())
-//                    dpsList.add(newDps[i]);
-//            }
-//            prevMz = newDps[i].getMZ();
         }
 
 	// Create updated scan

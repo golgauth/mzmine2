@@ -31,10 +31,6 @@ import net.sf.mzmine.util.ExitCode;
 
 public class RndResampleFilterParameters extends SimpleParameterSet {
 
-//    public static final DoubleParameter binSize = new DoubleParameter(
-//	    "m/z bin length", "The length of m/z bin", MZmineCore
-//		    .getConfiguration().getMZFormat());
-
     public static final BooleanParameter SUM_DUPLICATES = new BooleanParameter(
             "Sum duplicates intensities",
             "Concatenates/sums ions count m/z peaks determined as being at same m/z unit. " +
