@@ -75,7 +75,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
                         " Name of the resulting CSV file to write standard compounds best blast scores into." +
                         " If the file already exists, it will be overwritten.",
                 "csv");
-        public static final StringParameter fieldSeparator = new StringParameter(
+        public static final StringParameter FIELD_SEPARATOR = new StringParameter(
                 "Field separator",
                 " Requires \"Apply without checking\" checked." +
                 "Character(s) used to separate fields in the exported file", ",");
@@ -86,7 +86,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
 				SIMILARITY_METHOD, MIX_FACTOR,
-				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, fieldSeparator });
+				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
 	}
 
 }

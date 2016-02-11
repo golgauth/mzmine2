@@ -144,7 +144,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
         applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
-        fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.fieldSeparator).getValue();
+        fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
 
         jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
         jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
