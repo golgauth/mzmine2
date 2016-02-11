@@ -96,6 +96,8 @@ public class UnifiedCellRenderer implements TableCellRenderer {
             else { 
                newComp = new JPanel();
             }
+        } else {
+            newComp = new JPanel();
         }
 
 	Color bgColor, fgColor;
@@ -110,7 +112,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
                 bgColor = table.getBackground();
             }
 
-	newComp.setBackground(bgColor);
+        newComp.setBackground(bgColor);
 
 	if (hasFocus) {
 	    Border border = null;
