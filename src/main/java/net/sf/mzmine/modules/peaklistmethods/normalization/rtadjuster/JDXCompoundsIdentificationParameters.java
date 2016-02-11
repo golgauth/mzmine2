@@ -69,6 +69,16 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
 	                + "(displaying validation table) first", false);
+        public static final FileNameParameter BLAST_OUTPUT_FILENAME = new FileNameParameter(
+                "Blast output filename",
+                " Requires \"Apply without checking\" checked." +
+                        " Name of the resulting CSV file to write standard compounds best blast scores into." +
+                        " If the file already exists, it will be overwritten.",
+                "csv");
+        public static final StringParameter fieldSeparator = new StringParameter(
+                "Field separator",
+                " Requires \"Apply without checking\" checked." +
+                "Character(s) used to separate fields in the exported file", ",");
 	
 	public JDXCompoundsIdentificationParameters() {
 		super(new Parameter[] { PEAK_LISTS,
@@ -76,7 +86,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
 				SIMILARITY_METHOD, MIX_FACTOR,
-				APPLY_WITHOUT_CHECK });
+				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, fieldSeparator });
 	}
 
 }
