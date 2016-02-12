@@ -139,10 +139,7 @@ class CSVExportTask extends AbstractTask {
                 setErrorMessage("Could not open file " + curFile + " for writing.");
                 return;
             }
-    
-            // Get number of rows
-            totalRows = peakList.getNumberOfRows();
-    
+            
             //exportPeakList(peakList, writer);
             boolean success = exportToCSV(peakList, curFile);
             if (success) {

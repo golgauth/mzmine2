@@ -49,7 +49,7 @@ public class XMLExportTask extends AbstractTask {
     private boolean compression;
 
     /**
-     * @param peakList
+     * @param peakLists
      * @param parameters
      */
     public XMLExportTask(ParameterSet parameters) {
