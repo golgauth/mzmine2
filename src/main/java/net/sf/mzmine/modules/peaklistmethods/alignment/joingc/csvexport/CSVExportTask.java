@@ -296,7 +296,7 @@ class CSVExportTask extends AbstractTask {
 
                         Object obj = objects.get(j);
 
-                        String str = obj.toString();
+                        String str = (obj != null) ? obj.toString() : "";
 
                         writer.write(str);
                         if (separatedOutputs) {
