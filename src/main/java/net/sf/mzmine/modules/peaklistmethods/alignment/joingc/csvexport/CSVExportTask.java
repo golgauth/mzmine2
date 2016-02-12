@@ -24,9 +24,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -48,11 +50,12 @@ class CSVExportTask extends AbstractTask {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
-    private PeakList peakList;
+    private PeakList[] peakLists;
     private int processedRows = 0, totalRows = 0;
 
     // parameter values
     private File fileName;
+    private String plNamePattern = "{}";
     private static String csvFilename = "";
     private static String[] csvFilenames = null;
 
@@ -67,8 +70,8 @@ class CSVExportTask extends AbstractTask {
     
     public CSVExportTask(ParameterSet parameters) {
 
-        this.peakList = parameters.getParameter(CSVExportParameters.peakList)
-                .getValue().getMatchingPeakLists()[0];
+        peakLists = parameters.getParameter(CSVExportParameters.peakLists)
+                .getValue().getMatchingPeakLists();
         fileName = parameters.getParameter(CSVExportParameters.filename)
                 .getValue();
         fieldSeparator = parameters.getParameter(
@@ -101,49 +104,69 @@ class CSVExportTask extends AbstractTask {
     }
 
     public String getTaskDescription() {
-        return "Exporting peak list " + peakList + " to " + fileName;
+        //return "Exporting peak list " + peakLists + " to " + fileName;
+        return "Exporting peak list(s) " + Arrays.toString(peakLists) + " to CSV file(s)";
     }
 
     public void run() {
 
         setStatus(TaskStatus.PROCESSING);
 
-        // Open file
-        FileWriter writer;
-        try {
-            writer = new FileWriter(fileName);
-        } catch (Exception e) {
-            setStatus(TaskStatus.ERROR);
-            setErrorMessage("Could not open file " + fileName + " for writing.");
-            return;
+        // Shall export several files?
+        boolean substitute = fileName.getPath().contains(plNamePattern);
+        
+        // Total number of rows
+        for (PeakList peakList: peakLists) {
+            totalRows += peakList.getNumberOfRows();
         }
 
-        // Get number of rows
-        totalRows = peakList.getNumberOfRows();
-
-        //exportPeakList(peakList, writer);
-        boolean success = exportToCSV();
-        if (success) {
-            if (exportSeparate)
-                logger.log(Level.INFO, "Table saved to files: " 
-                        + this.getCSVfilenames()[1] + " | " + this.getCSVfilenames()[2]);
-            else
-                logger.log(Level.INFO, "Table saved to file: " + this.getCSVfilename());
-        } else {
-            if (exportSeparate)
-                logger.log(Level.INFO, "Could not write to files: " 
-                        + this.getCSVfilenames()[1] + " | " + this.getCSVfilenames()[2]);
-            else
-                logger.log(Level.INFO, "Could not write to file: " + this.getCSVfilename());
-        }
-
-        // Close file
-        try {
-            writer.close();
-        } catch (Exception e) {
-            setStatus(TaskStatus.ERROR);
-            setErrorMessage("Could not close file " + fileName);
-            return;
+        // Process peak lists
+        for (PeakList peakList: peakLists) {
+            
+            // Filename
+            File curFile = fileName;
+            if (substitute) {
+                curFile = new File(fileName.getPath().replaceAll(
+                        Pattern.quote(plNamePattern), peakList.getName()));
+            }
+            
+            // Open file
+            FileWriter writer;
+            try {
+                writer = new FileWriter(curFile);
+            } catch (Exception e) {
+                setStatus(TaskStatus.ERROR);
+                setErrorMessage("Could not open file " + curFile + " for writing.");
+                return;
+            }
+    
+            // Get number of rows
+            totalRows = peakList.getNumberOfRows();
+    
+            //exportPeakList(peakList, writer);
+            boolean success = exportToCSV(peakList, curFile);
+            if (success) {
+                if (exportSeparate)
+                    logger.log(Level.INFO, "Table saved to files: " 
+                            + this.getCSVfilenames()[1] + " | " + this.getCSVfilenames()[2]);
+                else
+                    logger.log(Level.INFO, "Table saved to file: " + this.getCSVfilename());
+            } else {
+                if (exportSeparate)
+                    logger.log(Level.INFO, "Could not write to files: " 
+                            + this.getCSVfilenames()[1] + " | " + this.getCSVfilenames()[2]);
+                else
+                    logger.log(Level.INFO, "Could not write to file: " + this.getCSVfilename());
+            }
+    
+            // Close file
+            try {
+                writer.close();
+            } catch (Exception e) {
+                setStatus(TaskStatus.ERROR);
+                setErrorMessage("Could not close file " + curFile);
+                return;
+            }
         }
 
         if (getStatus() == TaskStatus.PROCESSING)
@@ -151,7 +174,7 @@ class CSVExportTask extends AbstractTask {
 
     }
     
-    boolean exportToCSV() {
+    boolean exportToCSV(PeakList peakList, File fileName) {
 
         String selectedPath = fileName.getPath();
         boolean separatedOutputs = exportSeparate;
@@ -213,7 +236,7 @@ class CSVExportTask extends AbstractTask {
                             objects.add("Peaks Detected");
                             break;
                         default:
-                            RawDataFile rdf = this.peakList.getRawDataFiles()[i-3];
+                            RawDataFile rdf = peakList.getRawDataFiles()[i-3];
                             objects.add(rdf.getName().substring(0, rdf.getName().indexOf(" ")));
                             break;
                         }
@@ -232,7 +255,7 @@ class CSVExportTask extends AbstractTask {
                             objects.add("");
                             break;
                         default:
-                            RawDataFile rdf = this.peakList.getRawDataFiles()[i-3];
+                            RawDataFile rdf = peakList.getRawDataFiles()[i-3];
                             Feature peak = a_pl_row.getPeak(rdf);//this.peakList.getPeak(j, rdf);
                             if (peak != null) {
                                 objects.add("" + rtFormat.format(peak.getRT()) + " / " + areaFormat.format(peak.getArea()));
@@ -304,6 +327,7 @@ class CSVExportTask extends AbstractTask {
                         writerRt.newLine();
                         writerArea.newLine();                        
                     }
+                    ++processedRows;
                 }
 
             }
