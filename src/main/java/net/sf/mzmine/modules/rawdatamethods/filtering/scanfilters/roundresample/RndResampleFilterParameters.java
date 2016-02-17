@@ -21,20 +21,19 @@ package net.sf.mzmine.modules.rawdatamethods.filtering.scanfilters.roundresample
 
 import java.awt.Window;
 
-import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.rawdatamethods.filtering.scanfilters.ScanFilterSetupDialog;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
-import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
 import net.sf.mzmine.util.ExitCode;
 
 public class RndResampleFilterParameters extends SimpleParameterSet {
 
     public static final BooleanParameter SUM_DUPLICATES = new BooleanParameter(
-            "Sum duplicates intensities",
-            "Concatenates/sums ions count m/z peaks determined as being at same m/z unit. " +
-            "If not checked, only the first m/z peak at given m/z is kept and the others removed.",
+            "Sum duplicate intensities",
+            "Concatenates/sums ions count (intensity) of m/z peaks competing for being rounded at same m/z unit. " +
+            //"If unchecked, only the first m/z peak at given m/z is kept and the others are removed." +
+            "If unchecked, the intensities are averaged rather than summed.",
             true);
 
     public static final BooleanParameter REMOVE_ZERO_INTENSITY = new BooleanParameter(
