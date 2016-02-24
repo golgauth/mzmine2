@@ -19,12 +19,11 @@
 
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
-import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreParameters;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
+import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
-import net.sf.mzmine.parameters.parametertypes.OptionalModuleParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZToleranceParameter;
@@ -35,7 +34,13 @@ public class JoinAlignerParameters extends SimpleParameterSet {
     public static final PeakListsParameter peakLists = new PeakListsParameter();
 
     public static final StringParameter peakListName = new StringParameter(
-	    "Peak list name", "Peak list name", "Aligned peak list");
+            "Peak list name", "Peak list name", "Aligned peak list");
+
+    public static final ComboParameter<RowVsRowOrderType> comparisonOrder = new ComboParameter<RowVsRowOrderType>(
+            "Comparison Order", 
+            "In which order peak lists (samples) should be compared to each other while running the alignment algorihtm", 
+            RowVsRowOrderType.values()
+            );
 
     public static final MZToleranceParameter MZTolerance = new MZToleranceParameter();
 
@@ -78,7 +83,8 @@ public class JoinAlignerParameters extends SimpleParameterSet {
     **/
 
     public JoinAlignerParameters() {
-	super(new Parameter[] { peakLists, peakListName, MZTolerance, MZWeight,
+	super(new Parameter[] { peakLists, comparisonOrder, peakListName, 
+	        MZTolerance, MZWeight,
 		RTTolerance, RTWeight, 
 		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,

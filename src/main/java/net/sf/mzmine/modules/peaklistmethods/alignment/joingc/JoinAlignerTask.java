@@ -21,6 +21,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.TreeSet;
@@ -65,6 +66,7 @@ class JoinAlignerTask extends AbstractTask {
     private int processedRows, totalRows;
 
     private String peakListName;
+    private RowVsRowOrderType comparisonOrder;
     private MZTolerance mzTolerance;
     private RTTolerance rtTolerance;
     private double mzWeight, rtWeight;
@@ -90,6 +92,9 @@ class JoinAlignerTask extends AbstractTask {
 
         peakListName = parameters.getParameter(
                 JoinAlignerParameters.peakListName).getValue();
+        
+        comparisonOrder = parameters.getParameter(
+                JoinAlignerParameters.comparisonOrder).getValue();
 
         mzTolerance = parameters
                 .getParameter(JoinAlignerParameters.MZTolerance).getValue();
@@ -276,9 +281,21 @@ class JoinAlignerTask extends AbstractTask {
         /** Alignment mapping **/ 
         // Iterate source peak lists
         Hashtable<SimpleFeature, Double> rtPeakBackup = new Hashtable<SimpleFeature, Double>();
+        // Build comparison order
+        ArrayList<Integer> orderIds = new ArrayList<Integer>();
+        for (int i=0; i < peakLists.length; ++i) { orderIds.add(i); }
+        logger.info("ORDER: " + comparisonOrder);
+        if (comparisonOrder == RowVsRowOrderType.RANDOM) {
+            Collections.shuffle(orderIds);
+        } else if (comparisonOrder == RowVsRowOrderType.REVERSE_SEL) {
+            Collections.reverse(orderIds);
+        }
+        Integer[] newIds = orderIds.toArray(new Integer[orderIds.size()]);
         //
-        for (PeakList peakList : peakLists) {
-
+        for (int i = 0; i < newIds.length; ++i) {
+            
+            PeakList peakList = peakLists[newIds[i]];
+            
             // Create a sorted set of scores matching
             TreeSet<RowVsRowScore> scoreSet = new TreeSet<RowVsRowScore>();
 
