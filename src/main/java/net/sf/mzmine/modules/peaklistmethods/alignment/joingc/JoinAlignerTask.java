@@ -44,6 +44,7 @@ import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreCalculator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZTolerance;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
@@ -72,6 +73,7 @@ class JoinAlignerTask extends AbstractTask {
     private MZTolerance mzTolerance;
     private RTTolerance rtTolerance;
     private double mzWeight, rtWeight;
+    private double minScore;
     
     private boolean useApex, useKnownCompoundsAsRef;
     private RTTolerance rtToleranceAfter;
@@ -108,6 +110,11 @@ class JoinAlignerTask extends AbstractTask {
 
         rtWeight = parameters.getParameter(JoinAlignerParameters.RTWeight)
                 .getValue();
+        
+        minScore = parameters.getParameter(JoinAlignerParameters.minScore)
+                .getValue();
+        
+        
         
         //***
         useApex = parameters.getParameter(
@@ -365,11 +372,14 @@ class JoinAlignerTask extends AbstractTask {
                             peakList, rtAdjustementMapping,
                             row, candidate,
                             RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight, 
+                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
                             useApex, useKnownCompoundsAsRef, rtToleranceAfter);
 
                     // If match was not rejected afterwards and score is acceptable
-                    if (score.getScore() > 0.0)
+                    // (Acceptable score => higher than absolute min ever and higher than user defined min)
+                    // 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
+                    //if (score.getScore() > JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
+                    if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore))
                         scoreSet.add(score);
 
                 }

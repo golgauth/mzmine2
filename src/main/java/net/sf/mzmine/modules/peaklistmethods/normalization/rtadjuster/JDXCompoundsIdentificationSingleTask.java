@@ -75,6 +75,12 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
     // Minimum abundance.
     private static final double MIN_ABUNDANCE = 0.001;
+    
+    // Minimum score ever.
+    // TODO: better use "Double.MIN_VALUE" rather than zero (it has consequences !!!!)
+    //       (0.0 is fine for 'Dot Product' method, but not for 'Person Correlation')
+    ////public static final double MIN_SCORE_ABSOLUTE = Double.MIN_VALUE;
+    public static final double MIN_SCORE_ABSOLUTE = 0.0;
 
     // Counters.
     private int finishedItemsTotal;
@@ -88,6 +94,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
     private SimilarityMethodType simMethodType;
     private double areaMixFactor;
+    private double minScore;
     private boolean applyWithoutCheck;
     private File blastOutputFilename;
     private String fieldSeparator;
@@ -126,6 +133,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         rtSearchRangeC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C2).getValue();
         simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
         areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
+        minScore = parameters.getParameter(JDXCompoundsIdentificationParameters.MIN_SCORE).getValue();
         applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
@@ -233,10 +241,14 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
-                                scoreMatrix[finishedItems][i+1] = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                                if (score < minScore)
+                                    scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
+                                else
+                                    scoreMatrix[finishedItems][i+1] = score;
                             } else {
                                 // Out of range.
-                                scoreMatrix[finishedItems][i+1] = 0.0;
+                                scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                             }
                         }
 

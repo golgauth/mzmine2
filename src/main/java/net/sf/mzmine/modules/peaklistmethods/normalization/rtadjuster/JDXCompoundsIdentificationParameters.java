@@ -19,6 +19,8 @@
 
 package net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster;
 
+import java.text.NumberFormat;
+
 import net.sf.mzmine.datamodel.IonizationType;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.parameters.Parameter;
@@ -62,9 +64,14 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 
 	public static final ComboParameter<SimilarityMethodType> SIMILARITY_METHOD = new ComboParameter<SimilarityMethodType>(
 			"Similarity method", "Similarity method", SimilarityMethodType.values());
-	public static final DoubleParameter MIX_FACTOR = new DoubleParameter(
-			"Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is Similarity Only)",
-			MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
+        public static final DoubleParameter MIX_FACTOR = new DoubleParameter(
+                "Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is 'Similarity only')",
+                MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
+        public static final DoubleParameter MIN_SCORE = new DoubleParameter(
+                "Minimum score", 
+                "Minimum score for matching between two peaks to be considered as successful " +
+                "(WARN: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0)",
+                NumberFormat.getNumberInstance(), JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE);
 	
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
@@ -86,6 +93,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
 				SIMILARITY_METHOD, MIX_FACTOR,
+				MIN_SCORE,
 				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
 	}
 

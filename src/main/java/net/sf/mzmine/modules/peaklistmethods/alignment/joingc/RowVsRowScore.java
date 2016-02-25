@@ -274,7 +274,7 @@ class RowVsRowScore implements Comparable<RowVsRowScore> {
 //            }
             if (rtDiff > rtToleranceAfter.getTolerance() / 2.0) {
                 // Finally reject the peaks of this row
-                score = -1.0;
+                score = JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE;
                 return;
             }
         }

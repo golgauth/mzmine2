@@ -28,6 +28,10 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
@@ -39,6 +43,8 @@ import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+
+import org.apache.commons.collections.CollectionUtils;
 
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.PeakIdentity;
@@ -148,15 +154,20 @@ public class PeakListFullTableModel extends DefaultTableModel implements
 
         
         //**** Build rows (cell by cell)
-        // RT row + Identity row + Peak Shape row + 1 row per sample (=Piaf)
-        int nbRows = 3 + peakList.getNumberOfRawDataFiles();
+        int nbHeaderRows = 4;
+        // RT row + Identity row + Identities frequencies + Peak Shape row + 1 row per sample (=Piaf)
+        int nbRows = nbHeaderRows + peakList.getNumberOfRawDataFiles();
         // Row header col + 1 col per RT (=PeakListRow)
         int nbCols = 1 + peakList.getNumberOfRows();
         
         logger.info("Table size: " + nbRows + "/" + nbCols);
         
         
-        int[] row2 = new int[peakList.getNumberOfRows()];
+        int[] arrNbDetected = new int[peakList.getNumberOfRows()];
+        List<List<PeakIdentity>> arrIdentitiesInfo = new ArrayList<List<PeakIdentity>>();
+        for (int i=0; i < peakList.getNumberOfRows(); ++i)
+            arrIdentitiesInfo.add(new ArrayList<PeakIdentity>());
+        
         for (int i=0; i < nbRows; ++i) {
             
             
@@ -173,12 +184,15 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         objects.add("Identity");
                         break;
                     case 2:
+                        objects.add("Identities info");
+                        break;
+                    case 3:
                         //objects.add("Peak Shape");
                         objects.add("Peaks Detected");
                         break;
                     default:
-                        //objects.add(a_pl_row.getPeaks()[i-3].getDataFile().getName());
-                        RawDataFile rdf = this.peakList.getRawDataFiles()[i-3];
+                        //objects.add(a_pl_row.getPeaks()[i-nbHeaderRows].getDataFile().getName());
+                        RawDataFile rdf = this.peakList.getRawDataFiles()[i - nbHeaderRows];
                         objects.add(rdf.getName().substring(0, rdf.getName().indexOf(" ")));
                         break;
                     }
@@ -194,15 +208,22 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         objects.add(a_pl_row.getPreferredPeakIdentity());
                         break;
                     case 2:
+                        // Do nothing, update bellow
+                        objects.add("");
+                        break;
+                    case 3:
                         //objects.add(a_pl_row);
+                        // Do nothing, update bellow
                         objects.add("");
                         break;
                     default:
-                        RawDataFile rdf = this.peakList.getRawDataFiles()[i-3];
+                        RawDataFile rdf = this.peakList.getRawDataFiles()[i - nbHeaderRows];
                         Feature peak = a_pl_row.getPeak(rdf);//this.peakList.getPeak(j, rdf);
                         if (peak != null) {
                             objects.add("" + rtFormat.format(peak.getRT()) + " / " + areaFormat.format(peak.getArea()));
-                            row2[j-1] += 1;
+                            arrNbDetected[j-1] += 1;
+                            arrIdentitiesInfo.get(j-1).add(a_pl_row.getPreferredPeakIdentity());
+                            //arrIdentitiesInfo.get(j-1).add(peak.get); Trouver le moyen de retrouver l'identitée du peak d'avant alignement...
                         } else {
                             //objects.add("-");
                             objects.add("0");
@@ -215,11 +236,34 @@ public class PeakListFullTableModel extends DefaultTableModel implements
             super.addRow(objects);               
         }
         
-        // Update number of detected
-        for (int i=0; i < row2.length; ++i) {
+        // Update number of detected peaks
+        for (int i=0; i < peakList.getNumberOfRows(); ++i) {
             //super.setValueAt("" + row2[i] + "/" + peakList.getNumberOfRawDataFiles(), 2, i+1);
-            super.setValueAt(row2[i], 2, i+1);
+            super.setValueAt(arrNbDetected[i], nbHeaderRows-1, i+1);
         }
+        // Update main identity + identities info
+        for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+            int mainIdentityFreq = 0;
+            PeakIdentity mainIdentity = null;
+            String indentityInfo = "";
+            //Set<PeakIdentity> aSet = new HashSet<PeakIdentity>(arrIdentitiesInfo.get(i));
+            Map<PeakIdentity, Integer> freq = CollectionUtils.getCardinalityMap(arrIdentitiesInfo.get(i));
+            for (PeakIdentity p: freq.keySet()) {
+                if (freq.get(p) > mainIdentityFreq) {
+                    mainIdentity = p;
+                    mainIdentityFreq = freq.get(p);
+                }
+                indentityInfo += p.getName() + " (" + freq.get(p) + "); ";
+            }
+            // Set most frequent identity
+            super.setValueAt(mainIdentity, nbHeaderRows-3, i+1);
+            // Set identities info string
+            super.setValueAt(indentityInfo, nbHeaderRows-2, i+1);
+        }
+//        int[] 
+//        for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+//            super.setValueAt(arrNbDetected[i], nbHeaderRows-1, i+1);
+//        }
 
     }
 

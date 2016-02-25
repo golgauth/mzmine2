@@ -19,6 +19,9 @@
 
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
+import java.text.NumberFormat;
+
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
@@ -43,14 +46,19 @@ public class JoinAlignerParameters extends SimpleParameterSet {
             );
 
     public static final MZToleranceParameter MZTolerance = new MZToleranceParameter();
-
     public static final DoubleParameter MZWeight = new DoubleParameter(
 	    "Weight for m/z", "Score for perfectly matching m/z values");
 
     public static final RTToleranceParameter RTTolerance = new RTToleranceParameter();
-
     public static final DoubleParameter RTWeight = new DoubleParameter(
 	    "Weight for RT", "Score for perfectly matching RT values");
+    
+    public static final DoubleParameter minScore = new DoubleParameter(
+            "Minimum score", 
+            "Minimum score for blast to be considered as successful " +
+            "(WARN: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0)",
+            NumberFormat.getNumberInstance(), JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE);
+
 
     //*** GLG HACK: Added...
     public static final BooleanParameter useApex = new BooleanParameter(
@@ -85,7 +93,8 @@ public class JoinAlignerParameters extends SimpleParameterSet {
     public JoinAlignerParameters() {
 	super(new Parameter[] { peakLists, comparisonOrder, peakListName, 
 	        MZTolerance, MZWeight,
-		RTTolerance, RTWeight, 
+		RTTolerance, RTWeight,
+		minScore,
 		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,
 		compareIsotopePattern*/ 
