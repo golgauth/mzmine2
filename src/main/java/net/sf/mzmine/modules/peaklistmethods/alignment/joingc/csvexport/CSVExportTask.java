@@ -192,8 +192,8 @@ class CSVExportTask extends AbstractTask {
     
     boolean exportToCSV(final PeakList peakList, final File fileName) {
 
+        // Sort rows by ascending RT
         final PeakListRow[] peakListRows = peakList.getRows();
-
         Arrays.sort(peakListRows, new PeakListRowSorter(SortingProperty.RT,
                 SortingDirection.Ascending));
         

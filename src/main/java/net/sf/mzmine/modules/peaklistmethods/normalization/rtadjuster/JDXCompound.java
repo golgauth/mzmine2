@@ -21,6 +21,7 @@ package net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
@@ -99,7 +100,7 @@ public class JDXCompound extends SimplePeakIdentity {
         this.bestScore = 0.0;
     }
     
-    public static JDXCompound parseJDXfile(final /*URL*/ File jdxFile) {
+    public static JDXCompound parseJDXfile(final /*URL*/ File jdxFile) throws JCAMPException {
     	JDXCompound jdxComp = null;
         String id = null;
         String name = null;
@@ -110,40 +111,35 @@ public class JDXCompound extends SimplePeakIdentity {
         Spectrum jcampSpectrum = null;
         
         try {
-	        StringBuffer fileData = new StringBuffer(1000);
-	        BufferedReader reader = new BufferedReader(new FileReader(jdxFile));
-	        char[] buf = new char[1024];
-	        int numRead=0;
-	        
-			while((numRead=reader.read(buf)) != -1){
-			    String readData = String.valueOf(buf, 0, numRead);
-			    fileData.append(readData);
-			    buf = new char[1024];
-			}
-	        reader.close();
-	
-	
-	        jcampSpectrum = JCAMPReader.getInstance().createSpectrum(fileData.toString());
-//	        if (!(jcampSpectrum instanceof NMRSpectrum)) {
-//	        	throw new Exception("Spectrum in file is not an NMR spectrum!");
-//	        }
-	//        NMRSpectrum nmrspectrum = (NMRSpectrum) jcampSpectrum;
-	//        if (nmrspectrum.hasPeakTable()) {
-	//        	assertEquals(nmrspectrum.getPeakTable().length,16384);
-	//        }
-	        
-	        
-	        
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JCAMPException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+            StringBuffer fileData = new StringBuffer(1000);
+            BufferedReader reader = new BufferedReader(new FileReader(jdxFile));
+            char[] buf = new char[1024];
+            int numRead=0;
+
+            while((numRead=reader.read(buf)) != -1){
+                String readData = String.valueOf(buf, 0, numRead);
+                fileData.append(readData);
+                buf = new char[1024];
+            }
+            reader.close();
+
+
+            jcampSpectrum = JCAMPReader.getInstance().createSpectrum(fileData.toString());
+            //	        if (!(jcampSpectrum instanceof NMRSpectrum)) {
+            //	        	throw new Exception("Spectrum in file is not an NMR spectrum!");
+            //	        }
+            //        NMRSpectrum nmrspectrum = (NMRSpectrum) jcampSpectrum;
+            //        if (nmrspectrum.hasPeakTable()) {
+            //        	assertEquals(nmrspectrum.getPeakTable().length,16384);
+            //        }
+
+        } catch (FileNotFoundException e) {
+            throw new JCAMPException("File not found: " + e.getMessage());
+        } catch (IOException | JCAMPException e) {
+            throw new JCAMPException("JDX parsing error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new JCAMPException("Unknown error: " + e.getMessage());
+        }
 
 //        String jcamp = null;
 //        try {

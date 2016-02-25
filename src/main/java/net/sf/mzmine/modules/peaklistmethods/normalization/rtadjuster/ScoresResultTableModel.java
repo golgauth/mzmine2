@@ -48,6 +48,7 @@ import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
+import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.impl.SimpleFeature;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
@@ -223,7 +224,12 @@ public class ScoresResultTableModel extends DefaultTableModel {
                         //return ((PeakList)super.getValueAt(row,col)).getRawDataFile(0).getAncestorDataFile(false).getName();
                         // TODO: Get the "project" from the instantiator of this class instead.
 		        MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                        return DataFileUtils.getAncestorDataFile(project, ((PeakList)super.getValueAt(row,col)).getRawDataFile(0), false).getName();
+		        
+		        RawDataFile curRdf = ((PeakList)super.getValueAt(row,col)).getRawDataFile(0);
+                        RawDataFile rdf = DataFileUtils.getAncestorDataFile(project, curRdf, false);
+                        // If finding the ancestor file failed, just keep working on the current one 
+                        if (rdf == null) { rdf = curRdf; }
+                        return rdf.getName();
 		}
 		
 		if (super.getValueAt(row,col) instanceof JComboBox)
@@ -522,7 +528,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 
                 // TODO: Get the "project" from the instantiator of this class instead.
                 MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                LOG.info("Fired: " + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), false).getName());
+                //LOG.info("Fired: " + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), false).getName());
 		//**data.add(objects);
 		super.addRow(objects);
 		//**fireTableRowsInserted(row, row);

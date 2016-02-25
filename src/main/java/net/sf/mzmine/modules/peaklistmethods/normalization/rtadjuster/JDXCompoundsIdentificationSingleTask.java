@@ -28,44 +28,28 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.text.NumberFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.DefaultCellEditor;
-import javax.swing.JComboBox;
-
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
-import net.sf.mzmine.datamodel.IonizationType;
-import net.sf.mzmine.datamodel.IsotopePattern;
 import net.sf.mzmine.datamodel.MZmineProject;
-import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
-import net.sf.mzmine.datamodel.impl.SimpleFeature;
-import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
+import net.sf.mzmine.desktop.Desktop;
+import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.MZmineProcessingStep;
-//import net.sf.mzmine.modules.peaklistmethods.identification.dbsearch.ResultWindow;
-import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreCalculator;
-import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopeprediction.IsotopePatternCalculator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ArrayComparator;
-import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ComboboxPeak;
 import net.sf.mzmine.parameters.ParameterSet;
-import net.sf.mzmine.parameters.parametertypes.tolerances.MZTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
 import net.sf.mzmine.util.CollectionUtils;
 import net.sf.mzmine.util.DataFileUtils;
 import net.sf.mzmine.util.ExceptionUtils;
-import net.sf.mzmine.util.FormulaUtils;
 import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
@@ -75,9 +59,9 @@ import net.sf.mzmine.util.SortingProperty;
 import org.apache.commons.math.linear.ArrayRealVector;
 //Pearson
 import org.apache.commons.math.stat.correlation.PearsonsCorrelation;
+import org.jcamp.parser.JCAMPException;
 
 import com.google.common.collect.Range;
-import com.mysql.fabric.xmlrpc.base.Array;
 
 
 
@@ -146,11 +130,6 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
 
-        jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
-        jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
-
-
-        LOG.info("JDX parsing: " + jdxComp1);
     }
 
     @Override
@@ -163,15 +142,32 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     @Override
     public String getTaskDescription() {
 
-        return "Identification of standard peaks in "
-                + "selected peak lists"
-                + " using " + " standards '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'";
+        if (jdxComp1 != null && jdxComp2 != null) {
+            return "Identification of standard peaks in "
+                    + "selected peak lists"
+                    + " using " + " standards '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'";
+        } else {
+            return "Identification of standard peaks in selected peak lists"
+                    + " using the 'Two standard compounds finder'";            
+        }
     }
 
     @Override
     public void run() {
 
         if (!isCanceled()) {
+            try {
+                jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
+                jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
+            } catch (JCAMPException e) {
+                String msg = "Could not search standard compounds";
+                LOG.log(Level.WARNING, msg, e);
+                setStatus(TaskStatus.ERROR);
+                setErrorMessage(msg + ": " + ExceptionUtils.exceptionToString(e));
+                return;
+            }
+            LOG.info("JDX parsed: " + jdxComp1 + ", " + jdxComp2);
+            
             PeakList curPeakList = null;
             RawDataFile curRefRDF = null;
             try {
@@ -233,11 +229,15 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         // Retrieve results for each row.
                         scoreMatrix[finishedItems][0] = (double) finishedItems;
                         for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-                            if (findRTranges[i].contains(a_row.getBestPeak().getRT()))
-                                scoreMatrix[finishedItems][i+1] = computeCompoundRowScore(DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false), curPeakList, a_row, findCompounds[i]);
-                            else
+                            if (findRTranges[i].contains(a_row.getBestPeak().getRT())) {
+                                RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
+                                // If finding the ancestor file failed, just keep working on the current one 
+                                if (rdf == null) { rdf = curRefRDF; }
+                                scoreMatrix[finishedItems][i+1] = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                            } else {
                                 // Out of range.
                                 scoreMatrix[finishedItems][i+1] = 0.0;
+                            }
                         }
 
                         finishedItemsTotal++;
@@ -380,6 +380,11 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             // TODO: Get the "project" from the instantiator of this class instead.
             MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
             project.notifyObjectChanged(i, false);
+            // Repaint the window to reflect the change in the peak list
+            // (Only if not in "headless" mode)
+            Desktop desktop = MZmineCore.getDesktop();
+            if (!(desktop instanceof HeadLessDesktop))
+                desktop.getMainWindow().repaint();
         }
     }
 

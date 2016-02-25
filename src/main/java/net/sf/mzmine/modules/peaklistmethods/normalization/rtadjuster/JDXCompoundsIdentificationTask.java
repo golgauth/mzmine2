@@ -55,6 +55,7 @@ import net.sf.mzmine.util.SortingProperty;
 import org.apache.commons.math.linear.ArrayRealVector;
 //Pearson
 import org.apache.commons.math.stat.correlation.PearsonsCorrelation;
+import org.jcamp.parser.JCAMPException;
 
 import com.google.common.collect.Range;
 
@@ -136,9 +137,15 @@ public class JDXCompoundsIdentificationTask extends AbstractTask {
 		simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
 		mixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
 		
-		jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
-		jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
-		
+	        try {
+	            jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
+	            jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
+	        } catch (JCAMPException e) {
+	            String msg = "Could not search standard compounds";
+	            LOG.log(Level.WARNING, msg, e);
+	            setStatus(TaskStatus.ERROR);
+	            setErrorMessage(msg + ": " + ExceptionUtils.exceptionToString(e));
+	        }		
 		
 		LOG.info("JDX parsing: " + jdxComp1);
 	}
