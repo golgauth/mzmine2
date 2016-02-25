@@ -44,7 +44,10 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTabl
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.RangeUtils;
+import net.sf.mzmine.util.SortingDirection;
+import net.sf.mzmine.util.SortingProperty;
 
 class CSVExportTask extends AbstractTask {
 
@@ -187,8 +190,13 @@ class CSVExportTask extends AbstractTask {
 
     }
     
-    boolean exportToCSV(PeakList peakList, File fileName) {
+    boolean exportToCSV(final PeakList peakList, final File fileName) {
 
+        final PeakListRow[] peakListRows = peakList.getRows();
+
+        Arrays.sort(peakListRows, new PeakListRowSorter(SortingProperty.RT,
+                SortingDirection.Ascending));
+        
         String selectedPath = fileName.getPath();
         boolean separatedOutputs = exportSeparate;
 
@@ -255,7 +263,8 @@ class CSVExportTask extends AbstractTask {
                         }
                     } else {
 
-                        PeakListRow a_pl_row = peakList.getRow(j-1);
+                        //PeakListRow a_pl_row = peakList.getRow(j-1);
+                        PeakListRow a_pl_row = peakListRows[j-1];
 
                         switch (i) {
                         case 0:
