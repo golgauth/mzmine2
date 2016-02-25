@@ -552,7 +552,10 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
             // Notify the GUI about the change in the project
             this.project.notifyObjectChanged(row, false);
-            MZmineCore.getDesktop().getMainWindow().repaint();
+            // Repaint the window to reflect the change in the peak list
+            Desktop desktop = MZmineCore.getDesktop();
+            if (!(desktop instanceof HeadLessDesktop))
+                desktop.getMainWindow().repaint();
         }
     }
 }

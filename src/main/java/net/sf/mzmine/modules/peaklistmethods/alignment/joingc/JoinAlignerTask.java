@@ -39,6 +39,8 @@ import net.sf.mzmine.datamodel.impl.SimpleFeature;
 import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
+import net.sf.mzmine.desktop.Desktop;
+import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreCalculator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
@@ -132,7 +134,7 @@ class JoinAlignerTask extends AbstractTask {
      * @see net.sf.mzmine.taskcontrol.Task#getTaskDescription()
      */
     public String getTaskDescription() {
-        return "Join aligner, " + peakListName + " (" + peakLists.length
+        return "Join aligner GC, " + peakListName + " (" + peakLists.length
                 + " peak lists)";
     }
 
@@ -464,7 +466,10 @@ class JoinAlignerTask extends AbstractTask {
                 // Still necessary ???????
                 MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
                 project.notifyObjectChanged(targetRow, false);
-                //MZmineCore.getDesktop().getMainWindow().repaint();
+//                // Repaint the window to reflect the change in the peak list
+//                Desktop desktop = MZmineCore.getDesktop();
+//                if (!(desktop instanceof HeadLessDesktop))
+//                    desktop.getMainWindow().repaint();
                 
                 processedRows++;
 

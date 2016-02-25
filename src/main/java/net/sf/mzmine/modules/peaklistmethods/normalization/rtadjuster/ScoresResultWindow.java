@@ -60,6 +60,8 @@ import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
+import net.sf.mzmine.desktop.Desktop;
+import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ComboboxPeak;
 import net.sf.mzmine.modules.visualization.molstructure.MolStructureViewer;
@@ -499,7 +501,10 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
             // TODO: Get the "project" from the instantiator of this class instead.
             MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
             project.notifyObjectChanged(i, false);
-            MZmineCore.getDesktop().getMainWindow().repaint();                      
+            // Repaint the window to reflect the change in the peak list
+            Desktop desktop = MZmineCore.getDesktop();
+            if (!(desktop instanceof HeadLessDesktop))
+                desktop.getMainWindow().repaint();
         }
 
     }
