@@ -240,6 +240,10 @@ public class JDXCompound extends SimplePeakIdentity {
 
         bestScore = score;
     }
+    
+    public static JDXCompound createUnknownCompound() {
+        return new JDXCompound(UNKNOWN_JDX_COMP.getName(), null, null, null, null);
+    }
 
 //    @Override
 //    public String toString() {

@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.MZmineProject;
+import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
@@ -374,7 +375,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
-            JDXCompound unknownComp = new JDXCompound("Unknown", null, null, null, null);
+            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
 
             // Add possible identities to peaks
             a_pl_row.addPeakIdentity(identity, false);

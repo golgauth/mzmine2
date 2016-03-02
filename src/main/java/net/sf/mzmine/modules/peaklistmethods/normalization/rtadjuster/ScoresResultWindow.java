@@ -63,6 +63,7 @@ import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ComboboxPeak;
 import net.sf.mzmine.modules.visualization.molstructure.MolStructureViewer;
 import net.sf.mzmine.modules.visualization.spectra.SpectraVisualizerModule;
@@ -444,51 +445,23 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
-            JDXCompound unknownComp = new JDXCompound("Unknown", null, null, null, null);//JDXCompound.UNKNOWN_JDX_COMP;
+            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
 
             // Add possible identities to peaks /*with score over 0.0*/.
             a_pl_row.addPeakIdentity(peak1.getJDXCompound(), false);
             a_pl_row.addPeakIdentity(peak2.getJDXCompound(), false);
             a_pl_row.addPeakIdentity(unknownComp, false);
-            // Attempt to get only the possible identities pertinent rows...
-            //          for (int j=0; j < cb1.getItemCount(); ++j) {
-            //                  ComboboxPeak a_peak1 = (ComboboxPeak) cb1.getItemAt(j);
-            //                  //a_pl_row.addPeakIdentity(unknownComp, false);
-            //                  if (a_peak1.getScore() > 0.0) {
-            //                          a_pl_row.addPeakIdentity(unknownComp, true);
-            //                          a_pl_row.addPeakIdentity(peak1.getJDXCompound(), false);
-            ////                        // Set new identity.
-            ////                        if (a_pl_row.getID() == peak1.getRowID()) {
-            ////                                a_pl_row.setPreferredPeakIdentity(peak1.getJDXCompound());
-            ////                        } else {
-            ////                                a_pl_row.setPreferredPeakIdentity(unknownComp);
-            ////                        }
-            //                  }
-            //                  else
-            //                          break;
-            //          }
-            //          for (int j=0; j < cb3.getItemCount(); ++j) {
-            //                  ComboboxPeak a_peak2 = (ComboboxPeak) cb3.getItemAt(j);
-            //                  //a_pl_row.addPeakIdentity(unknownComp, false);
-            //                  if (a_peak2.getScore() > 0.0) {
-            //                          a_pl_row.addPeakIdentity(unknownComp, true);
-            //                          a_pl_row.addPeakIdentity(peak2.getJDXCompound(), false);
-            ////                        // Set new identity.
-            ////                        if (a_pl_row.getID() == peak2.getRowID()) {
-            ////                                a_pl_row.setPreferredPeakIdentity(peak2.getJDXCompound());
-            ////                        } else {
-            ////                                a_pl_row.setPreferredPeakIdentity(unknownComp);
-            ////                        }
-            //                  }
-            //                  else
-            //                          break;
-            //          }
-
 
             // Set new identity.
             if (a_pl_row.getID() == peak1.getRowID()) {
+                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+                peak1.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+                //
                 a_pl_row.setPreferredPeakIdentity(peak1.getJDXCompound());
             } else if (a_pl_row.getID() == peak2.getRowID()) {
+                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+                peak2.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+                //
                 a_pl_row.setPreferredPeakIdentity(peak2.getJDXCompound());
             } 
             // Erase / reset identity.
