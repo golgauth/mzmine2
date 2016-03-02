@@ -29,49 +29,44 @@ import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 
 public class CSVExportParameters extends SimpleParameterSet {
 
-    public static final PeakListsParameter peakLists = new PeakListsParameter(1/*,
-	    1*/);
+    public static final PeakListsParameter peakLists = new PeakListsParameter(1);
 
     public static final FileNameParameter filename = new FileNameParameter(
-	    "Filename",
-	    "Name of the output CSV file. " +
-	    "Use pattern \"{}\" in the file name to substitute with peak list name. " +
-	    "(i.e. \"blah{}blah.csv\" would become \"blahSourcePeakListNameblah.csv\"). " +
-	    "If the file already exists, it will be overwritten.",
-	    "csv");
+            "Filename",
+            "Name of the output CSV file. "
+                    + "Use pattern \"{}\" in the file name to substitute with peak list name. "
+                    + "(i.e. \"blah{}blah.csv\" would become \"blahSourcePeakListNameblah.csv\"). "
+                    + "If the file already exists, it will be overwritten.",
+            "csv");
 
     public static final StringParameter fieldSeparator = new StringParameter(
-	    "Field separator",
-	    "Character(s) used to separate fields in the exported file", ",");
-
+            "Field separator",
+            "Character(s) used to separate fields in the exported file", ",");
 
     public static final BooleanParameter exportSeparate = new BooleanParameter(
-             "Export into separate files", 
-             "If checked, result table will be exported to distinct CSV files: \"-rt.csv\" + \"-rt2.csv\" + \"-area.csv\" + \"-id.csv\"). ",
+            "Export into separate files",
+            "If checked, result table will be exported to distinct CSV files:" +
+            " \"-rt.csv\" + \"-rt2.csv\" + \"-area.csv\" + \"-id.csv\"). ",
             true);
 
     public static final BooleanParameter exportRtAverage = new BooleanParameter(
-             "Export RT average", 
-             "If checked, all averaged RT will be exported. ",
-             true);
+            "Export RT average",
+            "If checked, all averaged RT will be exported. ", true);
 
     public static final BooleanParameter exportNumDetected = new BooleanParameter(
-             "Export number of detected peaks", 
-             "If checked, the number of detected samples header row will be exported. ",
-             true);
+            "Export number of detected peaks",
+            "If checked, the number of detected samples header row will be exported. ",
+            true);
 
     public static final BooleanParameter exportIdentities = new BooleanParameter(
-             "Export identities", 
-             "If checked, identification header row will be exported. ",
-             true);
+            "Export identities",
+            "If checked, identification header row will be exported. ", true);
 
-//    public static final StringParameter idSeparator = new StringParameter(
-//	    "Identification separator",
-//	    "Character(s) used to separate identification results in the exported file", ";");
 
     public CSVExportParameters() {
-	super(new Parameter[] { peakLists, filename, fieldSeparator, exportSeparate,
-	        exportRtAverage, exportNumDetected, exportIdentities/*, idSeparator*/ });
+        super(new Parameter[] { peakLists, filename, fieldSeparator,
+                exportSeparate, exportRtAverage, exportNumDetected,
+                exportIdentities /* , idSeparator */});
     }
 
 }
