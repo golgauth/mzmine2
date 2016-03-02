@@ -25,6 +25,8 @@ import java.io.FileWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,6 +34,8 @@ import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.apache.commons.collections.CollectionUtils;
 
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.Feature.FeatureStatus;
@@ -72,6 +76,9 @@ class CSVExportTask extends AbstractTask {
 //    private Boolean exportAllIDs;
     private Boolean exportSeparate, exportRtAverage, exportNumDetected, exportIdentities;
 //    private String idSeparator;
+    
+    private static final String SEP_STR_CSV = " / ";
+
     
     
     public CSVExportTask(ParameterSet parameters) {
@@ -206,27 +213,33 @@ class CSVExportTask extends AbstractTask {
         // Unified output file
         if (!selectedPath.endsWith(".csv"))
             selectedPath += ".csv";
-        // Separated output files (rt + area)
-        String basePath = null, rtPath = null, areaPath = null;
+        
+        // Separated output files (rt + area + ...)
+        String basePath = null;
+        String[] suffixes = new String[] { "-rt-orig.csv", "-rt-reca.csv", "-area.csv", "-ident.csv" };
+        String[] filenames = new String[] { null, null, null, null };
+        int nbFiles = filenames.length;
+        FileWriter[] fileWriters = new FileWriter[nbFiles];
+        BufferedWriter[] buffWriters = new BufferedWriter[nbFiles];
+        
         if (separatedOutputs) {
-            basePath = selectedPath.substring(0, selectedPath.length()-4);
-            rtPath = basePath + "-rt.csv";
-            areaPath = basePath + "-area.csv";
+            basePath = selectedPath.substring(0, selectedPath.length() - 4);
+            for (int i=0; i < nbFiles; ++i) {
+                filenames[i] = basePath + suffixes[i];
+            }
         }
 
         // Try 
         try {
-            // Open file
+            // Open merged file
             FileWriter fileWriter = new FileWriter(selectedPath);
             BufferedWriter writer = new BufferedWriter(fileWriter);
-            // Open rt + area files
-            FileWriter fileWriterRt, fileWriterArea;
-            BufferedWriter writerRt = null, writerArea = null;
+            // Open rt + area + ... files
             if (separatedOutputs) {
-                fileWriterRt = new FileWriter(rtPath);
-                writerRt = new BufferedWriter(fileWriterRt);
-                fileWriterArea = new FileWriter(areaPath);
-                writerArea = new BufferedWriter(fileWriterArea);
+                for (int i=0; i < nbFiles; ++i) {
+                    fileWriters[i] = new FileWriter(filenames[i]);
+                    buffWriters[i] = new BufferedWriter(fileWriters[i]);
+                }
             }
 
             //**** Build rows (cell by cell)
@@ -269,7 +282,7 @@ class CSVExportTask extends AbstractTask {
                             objects.add("Identities info");
                             break;
                         case 3:
-                            objects.add("Peaks Detected");
+                            objects.add("Peaks detected");
                             break;
                         default:
                             RawDataFile rdf = peakList.getRawDataFiles()[i - nbHeaderRows];
@@ -309,7 +322,8 @@ class CSVExportTask extends AbstractTask {
                                     strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
 
                                     // More than one rdf (align peak list) 
-                                    if (peakList.getRawDataFiles().length > 1) {
+                                    if (peakList.getRawDataFiles().length > 1
+                                            && (strAdjustedRTs != null && strIdentities != null)) {
                                         
                                         arrAdjustedRTs = strAdjustedRTs.split(AlignedRowIdentity.IDENTITY_SEP, -1);
                                         arrIdentities = strIdentities.split(AlignedRowIdentity.IDENTITY_SEP, -1);
@@ -319,18 +333,20 @@ class CSVExportTask extends AbstractTask {
                                         String peakIdentity = arrIdentities[rdf_idx];
     
                                         objects.add(rtFormat.format(peak.getRT()) + 
-                                                " [" + peakAjustedRT + "]" + 
-                                                " / " + areaFormat.format(peak.getArea()) + 
-                                                " / " + peakIdentity);
+                                                //" [" + peakAjustedRT + "]" + 
+                                                SEP_STR_CSV + peakAjustedRT + 
+                                                SEP_STR_CSV + areaFormat.format(peak.getArea()) + 
+                                                SEP_STR_CSV + peakIdentity);
                                     
                                     }
                                     // Handle regular single rdf peak list
                                     else {
                                         objects.add(rtFormat.format(peak.getRT()) + 
-                                                " / " + areaFormat.format(peak.getArea()));
+                                                SEP_STR_CSV + areaFormat.format(peak.getArea()));
                                     }
                                     //
                                     mainIdentities[j-1] = mainIdentity;
+                                
                                 }
                                 arrNbDetected[j-1] += 1;
                             } else {
@@ -352,21 +368,33 @@ class CSVExportTask extends AbstractTask {
             // Update main identity + identities info
             for (int i=0; i < peakList.getNumberOfRows(); ++i) {
                 PeakIdentity mainIdentity = mainIdentities[i];
-                strIdentities = "";
+                String strIdentities2 = "";
                 if (mainIdentity != null) {
                     // Set identities info string (leave blank if single rdf/sample peak list)
                     if (peakList.getRawDataFiles().length > 1) {
-                        strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                        strIdentities2 = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                        if (strIdentities2 != null) {
+                            arrIdentities = strIdentities2.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                            Set<String> aSet = new HashSet<String>(Arrays.asList(arrIdentities));
+                            strIdentities2 = "";
+                            for (String str: aSet) {
+                                if(str != null && !str.isEmpty()) {
+                                    int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
+                                    strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
+                                }
+                            }
+                            strIdentities2 = strIdentities2.substring(0, strIdentities2.length()-1);
+                        }
                     } else {
-                        strIdentities = mainIdentity.getName() + " (1)";
+                        strIdentities2 = mainIdentity.getName() + " (1)";
                     }
                     // Set most frequent identity
                     rowsList.get(nbHeaderRows-3).set(i+1, mainIdentity);
                 }
-                rowsList.get(nbHeaderRows-2).set(i+1, strIdentities);
+                rowsList.get(nbHeaderRows-2).set(i+1, strIdentities2);
             }
 
-                
+               
             for (int i=0; i < rowsList.size(); ++i) {
                 
                 Vector<Object> objects = rowsList.get(i);
@@ -378,7 +406,6 @@ class CSVExportTask extends AbstractTask {
 
                 if (doWrite) {
                     // Write row into CSV file(s)
-                    String sepStr = " / ";
                     for (int j=0; j < objects.size(); ++j) {
 
                         Object obj = objects.get(j);
@@ -387,32 +414,49 @@ class CSVExportTask extends AbstractTask {
 
                         writer.write(str);
                         if (separatedOutputs) {
-                            String rtStr, areaStr;
-
-                            int sepIdx = str.lastIndexOf(sepStr);
-                            if (sepIdx != -1) {
-                                rtStr = str.substring(0, sepIdx);
-                                areaStr = str.substring(sepIdx + sepStr.length(), str.length());
-                                writerRt.write(rtStr);
-                                writerArea.write(areaStr);
+//                            String rtStr, areaStr;
+//
+//                            int sepIdx = str.lastIndexOf(SEP_STR_CSV);
+//                            if (sepIdx != -1) {
+//                                rtStr = str.substring(0, sepIdx);
+//                                areaStr = str.substring(sepIdx + SEP_STR_CSV.length(), str.length());
+//                                writerRt.write(rtStr);
+//                                writerArea.write(areaStr);
+//                            } else {
+//                                writerRt.write(str);
+//                                writerArea.write(str);
+//                            }
+                            
+                            String[] arrStr = str.split(SEP_STR_CSV);
+                            if (arrStr.length == nbFiles) {
+                                for (int k=0; k < nbFiles; ++k) {
+                                    buffWriters[k].write(arrStr[k]);                                
+                                }
                             } else {
-                                writerRt.write(str);
-                                writerArea.write(str);
+                                for (int k=0; k < nbFiles; ++k) {
+                                    buffWriters[k].write(str);                                
+                                }                               
                             }
                         }
 
                         if (j != objects.size() - 1) {
                             writer.write(fieldSeparator);
                             if (separatedOutputs) {
-                                writerRt.write(fieldSeparator);
-                                writerArea.write(fieldSeparator);
+//                                writerRt.write(fieldSeparator);
+//                                writerArea.write(fieldSeparator);
+                                for (int k=0; k < nbFiles; ++k) {
+                                    buffWriters[k].write(fieldSeparator);                                
+                                }
                             }
                         }
                     }
                     writer.newLine();
                     if (separatedOutputs) {
-                        writerRt.newLine();
-                        writerArea.newLine();                        
+//                        writerRt.newLine();
+//                        writerArea.newLine();                        
+                        for (int k=0; k < nbFiles; ++k) {
+                            buffWriters[k].newLine();
+                        }
                     }
                     ++processedRows;
                 }
@@ -423,12 +467,20 @@ class CSVExportTask extends AbstractTask {
             // Close file
             writer.close();
             if (separatedOutputs) {
-                writerRt.close();
-                writerArea.close();                                            
+//                writerRt.close();
+//                writerArea.close();                                            
+                for (int k=0; k < nbFiles; ++k) {
+                    buffWriters[k].close();
+                }
             }
             
           csvFilename = selectedPath;
-          csvFilenames = new String[] { selectedPath, rtPath, areaPath };
+          csvFilenames = new String[1 + nbFiles]; // { selectedPath, rtPath, areaPath };
+          csvFilenames[0] = selectedPath;
+          for (int k=1; k < csvFilenames.length; ++k) {
+              csvFilenames[k] = filenames[k-1];
+          }
+          
 
             return true;
 

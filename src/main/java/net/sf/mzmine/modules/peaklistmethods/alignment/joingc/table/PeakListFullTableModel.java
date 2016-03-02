@@ -204,7 +204,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         break;
                     case 3:
                         //objects.add("Peak Shape");
-                        objects.add("Peaks Detected");
+                        objects.add("Peaks detected");
                         break;
                     default:
                         //objects.add(a_pl_row.getPeaks()[i-nbHeaderRows].getDataFile().getName());
