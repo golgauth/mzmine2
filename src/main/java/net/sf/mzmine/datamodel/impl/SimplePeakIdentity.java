@@ -156,6 +156,13 @@ public class SimplePeakIdentity implements PeakIdentity {
     @SuppressWarnings("unchecked")
     @Override
     public synchronized @Nonnull Object clone() {
+        
+//        Hashtable<String, String> cloneProps = new Hashtable<String, String>();
+//        for (String key: properties.keySet()) {
+//            cloneProps.put(new String(key), new String(properties.get(key)));
+//        }
+//        return new SimplePeakIdentity(cloneProps);
+        
 	return new SimplePeakIdentity(
 		(Hashtable<String, String>) properties.clone());
     }

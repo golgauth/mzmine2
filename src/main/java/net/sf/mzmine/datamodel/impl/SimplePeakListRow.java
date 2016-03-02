@@ -308,5 +308,12 @@ public class SimplePeakListRow implements PeakListRow {
 	    return null;
 	return peaks[0];
     }
-
+    
+    /* GLG: Added
+     * 
+     */
+    public void update() {
+        this.calculateAverageValues();
+    }
+    
 }

@@ -35,11 +35,14 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.Feature.FeatureStatus;
+import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTable;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -193,7 +196,7 @@ class CSVExportTask extends AbstractTask {
     boolean exportToCSV(final PeakList peakList, final File fileName) {
 
         // Sort rows by ascending RT
-        final PeakListRow[] peakListRows = peakList.getRows();
+        final PeakListRow[] peakListRows = peakList.getRows().clone();
         Arrays.sort(peakListRows, new PeakListRowSorter(SortingProperty.RT,
                 SortingDirection.Ascending));
         
@@ -231,13 +234,22 @@ class CSVExportTask extends AbstractTask {
             NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
             NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
 
+            int nbHeaderRows = 4;
             // RT row + Identity row + Peak Shape row + 1 row per sample (=Piaf)
-            int nbRows = 3 + peakList.getNumberOfRawDataFiles();
+            int nbRows = nbHeaderRows + peakList.getNumberOfRawDataFiles();
             // Row header col + 1 col per RT (=PeakListRow)
             int nbCols = 1 + peakList.getNumberOfRows();                
 
-            int[] row2 = new int[peakList.getNumberOfRows()];
-            
+            int[] arrNbDetected = new int[peakList.getNumberOfRows()];
+            PeakIdentity[] mainIdentities = new PeakIdentity[peakList.getNumberOfRows()];
+
+            String strAdjustedRTs = "", strIdentities = "";
+            String[] arrAdjustedRTs = null, arrIdentities = null;
+
+            // Build reference RDFs index
+            RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
+            Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
+
             ArrayList<Vector<Object>> rowsList = new ArrayList<Vector<Object>>();
             for (int i=0; i < nbRows; ++i) {
 
@@ -254,16 +266,18 @@ class CSVExportTask extends AbstractTask {
                             objects.add("Identity");
                             break;
                         case 2:
+                            objects.add("Identities info");
+                            break;
+                        case 3:
                             objects.add("Peaks Detected");
                             break;
                         default:
-                            RawDataFile rdf = peakList.getRawDataFiles()[i-3];
+                            RawDataFile rdf = peakList.getRawDataFiles()[i - nbHeaderRows];
                             objects.add(rdf.getName().substring(0, rdf.getName().indexOf(" ")));
                             break;
                         }
                     } else {
 
-                        //PeakListRow a_pl_row = peakList.getRow(j-1);
                         PeakListRow a_pl_row = peakListRows[j-1];
 
                         switch (i) {
@@ -274,31 +288,82 @@ class CSVExportTask extends AbstractTask {
                             objects.add(a_pl_row.getPreferredPeakIdentity());
                             break;
                         case 2:
+                            // Do nothing, update bellow
+                            objects.add("");
+                            break;
+                        case 3:
+                            // Do nothing, update bellow
                             objects.add("");
                             break;
                         default:
-                            RawDataFile rdf = peakList.getRawDataFiles()[i-3];
-                            Feature peak = a_pl_row.getPeak(rdf);//this.peakList.getPeak(j, rdf);
+                            
+                            RawDataFile rdf = peakList.getRawDataFiles()[i - nbHeaderRows];
+                            Feature peak = a_pl_row.getPeak(rdf);
                             if (peak != null) {
-                                objects.add("" + rtFormat.format(peak.getRT()) + " / " + areaFormat.format(peak.getArea()));
-                                row2[j-1] += 1;
+                                
+                                PeakIdentity mainIdentity = a_pl_row.getPreferredPeakIdentity();
+                                
+                                if (mainIdentity != null) {
+
+                                    strAdjustedRTs = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_RTS);
+                                    strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+
+                                    // More than one rdf (align peak list) 
+                                    if (peakList.getRawDataFiles().length > 1) {
+                                        
+                                        arrAdjustedRTs = strAdjustedRTs.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                        arrIdentities = strIdentities.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                        
+                                        int rdf_idx = Arrays.asList(rdf_sorted).indexOf(rdf);
+                                        String peakAjustedRT = arrAdjustedRTs[rdf_idx];
+                                        String peakIdentity = arrIdentities[rdf_idx];
+    
+                                        objects.add(rtFormat.format(peak.getRT()) + 
+                                                " [" + peakAjustedRT + "]" + 
+                                                " / " + areaFormat.format(peak.getArea()) + 
+                                                " / " + peakIdentity);
+                                    
+                                    }
+                                    // Handle regular single rdf peak list
+                                    else {
+                                        objects.add(rtFormat.format(peak.getRT()) + 
+                                                " / " + areaFormat.format(peak.getArea()));
+                                    }
+                                    //
+                                    mainIdentities[j-1] = mainIdentity;
+                                }
+                                arrNbDetected[j-1] += 1;
                             } else {
-                                //objects.add("-");
                                 objects.add("0");
                             }
                             break;
                         }
-
+                    
                     }
                 }
                 // Save row
                 rowsList.add(objects);
             }
             
-            // Update number of detected
-            for (int i=0; i < row2.length; ++i) {
-                //super.setValueAt(row2[i], 2, i+1);
-                rowsList.get(2).set(i+1, row2[i]);
+            // Update number of detected peaks
+            for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+                rowsList.get(nbHeaderRows-1).set(i+1, arrNbDetected[i]);
+            }
+            // Update main identity + identities info
+            for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+                PeakIdentity mainIdentity = mainIdentities[i];
+                strIdentities = "";
+                if (mainIdentity != null) {
+                    // Set identities info string (leave blank if single rdf/sample peak list)
+                    if (peakList.getRawDataFiles().length > 1) {
+                        strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                    } else {
+                        strIdentities = mainIdentity.getName() + " (1)";
+                    }
+                    // Set most frequent identity
+                    rowsList.get(nbHeaderRows-3).set(i+1, mainIdentity);
+                }
+                rowsList.get(nbHeaderRows-2).set(i+1, strIdentities);
             }
 
                 

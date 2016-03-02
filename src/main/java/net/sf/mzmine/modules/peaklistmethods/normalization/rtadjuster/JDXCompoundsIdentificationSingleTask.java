@@ -43,6 +43,7 @@ import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ArrayComparator;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -382,6 +383,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             // Set new identity.
             if (a_pl_row.getID() == rowId) {
                 a_pl_row.setPreferredPeakIdentity(identity);
+                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+                identity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
             }
             // Erase / reset identity.
             else if (a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {

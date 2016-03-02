@@ -263,8 +263,8 @@ public class JDXCompound extends SimplePeakIdentity {
                                                  spectrum,
                                                  getPropertyValue(PROPERTY_FORMULA),
                                                  compoundJDXfile);
-//        LOG.info("Original hash: " + this.getClass().getName() + "@" + Integer.toHexString(hashCode()));
-//        LOG.info("Clone hash: " + jdxCompound.getClass().getName() + "@" + Integer.toHexString(jdxCompound.hashCode()));
+        LOG.info("Original hash: " + this.getClass().getName() + "@" + Integer.toHexString(hashCode()));
+        LOG.info("Clone hash: " + jdxCompound.getClass().getName() + "@" + Integer.toHexString(jdxCompound.hashCode()));
         jdxCompound.setBestScore(bestScore);
         return jdxCompound;
     }

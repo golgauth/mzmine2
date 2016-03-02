@@ -28,22 +28,19 @@ import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
 
+import org.apache.commons.collections.CollectionUtils;
 import net.sf.mzmine.datamodel.Feature;
-import net.sf.mzmine.datamodel.IsotopePattern;
 import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.impl.SimpleFeature;
+import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
-import net.sf.mzmine.desktop.Desktop;
-import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreCalculator;
-import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZTolerance;
@@ -63,7 +60,8 @@ class JoinAlignerTask extends AbstractTask {
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
     private final MZmineProject project;
-    private PeakList peakLists[], alignedPeakList;
+    private PeakList peakLists[];
+    private PeakList alignedPeakList;
 
     // Processed rows counter
     private int processedRows, totalRows;
@@ -85,6 +83,9 @@ class JoinAlignerTask extends AbstractTask {
 
     // ID counter for the new peaklist
     private int newRowID = 1;
+    
+    //
+    
 
     JoinAlignerTask(MZmineProject project, ParameterSet parameters) {
 
@@ -212,28 +213,35 @@ class JoinAlignerTask extends AbstractTask {
                 
                 // Get ref RT1 and RT2
                 // Sort peaks by ascending RT
-                PeakListRow a_pl_rows[] = a_pl.getRows(); 
+                PeakListRow a_pl_rows[] = a_pl.getRows().clone(); 
                 Arrays.sort(a_pl_rows, new PeakListRowSorter(SortingProperty.RT, SortingDirection.Ascending));
                 ArrayList<PeakListRow> allIdentified = new ArrayList<PeakListRow>();
                 for (int j=0; j < a_pl_rows.length; ++j) {
                     PeakListRow row = a_pl_rows[j];
-                    // If row actually was identified
-                    if (row.getPreferredPeakIdentity() != null 
-                            && !row.getPreferredPeakIdentity().getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())) {
-                        allIdentified.add(row);
+//                    // If row actually was identified
+//                    if (row.getPreferredPeakIdentity() != null 
+//                            && !row.getPreferredPeakIdentity().getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())) {
+//                        allIdentified.add(row);
+//                    }
+                    // If row actually was identified AND is a "reference compound"
+                    if (row.getPreferredPeakIdentity() != null) {
+                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
+                        if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
+                            allIdentified.add(row);
+                        }
+                    } else {
+                        logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
+                        logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF));                       
                     }
-
-//                    logger.info("ID = " + row.getPreferredPeakIdentity());
-//                    logger.info("ID Unknown = " + JDXCompound.UNKNOWN_JDX_COMP);
-//                    logger.info("ID Equals = " + row.getPreferredPeakIdentity().equals(JDXCompound.UNKNOWN_JDX_COMP));
                 }
+                //
                 logger.info("allIdentified: NB found compounds: " + allIdentified.size());
                 for (PeakListRow r : allIdentified) {
                     logger.info(r.getPreferredPeakIdentity().toString());
                 }
+                
+                // Two ref compounds max, for now...
                 if (allIdentified.size() == 2) {
-        //            RT1 = allIdentified.get(0).getPeaks()[0].getRT();
-        //            RT2 = allIdentified.get(0).getPeaks()[0].getRT();
                     // TODO: Or even better: duplicate the Peaklists involved and update the peaks RT
                     //          using "Feature.setRT()", as planned some time ago via button "Apply & Adjust RT"
                     //          from RTAdjuster module's result table !!!
@@ -245,31 +253,21 @@ class JoinAlignerTask extends AbstractTask {
                     continue;
                 }
                 
-                // First list as ref, so:
-//                double offset, scale;
                 // Think of "y = ax+b" (line equation)
                 double b_offset, a_scale;
+                // First list as ref, so:
                 if (i == 0) {
-                    // ********
-//                    offset = 0.0;
-//                    scale = 1.0;
-                    // ********
                     b_offset = 0.0;
                     a_scale = 0.0;
-                    // ********
+                    //
                     rtAdjustementMapping.put(a_pl, new double[]{ b_offset, a_scale, rt1, rt2 });
                 } else {
                     double rt1_ref = rtAdjustementMapping.get(peakLists[0])[2];
                     double rt2_ref = rtAdjustementMapping.get(peakLists[0])[3];
-//                    offset =  rt1 - rt1_ref;
-//                    scale = (rt2 - rt1) / (rt2_ref - rt1_ref);
-                    // ********
-//                    offset =  rt1_ref - rt1;
-//                    scale = (rt2_ref - rt1_ref) / (rt2 - rt1);
-                    // ********
+                    //
                     a_scale = ((rt2_ref - rt2) - (rt1_ref - rt1)) / (rt2 - rt1);
                     b_offset = (rt1_ref - rt1) - (a_scale * rt1);
-                    // ********
+                    //
                     rtAdjustementMapping.put(a_pl, new double[]{ b_offset, a_scale, rt1, rt2 });
                     logger.info(">> peakLists[0]/peakLists[i]:" + peakLists[0] + "/" + peakLists[i]);
                     logger.info(">> rt1_ref/rt1:" + rt1_ref + "/" + rt1);
@@ -289,7 +287,8 @@ class JoinAlignerTask extends AbstractTask {
         
         /** Alignment mapping **/ 
         // Iterate source peak lists
-        Hashtable<SimpleFeature, Double> rtPeakBackup = new Hashtable<SimpleFeature, Double>();
+        Hashtable<SimpleFeature, Double> rtPeaksBackup = new Hashtable<SimpleFeature, Double>();
+        Hashtable<PeakListRow, Object[]> infoRowsBackup = new Hashtable<PeakListRow, Object[]>();
         // Build comparison order
         ArrayList<Integer> orderIds = new ArrayList<Integer>();
         for (int i=0; i < peakLists.length; ++i) { orderIds.add(i); }
@@ -340,7 +339,7 @@ class JoinAlignerTask extends AbstractTask {
                         if (!PeakUtils.compareChargeState(row, candidate))
                             continue;
                     }
-0.1
+
                     if (sameIDRequired) {
                         if (!PeakUtils.compareIdentities(row, candidate))
                             continue;
@@ -420,6 +419,8 @@ class JoinAlignerTask extends AbstractTask {
                     targetRow = new SimplePeakListRow(newRowID);
                     newRowID++;
                     alignedPeakList.addRow(targetRow);
+                    //
+                    infoRowsBackup.put(targetRow, new Object[] { new Hashtable<RawDataFile, Double>(), new Hashtable<RawDataFile, PeakIdentity>() });
                 }
 
                 // Add all peaks from the original row to the aligned row
@@ -433,10 +434,7 @@ class JoinAlignerTask extends AbstractTask {
                             logger.info("{" + rtAdjustementMapping.get(peakList)[0] + ", " + rtAdjustementMapping.get(peakList)[1] + "}");
                             double b_offset = rtAdjustementMapping.get(peakList)[0];
                             double a_scale = rtAdjustementMapping.get(peakList)[1];
-                            //**double rt1 = rtAdjustementMapping.get(peakList)[2];
-                            //**double rt2 = rtAdjustementMapping.get(peakList)[3];
-                            //double adjustedRT = (originalPeak.getRT() + offset) * scale;
-                            //**double adjustedRT = ((originalPeak.getRT() - rt1) * scale) + rt1 + offset;
+                            //
                             double delta_rt = a_scale * originalPeak.getRT() + b_offset;
                             double adjustedRT = originalPeak.getRT() + delta_rt;
                             
@@ -444,9 +442,13 @@ class JoinAlignerTask extends AbstractTask {
                             PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
                             adjustedPeak.setRT(adjustedRT);
                             logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
-                            //logger.info("adjusted RT = " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+
                             targetRow.addPeak(file, adjustedPeak);
-                            rtPeakBackup.put(adjustedPeak, originalPeak.getRT());
+                            //infoPeaksBackup.put(adjustedPeak, new Object[] { targetRow, originalPeak.getRT(), row.getPreferredPeakIdentity() });
+                            rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
+                            //infoRowsBackup.put(targetRow, new Object[] { targetRow, originalPeak.getRT(), row.getPreferredPeakIdentity() });
+                            ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]).put(file, adjustedRT);//originalPeak.getRT());
+                            ((Hashtable<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, row.getPreferredPeakIdentity());
                         } else {
                             targetRow.addPeak(file, originalPeak);
                         }
@@ -466,16 +468,19 @@ class JoinAlignerTask extends AbstractTask {
                 if (targetRow.getPreferredPeakIdentity() == null) {
                     targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
                 }
+
                 // Copy all possible peak identities, if these are not already present
                 for (PeakIdentity identity : row.getPeakIdentities()) {
-                    if (!PeakUtils.containsIdentity(targetRow, identity))
-                        targetRow.addPeakIdentity(identity, false);
+                    PeakIdentity clonedIdentity = (PeakIdentity) identity.clone();
+                    if (!PeakUtils.containsIdentity(targetRow, clonedIdentity))
+                        targetRow.addPeakIdentity(clonedIdentity, false);
                 }
-                // Notify MZmine about the change in the project
-                // TODO: Get the "project" from the instantiator of this class instead.
-                // Still necessary ???????
-                MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                project.notifyObjectChanged(targetRow, false);
+                
+//                // Notify MZmine about the change in the project
+//                // TODO: Get the "project" from the instantiator of this class instead.
+//                // Still necessary ???????
+//                MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+//                project.notifyObjectChanged(targetRow, false);
 //                // Repaint the window to reflect the change in the peak list
 //                Desktop desktop = MZmineCore.getDesktop();
 //                if (!(desktop instanceof HeadLessDesktop))
@@ -487,13 +492,105 @@ class JoinAlignerTask extends AbstractTask {
 
         } // Next peak list
         
-        //logger.info("alignedPeakList.getNumberOfRawDataFiles(): " + alignedPeakList.getNumberOfRawDataFiles());
         
         // Restore real RT - for the sake of consistency
         // (the adjusted one was only useful during alignment process)
-        for (SimpleFeature peak : rtPeakBackup.keySet()) {
-            peak.setRT(rtPeakBackup.get(peak));
+        // WARN: Must be done before "Post processing" part to take advantage
+        //       of the "targetRow.update()" used down there
+        for (SimpleFeature peak : rtPeaksBackup.keySet()) {
+            peak.setRT((double) rtPeaksBackup.get(peak));
         }
+
+        
+        /** Post-processing... **/
+        // Build reference RDFs index: We need an ordered reference here, to we able to parse
+        // correctly while reading back stored info
+        RawDataFile[] rdf_sorted = alignedPeakList.getRawDataFiles().clone();
+        Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
+        
+        // Process
+        for (PeakListRow targetRow: infoRowsBackup.keySet()) {
+            
+            // Refresh averaged RTs...
+            ((SimplePeakListRow) targetRow).update();
+            
+            Hashtable<RawDataFile, Double> rowRTs = ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]);
+            Hashtable<RawDataFile, PeakIdentity> rowIDs = ((Hashtable<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]);
+            
+            String[] rowIDsNames = new String[rowIDs.values().size()];
+            int i = 0;
+            for (PeakIdentity id: rowIDs.values()) {
+                rowIDsNames[i] = id.getName();
+                ++i;
+            }
+            
+            // Save preferred (most frequent) identity
+            // Open question: Shouldn't we be set as "most frequent", the most 
+            //                  frequent excluding UNKNOWN??? (See *[Note2])
+            int mainIdentityCard = 0;
+            PeakIdentity mainIdentity = null;
+
+            // Save original RTs and Identities
+            String strAdjustedRTs = "";
+            String strIdentities = "";
+            
+            /** Tricky: using preferred row identity to store information **/
+            for (RawDataFile rdf: rdf_sorted) {
+                
+                logger.info(">>>> RDF_write: " + rdf.getName());
+                
+                if (Arrays.asList(targetRow.getRawDataFiles()).contains(rdf)) {
+                    
+                    // Adjusted RTs of source aligned rows used to compute target row
+                    double rt = rowRTs.get(rdf);
+                    strAdjustedRTs += String.valueOf(rt) + AlignedRowIdentity.IDENTITY_SEP;
+                    
+                    // Adjusted RTs of source aligned rows used to compute target row
+                    PeakIdentity id = rowIDs.get(rdf);
+                    
+                    int cardinality = CollectionUtils.cardinality(id.getName(), Arrays.asList(rowIDsNames));
+                    strIdentities += id.getName() + AlignedRowIdentity.IDENTITY_SEP;
+                    
+                    if (cardinality > mainIdentityCard) {// && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName()) /* *[Note2] */) {
+                        mainIdentity = id;
+                        mainIdentityCard = cardinality;
+                    }
+                    
+                } else {
+                    strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
+                    strIdentities += AlignedRowIdentity.IDENTITY_SEP;
+                }
+                
+            }
+            strAdjustedRTs = strAdjustedRTs.substring(0, strAdjustedRTs.length()-1);
+            strIdentities = strIdentities.substring(0, strIdentities.length()-1);
+            
+            // Need to set the "preferred" identity
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ, strIdentities);
+            // Copy the original preferred identity's properties into the targetRow's preferred one
+            for (PeakIdentity p: targetRow.getPeakIdentities()) {
+                if (p.getName().equals(mainIdentity.getName())) {
+                    PeakIdentity targetMainIdentity = p;
+                    targetRow.setPreferredPeakIdentity(targetMainIdentity);
+                    // Copy props
+                    for (String key: mainIdentity.getAllProperties().keySet()) {
+                        String value = mainIdentity.getAllProperties().get(key);
+                        ((SimplePeakIdentity) targetMainIdentity).setPropertyValue(key, value);
+                    }
+                    break;
+                }
+            }
+            
+            
+            // Notify MZmine about the change in the project, necessary ???
+            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+            project.notifyObjectChanged(targetRow, false);
+        }
+        
+        
+        
+        
 
         // Add new aligned peak list to the project
         project.addPeakList(alignedPeakList);

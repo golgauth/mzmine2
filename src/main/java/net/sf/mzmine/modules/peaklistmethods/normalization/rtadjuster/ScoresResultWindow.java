@@ -444,7 +444,7 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
-            JDXCompound unknownComp = new JDXCompound("Unknown", null, null, null, null);
+            JDXCompound unknownComp = new JDXCompound("Unknown", null, null, null, null);//JDXCompound.UNKNOWN_JDX_COMP;
 
             // Add possible identities to peaks /*with score over 0.0*/.
             a_pl_row.addPeakIdentity(peak1.getJDXCompound(), false);
