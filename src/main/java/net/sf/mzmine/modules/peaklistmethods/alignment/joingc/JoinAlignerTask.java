@@ -19,6 +19,7 @@
 
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,7 +86,8 @@ class JoinAlignerTask extends AbstractTask {
     private int newRowID = 1;
     
     //
-    
+    private Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
+
 
     JoinAlignerTask(MZmineProject project, ParameterSet parameters) {
 
@@ -543,7 +545,7 @@ class JoinAlignerTask extends AbstractTask {
                     
                     // Adjusted RTs of source aligned rows used to compute target row
                     double rt = rowRTs.get(rdf);
-                    strAdjustedRTs += String.valueOf(rt) + AlignedRowIdentity.IDENTITY_SEP;
+                    strAdjustedRTs += rtFormat.format(rt) + AlignedRowIdentity.IDENTITY_SEP;
                     
                     // Adjusted RTs of source aligned rows used to compute target row
                     PeakIdentity id = rowIDs.get(rdf);

@@ -42,6 +42,7 @@ import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Feature.FeatureStatus;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakShapeNormalization;
@@ -58,6 +59,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
     static final Font defaultFont = new Font("SansSerif", Font.PLAIN, 10);
+    static final Font boldFont = new Font("SansSerif", Font.BOLD, 10);
     
     private NumberFormat format;
     private PeakList peakList;
@@ -99,6 +101,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
         } else {
             newComp = new JPanel();
         }
+        
 
 	Color bgColor, fgColor;
 
@@ -112,7 +115,8 @@ public class UnifiedCellRenderer implements TableCellRenderer {
                 bgColor = table.getBackground();
             }
 
-        newComp.setBackground(bgColor);
+
+	newComp.setBackground(bgColor);
 
 	if (hasFocus) {
 	    Border border = null;
@@ -133,7 +137,11 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	}
 	
 
-	newComp.setFont(defaultFont);
+//        if (row == 0 || column == 0)
+//            newComp.setFont(boldFont);
+//        else
+            newComp.setFont(defaultFont);
+        
 	// CompoundIdentityCellRenderer
 	if (value instanceof PeakIdentity) {
 	    //newComp = new JLabel();
@@ -249,7 +257,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	            }
 	        } else {
 	            text = value.toString();
-	            if (text.equals("0")) {
+	            if (text.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
                         bgColor = new Color(230, 230, 230); // Light light gray
                         newComp.setBackground(bgColor);
 	            }

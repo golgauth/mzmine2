@@ -46,6 +46,7 @@ import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTable;
 import net.sf.mzmine.parameters.ParameterSet;
@@ -367,7 +368,7 @@ class CSVExportTask extends AbstractTask {
                                 }
                                 arrNbDetected[j - 1] += 1;
                             } else {
-                                objects.add("0");
+                                objects.add(JoinAlignerGcModule.MISSING_PEAK_VAL);
                             }
                             break;
                         }

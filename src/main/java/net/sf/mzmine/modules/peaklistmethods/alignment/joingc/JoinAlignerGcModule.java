@@ -39,6 +39,8 @@ public class JoinAlignerGcModule implements MZmineProcessingModule {
     private static final String MODULE_NAME = "Join aligner GC";
     private static final String MODULE_DESCRIPTION = "This method aligns detected peaks using a match score. This score is calculated based on the MZ profile and RT of each peak using preset tolerances.";
 
+    public static final String MISSING_PEAK_VAL = "0";
+    
     @Override
     public @Nonnull String getName() {
 	return MODULE_NAME;

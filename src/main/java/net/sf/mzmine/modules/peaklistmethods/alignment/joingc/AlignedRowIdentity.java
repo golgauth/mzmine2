@@ -8,7 +8,7 @@ public class AlignedRowIdentity extends SimplePeakIdentity {
     public static final String PROPERTY_IDENTITIES_FREQ = "Source identities frequencies";
     public static final String IDENTITY_SEP = ":";
     public static final String PROPERTY_IS_REF = "Is reference compound";
-    public static final String FALSE = "0";
-    public static final String TRUE = "1";
+    public static final String FALSE = "false";
+    public static final String TRUE = "true";
 
 }

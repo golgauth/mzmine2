@@ -54,6 +54,7 @@ import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
 import net.sf.mzmine.modules.visualization.peaklisttable.ColumnSettingParameter;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
@@ -165,7 +166,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
 
         
         //**** Build rows (cell by cell)
-        int nbHeaderRows = 4;
+        int nbHeaderRows = PeakListTable.NB_HEADER_ROWS;
         // RT row + Identity row + Identities frequencies + Peak Shape row + 1 row per sample (=Piaf)
         int nbRows = nbHeaderRows + peakList.getNumberOfRawDataFiles();
         // Row header col + 1 col per RT (=PeakListRow)
@@ -218,7 +219,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                     
                     switch (i) {
                     case 0:
-                        objects.add(a_pl_row.getAverageRT());
+                        objects.add(rtFormat.format(a_pl_row.getAverageRT()));
                         break;
                     case 1:
                         objects.add(a_pl_row.getPreferredPeakIdentity());
@@ -271,7 +272,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                             }
                             arrNbDetected[j-1] += 1;
                         } else {
-                            objects.add("0");
+                            objects.add(JoinAlignerGcModule.MISSING_PEAK_VAL);
                         }
                         break;
                     }

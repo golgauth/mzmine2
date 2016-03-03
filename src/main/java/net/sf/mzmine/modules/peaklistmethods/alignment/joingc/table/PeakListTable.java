@@ -27,10 +27,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
@@ -38,15 +37,12 @@ import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.UIManager;
 import javax.swing.event.RowSorterEvent;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
@@ -57,22 +53,21 @@ import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
-import net.sf.mzmine.datamodel.impl.SimpleFeature;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTablePopupMenu;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableWindow;
-import net.sf.mzmine.modules.visualization.peaklisttable.table.CommonColumnType;
+import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.visualization.spectra.SpectraVisualizerModule;
 import net.sf.mzmine.parameters.ParameterSet;
-import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.PeakListRowSorter;
+import net.sf.mzmine.util.SortingDirection;
+import net.sf.mzmine.util.SortingProperty;
 import net.sf.mzmine.util.components.ComponentToolTipManager;
 import net.sf.mzmine.util.components.ComponentToolTipProvider;
-import net.sf.mzmine.util.components.GroupableTableHeader;
 import net.sf.mzmine.util.components.PeakSummaryComponent;
 import net.sf.mzmine.util.components.PopupListener;
 import net.sf.mzmine.util.dialogs.PeakIdentitySetupDialog;
-import javax.swing.table.DefaultTableModel;
-
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTablePopupMenu;
 
 
@@ -100,10 +95,14 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     private ComponentToolTipManager ttm;
     private DefaultCellEditor currentEditor = null;
     
-    public static final int NB_HEADER_ROWS = 3;
+    NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
+    
+    public static final int NB_HEADER_ROWS = 4;
     
     private static String csvFilename = "";
     private static String[] csvFilenames = null;
+    
+    
 
     public PeakListTable(PeakListTableAlaJulWindow window, ParameterSet parameters,
 	    PeakList peakList) {
@@ -182,7 +181,11 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 int row = table.rowAtPoint(p);
                 int col = table.columnAtPoint(p);
                 if (me.getClickCount() == 2) {
-                    PeakListRow pl_row = table.peakList.getRow(col-1);
+
+                    // Sort rows by ascending RT
+                    final PeakListRow[] peakListRows = getPeakListSortedByRT();
+
+                    PeakListRow pl_row = peakListRows[col-1];
                     // Show MZ averaged profile for column
                     if (row == 0) {
                         // TODO: Requires to build a new type of Feature
@@ -192,11 +195,12 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                         // ...
                     }
                     // Show MZ profile for given peak
-                    else if (row > 2) {
+                    else if (row >= NB_HEADER_ROWS) {
                         Object value = table.getValueAt(row, col);
                         if (value != null) {
-                            if (value instanceof String && !value.equals("") && !value.equals("-")) {
-                                RawDataFile rdf = table.peakList.getRawDataFile(row-3);
+                            if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                                RawDataFile rdf = table.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                                logger.info("rdf: " + rdf.getName());
                                 final Feature selectedPeak = pl_row.getPeak(rdf);
                                 SpectraVisualizerModule.showNewSpectrumWindow(
                                         selectedPeak.getDataFile(),
@@ -266,8 +270,59 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 
     }
 
+    //Implement table cell tool tips.  
+    @Override
+    public String getToolTipText(MouseEvent me) {
+        
+    
+        PeakListTable table = (PeakListTable)me.getSource();
+        
+        String tip = null;
+        java.awt.Point p = me.getPoint();
+
+        int row = table.rowAtPoint(p);
+        int col = table.columnAtPoint(p);
+        
+        try {
+            if (row >= NB_HEADER_ROWS) {
+                Object value = table.getValueAt(row, col);
+                if (value != null) {
+                    if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+
+                        // Sort rows by ascending RT
+                        final PeakListRow[] peakListRows = getPeakListSortedByRT();
+
+                        PeakListRow pl_row = peakListRows[col-1];
+                        RawDataFile rdf = table.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                        //final Feature selectedPeak = pl_row.getPeak(rdf);
+                        int len = rdf.getName().indexOf(" ");
+                        tip = "<b>(<span color=#009900>" + rdf.getName().substring(0, len + 1) + "</span> | " +
+                                "<span color=#0000CC>" + rtFormat.format(pl_row.getAverageRT()) + "</span>)</b>";
+                    }
+                }
+            }
+            //tip = getValueAt(row, col).toString();
+        } catch (RuntimeException e1) {
+            //catch null pointer exception if mouse is over an empty line
+        }
+
+        return tip;
+    }
+
+    
     public PeakList getPeakList() {
 	return peakList;
+    }
+
+    
+    private PeakListRow[] getPeakListSortedByRT() {
+            
+        // Sort rows by ascending RT
+        final PeakListRow[] peakListRows = peakList.getRows().clone();
+        Arrays.sort(peakListRows, new PeakListRowSorter(SortingProperty.RT,
+                SortingDirection.Ascending));
+        
+        return peakListRows;
     }
 
     public TableCellEditor getCellEditor(int row, int column) {
