@@ -135,13 +135,20 @@ public class PeakListFullTableModel extends DefaultTableModel implements
 
     public void setValueAt(Object value, int row, int col) {
 
-        PeakListRow peakListRow = peakList.getRow(col-1);
+        if (value == null || col < 1) return;
 
-        if (value == null) return;
+        // Sort rows by ascending RT
+        final PeakListRow[] peakListRows = peakList.getRows().clone();
+        Arrays.sort(peakListRows, new PeakListRowSorter(SortingProperty.RT,
+                SortingDirection.Ascending));
+
+        PeakListRow peakListRow = peakListRows[col-1]; //peakList.getRow(col-1);
         
         if (value instanceof PeakIdentity) {
             peakListRow.setPreferredPeakIdentity((PeakIdentity) value);
             super.setValueAt(value, row, col);
+//            // Indicate the change has happened:
+//            fireTableDataChanged();
         }
     }
     public boolean isCellEditable(int row, int col) {
@@ -155,9 +162,9 @@ public class PeakListFullTableModel extends DefaultTableModel implements
     public void fillRows() {
 
 
-        JTextField editorField = new JTextField();
-        editorField.setFont(editFont);
-        DefaultCellEditor defaultEditor = new DefaultCellEditor(editorField);
+//        JTextField editorField = new JTextField();
+//        editorField.setFont(editFont);
+//        DefaultCellEditor defaultEditor = new DefaultCellEditor(editorField);
 
         // Sort rows by ascending RT
         final PeakListRow[] peakListRows = peakList.getRows().clone();

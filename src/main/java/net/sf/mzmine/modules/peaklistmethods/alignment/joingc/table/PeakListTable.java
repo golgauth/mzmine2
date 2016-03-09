@@ -326,12 +326,15 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     }
 
     public TableCellEditor getCellEditor(int row, int column) {
-
+        
 //	CommonColumnType commonColumn = pkTableModel.getCommonColumn(column);
 //	if (commonColumn == CommonColumnType.IDENTITY) {
-        if (row == 1) {
-            int col = this.convertColumnIndexToModel(column);
-	    peakListRow = peakList.getRow(col-1);
+        if (column > 0 && row == 1) {
+            int col = column; //this.convertColumnIndexToModel(column);
+            peakListRow = getPeakListSortedByRT()[col-1]; //peakList.getRow(col-1);
+            this.convertRowIndexToModel(row);
+            
+            
 
 	    PeakIdentity identities[] = peakListRow.getPeakIdentities();
 	    PeakIdentity preferredIdentity = peakListRow
@@ -395,7 +398,6 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 
 	    // Keep the reference to the editor
 	    currentEditor = new DefaultCellEditor(combo);
-
 	    return currentEditor;
 	}
 
