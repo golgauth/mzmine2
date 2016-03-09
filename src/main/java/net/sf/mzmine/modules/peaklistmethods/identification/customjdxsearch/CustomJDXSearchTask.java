@@ -17,12 +17,13 @@
  * Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-package net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster;
+package net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -46,6 +47,8 @@ import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
@@ -67,11 +70,11 @@ import com.google.common.collect.Range;
 
 
 
-public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
+public class CustomJDXSearchTask extends AbstractTask {
 
     // Logger.
     private static final Logger LOG = Logger
-            .getLogger(JDXCompoundsIdentificationSingleTask.class.getName());
+            .getLogger(CustomJDXSearchTask.class.getName());
 
     private final MZmineProject project;
 
@@ -90,16 +93,17 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     private int numItems;
 
     private final PeakList[] peakLists;
-
-    private File jdxFileC1, jdxFileC2;
-    private JDXCompound jdxComp1, jdxComp2;
-    private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
+    
+    private File searchDir;
+//    private File jdxFileC1, jdxFileC2;
+//    private JDXCompound jdxComp1, jdxComp2;
+//    private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
     private SimilarityMethodType simMethodType;
-    private double areaMixFactor;
+//    private double areaMixFactor;
     private double minScore;
-    private boolean applyWithoutCheck;
-    private File blastOutputFilename;
-    private String fieldSeparator;
+//    private boolean applyWithoutCheck;
+//    private File blastOutputFilename;
+//    private String fieldSeparator;
 
     private PeakListRow currentRow;
     private PeakList currentPeakList;
@@ -119,7 +123,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
      *            peak list to operate on.
      */
     @SuppressWarnings("unchecked")
-    JDXCompoundsIdentificationSingleTask(final MZmineProject project, 
+    CustomJDXSearchTask(final MZmineProject project, 
             final ParameterSet parameters, final PeakList[] lists) {
 
         this.project = project;
@@ -129,16 +133,17 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         finishedItems = 0;
         currentRow = null;
 
-        jdxFileC1 = parameters.getParameter(JDXCompoundsIdentificationParameters.JDX_FILE_C1).getValue();
-        jdxFileC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.JDX_FILE_C2).getValue();
-        rtSearchRangeC1 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C1).getValue();
-        rtSearchRangeC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C2).getValue();
-        simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
-        areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
-        minScore = parameters.getParameter(JDXCompoundsIdentificationParameters.MIN_SCORE).getValue();
-        applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
-        blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
-        fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
+        searchDir = parameters.getParameter(CustomJDXSearchParameters.JDX_DIR).getValue();
+//        jdxFileC1 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C1).getValue();
+//        jdxFileC2 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C2).getValue();
+//        rtSearchRangeC1 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C1).getValue();
+//        rtSearchRangeC2 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C2).getValue();
+        simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
+//        areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.MIX_FACTOR).getValue();
+        minScore = parameters.getParameter(CustomJDXSearchParameters.MIN_SCORE).getValue();
+//        applyWithoutCheck = parameters.getParameter(CustomJDXSearchParameters.APPLY_WITHOUT_CHECK).getValue();
+//        blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
+//        fieldSeparator = parameters.getParameter(CustomJDXSearchParameters.FIELD_SEPARATOR).getValue();
 
     }
 
@@ -152,31 +157,44 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     @Override
     public String getTaskDescription() {
 
-        if (jdxComp1 != null && jdxComp2 != null) {
-            return "Identification of standard peaks in "
-                    + "selected peak lists"
-                    + " using " + " standards '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'";
-        } else {
-            return "Identification of standard peaks in selected peak lists"
-                    + " using the 'Two standard compounds finder'";            
-        }
+//        if (jdxComp1 != null && jdxComp2 != null) {
+//            return "Identification of standard peaks in "
+//                    + "selected peak lists"
+//                    + " using " + " standards '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'";
+//        } else {
+//            return "Identification of standard peaks in selected peak lists"
+//                    + " using the 'Two standard compounds finder'";            
+//        }
+        
+        return "Identification of JDX compounds in selected peak lists"
+              + " from custom directory '" + this.searchDir.getPath() + "'";    
     }
 
     @Override
     public void run() {
 
+        // List JDX files from search directory
+        File[] jdxFiles = searchDir.listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.toLowerCase().endsWith(".jdx");
+            }
+        });        
+        JDXCompound[] jdxCompounds = new JDXCompound[jdxFiles.length];
+        
         if (!isCanceled()) {
+            int i_f = 0;
             try {
-                jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
-                jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
+                for (i_f=0; i_f < jdxFiles.length; i_f++) {
+                    jdxCompounds[i_f] = JDXCompound.parseJDXfile(jdxFiles[i_f]);
+                    LOG.info("Parsed JDX file: " + jdxFiles[i_f].getName());
+                }
             } catch (JCAMPException e) {
-                String msg = "Could not search standard compounds";
+                String msg = "Error while pasring JDX compound file: " + jdxFiles[i_f].getName();
                 LOG.log(Level.WARNING, msg, e);
                 setStatus(TaskStatus.ERROR);
                 setErrorMessage(msg + ": " + ExceptionUtils.exceptionToString(e));
                 return;
             }
-            LOG.info("JDX parsed: " + jdxComp1 + ", " + jdxComp2);
             
             PeakList curPeakList = null;
             RawDataFile curRefRDF = null;
@@ -185,44 +203,47 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                 setStatus(TaskStatus.PROCESSING);
                 finishedItemsTotal = 0;
 
-                final JDXCompound[] findCompounds = { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
-                final Range[] findRTranges = { rtSearchRangeC1, rtSearchRangeC2 };
-
-                String[] columnNames = { "Data file", 
-                        jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
-                        jdxComp2.getName(), /*jdxComp2.getName() +*/ " score" , /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
-                };
-                ScoresResultWindow window = null;
-
-                // Show result window only if no manual check is expected
-                if (!applyWithoutCheck) {
-                    window = new ScoresResultWindow(columnNames, this);
-                    window.setVisible(true);
-                }
-
-                FileWriter fileWriter;
-                BufferedWriter writer = null;
-                if (applyWithoutCheck && blastOutputFilename != null) {
-                    // Open file
-                    fileWriter = new FileWriter(blastOutputFilename);
-                    writer = new BufferedWriter(fileWriter);
-                }
+                final JDXCompound[] findCompounds = jdxCompounds;
+//                final Range[] findRTranges = { rtSearchRangeC1, rtSearchRangeC2 };
+//
+//                String[] columnNames = { "Data file", 
+//                        jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+//                        jdxComp2.getName(), /*jdxComp2.getName() +*/ " score" , /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+//                };
+//                ScoresResultWindow window = null;
+//
+//                // Show result window only if no manual check is expected
+//                if (!applyWithoutCheck) {
+//                    window = new ScoresResultWindow(columnNames, this);
+//                    window.setVisible(true);
+//                }
+//
+//                FileWriter fileWriter;
+//                BufferedWriter writer = null;
+//                if (applyWithoutCheck && blastOutputFilename != null) {
+//                    // Open file
+//                    fileWriter = new FileWriter(blastOutputFilename);
+//                    writer = new BufferedWriter(fileWriter);
+//                }
 
                 //              for (final PeakList peakList : peakLists) {
                 for (int j=0; j< peakLists.length; ++j) {
 
                     PeakList peakList = peakLists[j];
 
-                    // Update window title.
-                    if (!applyWithoutCheck)
-                        window.setTitle(peakList.getName() + ": Searching for compounds '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'");
+//                    // Update window title.
+//                    if (!applyWithoutCheck)
+//                        window.setTitle(peakList.getName() + ": Searching for compounds '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'");
 
                     curPeakList = peakList;
                     curRefRDF = curPeakList.getRawDataFile(0);
 
                     // Identify the peak list rows starting from the biggest peaks.
+                    
+                    /**
+                     * TODO: Try with "clone()" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     */
                     final PeakListRow[] rows = peakList.getRows()/*.clone()*/;
-                    //**Arrays.sort(rows, new PeakListRowSorter(SortingProperty.Area, SortingDirection.Descending));
                     Arrays.sort(rows, new PeakListRowSorter(SortingProperty.ID, SortingDirection.Ascending));
 
                     // Initialize counters.
@@ -239,7 +260,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         // Retrieve results for each row.
                         scoreMatrix[finishedItems][0] = (double) finishedItems;
                         for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-                            if (findRTranges[i].contains(a_row.getBestPeak().getRT())) {
+//                            if (findRTranges[i].contains(a_row.getBestPeak().getRT())) {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
@@ -248,30 +269,22 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                                 else
                                     scoreMatrix[finishedItems][i+1] = score;
-                            } else {
-                                // Out of range.
-                                scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
-                            }
+//                            } else {
+//                                // Out of range.
+//                                scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
+//                            }
                         }
 
                         finishedItemsTotal++;
                     }
 
                     // Add piaf to the list and display it in results window.
-                    if (!applyWithoutCheck)
-                        window.addNewListItem(peakList, findCompounds, scoreMatrix);
-
-                    //                    printMatrixToFile(scoreMatrix, "scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + peakList.getName() + ".txt");
-                    //                    for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-                    //                        Double[][] mtx_sorted = new Double[scoreMatrix.length][scoreMatrix[0].length]; //scoreMatrix;
-                    //                        arrayCopy(scoreMatrix, mtx_sorted);
-                    //                        Arrays.sort(mtx_sorted, new ScoresResultTableModel.ArrayComparator(i+1, false));
-                    //                        printMatrixToFile(mtx_sorted, "scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + i + "_" + peakList.getName() + ".txt");
-                    //                    }
-
+//                    if (!applyWithoutCheck)
+//                        window.addNewListItem(peakList, findCompounds, scoreMatrix);
                     // If apply automatically, just get best scoring row id for each compound
                     // TODO: Make CSV export("blastOutputFilename") available even if not "applyWithoutCheck".
-                    else if (!isCanceled()) {
+//                    else
+                    if (!isCanceled()) {
 
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
@@ -286,66 +299,66 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             // Update identities
                             applyIdentity(peakList, findCompounds[i], bestRow.getID());
 
-                            // CSV export...
-                            if (blastOutputFilename != null) {
-
-                                Feature bestPeak = bestRow.getBestPeak();
-
-                                // CSV export: Write header
-                                if (i == 0 && j == 0) {
-                                    objects.addAll(Arrays.asList(columnNames));
-                                    // Write to CSV
-                                    for (Object obj: objects) {
-                                        writer.write(obj.toString());
-                                        writer.write(fieldSeparator);
-                                    }
-                                    writer.newLine();
-                                    // Reset vector
-                                    objects = new Vector<Object>();
-                                }
-
-                                // Piaf name
-                                if (i == 0) {
-                                    String name = peakList.getName();
-                                    objects.add(name.substring(0, name.indexOf(' ')));
-                                }
-                                // Add some peak string representation
-                                String peakToStr = "#" + bestRow.getID() + " @" 
-                                        + rtFormat.format(bestPeak.getRT()) + " / " + areaFormat.format(bestPeak.getArea());
-                                objects.add(peakToStr);
-                                // Add score of selected peak
-                                objects.add(mtx[0][i+1]);
-                                // Add RT  of selected peak
-                                objects.add(bestPeak.getRT());
-                                // Add area  of selected peak
-                                objects.add(bestPeak.getArea());
-
-                            }
+//                            // CSV export...
+//                            if (blastOutputFilename != null) {
+//
+//                                Feature bestPeak = bestRow.getBestPeak();
+//
+//                                // CSV export: Write header
+//                                if (i == 0 && j == 0) {
+//                                    objects.addAll(Arrays.asList(columnNames));
+//                                    // Write to CSV
+//                                    for (Object obj: objects) {
+//                                        writer.write(obj.toString());
+//                                        writer.write(fieldSeparator);
+//                                    }
+//                                    writer.newLine();
+//                                    // Reset vector
+//                                    objects = new Vector<Object>();
+//                                }
+//
+//                                // Piaf name
+//                                if (i == 0) {
+//                                    String name = peakList.getName();
+//                                    objects.add(name.substring(0, name.indexOf(' ')));
+//                                }
+//                                // Add some peak string representation
+//                                String peakToStr = "#" + bestRow.getID() + " @" 
+//                                        + rtFormat.format(bestPeak.getRT()) + " / " + areaFormat.format(bestPeak.getArea());
+//                                objects.add(peakToStr);
+//                                // Add score of selected peak
+//                                objects.add(mtx[0][i+1]);
+//                                // Add RT  of selected peak
+//                                objects.add(bestPeak.getRT());
+//                                // Add area  of selected peak
+//                                objects.add(bestPeak.getArea());
+//
+//                            }
 
                         }
 
-                        // CSV export: Write row
-                        if (applyWithoutCheck && blastOutputFilename != null) {
-                            // Write to CSV
-                            for (int k=0; k < objects.size(); ++k) {
-
-                                Object obj = objects.get(k);
-
-                                writer.write(obj.toString());
-                                if (k != objects.size() - 1) {
-                                    writer.write(fieldSeparator);
-                                }
-                            }
-                            writer.newLine();
-                        }
+//                        // CSV export: Write row
+//                        if (applyWithoutCheck && blastOutputFilename != null) {
+//                            // Write to CSV
+//                            for (int k=0; k < objects.size(); ++k) {
+//
+//                                Object obj = objects.get(k);
+//
+//                                writer.write(obj.toString());
+//                                if (k != objects.size() - 1) {
+//                                    writer.write(fieldSeparator);
+//                                }
+//                            }
+//                            writer.newLine();
+//                        }
 
                     }
                 }
                 
-                // CSV export: Close file
-                if (applyWithoutCheck && blastOutputFilename != null) {
-                    writer.close();
-                }
+//                // CSV export: Close file
+//                if (applyWithoutCheck && blastOutputFilename != null) {
+//                    writer.close();
+//                }
 
 
                 if (!isCanceled()) {
@@ -432,16 +445,16 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
         score = computeSimilarityScore(vec1, vec2);	
 
-        // Adjust taking area in account (or not: areaMixFactor = 0.0).
-        // TODO: Check if the following is pertinent with Pearson's correlation method
-        //			(where scores are not normalized and can be negative).
-        if (areaMixFactor > 0.0) {
-            double maxArea = Double.MIN_VALUE;
-            for (PeakListRow plr : currentPeakList.getRows()) {
-                if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
-            }
-            score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
-        }
+//        // Adjust taking area in account (or not: areaMixFactor = 0.0).
+//        // TODO: Check if the following is pertinent with Pearson's correlation method
+//        //			(where scores are not normalized and can be negative).
+//        if (areaMixFactor > 0.0) {
+//            double maxArea = Double.MIN_VALUE;
+//            for (PeakListRow plr : currentPeakList.getRows()) {
+//                if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
+//            }
+//            score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
+//        }
 
 
         LOG.info("Score: " + score);
@@ -499,79 +512,4 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     }
 
 
-    /**
-     * Search the database for the peak's identity.
-     * 
-     * @param row
-     *            the peak list row.
-     * @throws IOException
-     *             if there are i/o problems.
-     */
-    private void retrieveIdentification(final PeakListRow row)
-            throws IOException {
-
-        currentRow = row;
-
-        //		// Determine peak charge.
-        //		final Feature bestPeak = row.getBestPeak();
-        //		int charge = bestPeak.getCharge();
-        //		if (charge <= 0) {
-        //			charge = 1;
-        //		}
-        //
-        //		// Calculate mass value.
-        //		final double massValue = (row.getAverageMZ() - ionType.getAddedMass())
-        //				* (double) charge;
-        //
-        //		// Isotope pattern.
-        //		final IsotopePattern rowIsotopePattern = bestPeak.getIsotopePattern();
-
-        // Process each one of the result ID's.
-        //		final String[] findCompounds = gateway.findCompounds(massValue,
-        //		mzTolerance, numOfResults, db.getParameterSet());
-        final JDXCompound[] findCompounds = { jdxComp1, jdxComp2 };
-        for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-
-            //			final DBCompound compound = gateway.getCompound(findCompounds[i],
-            //			db.getParameterSet());
-            final JDXCompound compound = findCompounds[i];
-
-            //			final String formula = compound
-            //					.getPropertyValue(PeakIdentity.PROPERTY_FORMULA);
-            //
-            //			// If required, check isotope score.
-            //			if (isotopeFilter && rowIsotopePattern != null && formula != null) {
-            //
-            //				// First modify the formula according to ionization.
-            //				final String adjustedFormula = FormulaUtils.ionizeFormula(
-            //						formula, ionType, charge);
-            //
-            //				LOG.finest("Calculating isotope pattern for compound formula "
-            //						+ formula + " adjusted to " + adjustedFormula);
-            //
-            //				// Generate IsotopePattern for this compound
-            //				final IsotopePattern compoundIsotopePattern = IsotopePatternCalculator
-            //						.calculateIsotopePattern(adjustedFormula,
-            //								MIN_ABUNDANCE, charge, ionType.getPolarity());
-            //
-            //				// Check isotope pattern match
-            //				boolean check = IsotopePatternScoreCalculator.checkMatch(
-            //						rowIsotopePattern, compoundIsotopePattern,
-            //						isotopeFilterParameters);
-            //
-            //				if (!check)
-            //					continue;
-            //			}
-
-            // Add the retrieved identity to the peak list row
-            row.addPeakIdentity(compound, false);
-
-            // Notify the GUI about the change in the project
-            this.project.notifyObjectChanged(row, false);
-            // Repaint the window to reflect the change in the peak list
-            Desktop desktop = MZmineCore.getDesktop();
-            if (!(desktop instanceof HeadLessDesktop))
-                desktop.getMainWindow().repaint();
-        }
-    }
 }

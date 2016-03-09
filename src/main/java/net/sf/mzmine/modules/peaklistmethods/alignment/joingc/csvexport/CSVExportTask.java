@@ -342,6 +342,12 @@ class CSVExportTask extends AbstractTask {
                                         String peakAjustedRT = arrAdjustedRTs[rdf_idx];
                                         String peakIdentity = arrIdentities[rdf_idx];
 
+                                        // Handle gap filled peaks
+                                        if (peak.getFeatureStatus() == FeatureStatus.ESTIMATED) {
+                                            peakAjustedRT = "";
+                                            peakIdentity = "";
+                                        }
+
                                         objects.add(rtFormat.format(peak
                                                 .getRT())
                                                 +

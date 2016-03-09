@@ -47,6 +47,7 @@ import javax.swing.table.TableColumn;
 import org.apache.commons.collections.CollectionUtils;
 
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.Feature.FeatureStatus;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
@@ -263,11 +264,15 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                     String peakAjustedRT = arrAdjustedRTs[rdf_idx];
                                     String peakIdentity = arrIdentities[rdf_idx];
     
+                                    // Handle gap filled peaks
+                                    if (peak.getFeatureStatus() == FeatureStatus.ESTIMATED) {
+                                        peakAjustedRT = "ESTIMATED";
+                                        peakIdentity = "NONE";
+                                    }
                                     objects.add(rtFormat.format(peak.getRT()) + 
-                                            " [" + peakAjustedRT + "]" + 
-                                            " / " + areaFormat.format(peak.getArea()) + 
-                                            " / " + peakIdentity);
-    
+                                                " [" + peakAjustedRT + "]" + 
+                                                " / " + areaFormat.format(peak.getArea()) + 
+                                                " / " + peakIdentity);
                                 } 
                                 // Handle regular single rdf peak list
                                 else {
