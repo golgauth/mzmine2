@@ -26,6 +26,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Level;
@@ -210,7 +211,7 @@ class CSVExportTask extends AbstractTask {
         // Separated output files (rt + area + ...)
         String basePath = null;
         String[] suffixes = new String[] { "-rt-orig.csv", "-rt-reca.csv",
-                "-area.csv", "-ident.csv" };
+                "-area.csv", "-ident.csv", "-scor.csv" };
         int nbFiles = suffixes.length;
         String[] filenames = new String[nbFiles];
         FileWriter[] fileWriters = new FileWriter[nbFiles];
@@ -252,8 +253,8 @@ class CSVExportTask extends AbstractTask {
             PeakIdentity[] mainIdentities = new PeakIdentity[peakList
                     .getNumberOfRows()];
 
-            String strAdjustedRTs = "", strIdentities = "";
-            String[] arrAdjustedRTs = null, arrIdentities = null;
+            String strAdjustedRTs = "", strIdentities = "", strScores = "";
+            String[] arrAdjustedRTs = null, arrIdentities = null, arrScores;
 
             // Build reference RDFs index
             RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
@@ -324,7 +325,8 @@ class CSVExportTask extends AbstractTask {
                                     strAdjustedRTs = ((SimplePeakIdentity) mainIdentity)
                                             .getPropertyValue(AlignedRowIdentity.PROPERTY_RTS);
                                     strIdentities = ((SimplePeakIdentity) mainIdentity)
-                                            .getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                                            .getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES);
+                                    strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
 
                                     // More than one rdf (align peak list)
                                     if (peakList.getRawDataFiles().length > 1
@@ -336,6 +338,7 @@ class CSVExportTask extends AbstractTask {
                                         arrIdentities = strIdentities
                                                 .split(AlignedRowIdentity.IDENTITY_SEP,
                                                         -1);
+                                        arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
 
                                         int rdf_idx = Arrays.asList(rdf_sorted)
                                                 .indexOf(rdf);
@@ -347,17 +350,19 @@ class CSVExportTask extends AbstractTask {
                                             peakAjustedRT = "";
                                             peakIdentity = "";
                                         }
+                                        String score = arrScores[rdf_idx];
+                                        String strScore = "";
+                                        if (score != null && !score.isEmpty())
+                                            strScore = SEP_STR_CSV + score;
 
-                                        objects.add(rtFormat.format(peak
-                                                .getRT())
-                                                +
-                                                // " [" + peakAjustedRT + "]" +
-                                                SEP_STR_CSV
+                                        objects.add(rtFormat.format(
+                                                peak.getRT())
+                                                + SEP_STR_CSV
                                                 + peakAjustedRT
                                                 + SEP_STR_CSV
-                                                + areaFormat.format(peak
-                                                        .getArea())
-                                                + SEP_STR_CSV + peakIdentity);
+                                                + areaFormat.format(peak.getArea())
+                                                + SEP_STR_CSV + peakIdentity
+                                                + strScore);
 
                                     }
                                     // Handle regular single rdf peak list
@@ -397,29 +402,47 @@ class CSVExportTask extends AbstractTask {
                     // Set identities info string (leave blank if single
                     // rdf/sample peak list)
                     if (peakList.getRawDataFiles().length > 1) {
-                        strIdentities2 = ((SimplePeakIdentity) mainIdentity)
-                                .getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                        strIdentities2 = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES);
+                        strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
                         if (strIdentities2 != null) {
-                            arrIdentities = strIdentities2.split(
-                                    AlignedRowIdentity.IDENTITY_SEP, -1);
+                            arrIdentities = strIdentities2.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                            arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                            
+                            //--- Get sums
+                            
+                            Hashtable<String, Double> scoreAvgMap = new Hashtable<String, Double>();
+                            for (int i_s=0; i_s < arrIdentities.length; ++i_s) {
+                                
+                                // Skip 'no identity' peaks (that are not even 'Unknown') 
+                                if (arrIdentities[i_s] == null || arrIdentities[i_s].isEmpty())
+                                    continue;
+                                
+                                if (!scoreAvgMap.keySet().contains(arrIdentities[i_s])) {
+                                    scoreAvgMap.put(arrIdentities[i_s], Double.valueOf(arrScores[i_s]));
+                                } else {
+                                    double curSum = scoreAvgMap.get(arrIdentities[i_s]);
+                                    scoreAvgMap.put(arrIdentities[i_s], curSum + Double.valueOf(arrScores[i_s]));
+                                }
+                            }
+                            
+                            //---
+                            
                             Set<String> aSet = new HashSet<String>(
                                     Arrays.asList(arrIdentities));
                             strIdentities2 = "";
                             for (String str : aSet) {
                                 if (str != null && !str.isEmpty()) {
-                                    int cardinality = CollectionUtils
-                                            .cardinality(str, Arrays
-                                                    .asList(arrIdentities));
-                                    strIdentities2 += str + " (" + cardinality
-                                            + ")"
-                                            + AlignedRowIdentity.IDENTITY_SEP;
+                                    int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
+                                    //strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
+                                    double avgScore = scoreAvgMap.get(str) / (double) peakList.getRawDataFiles().length; // / (double) cardinality;
+                                    strIdentities2 += str + " (" + /*rtFormat.format(*/ avgScore /*)*/ + ")" + AlignedRowIdentity.IDENTITY_SEP;
                                 }
                             }
-                            strIdentities2 = strIdentities2.substring(0,
-                                    strIdentities2.length() - 1);
+                            strIdentities2 = strIdentities2.substring(0, strIdentities2.length() - 1);
                         }
                     } else {
-                        strIdentities2 = mainIdentity.getName() + " (1)";
+                        //strIdentities2 = mainIdentity.getName() + " (1)";
+                        strIdentities2 = mainIdentity.getName() + " (" + mainIdentity.getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE) + ")";
                     }
                     // Set most frequent identity
                     rowsList.get(nbHeaderRows - 3).set(i + 1, mainIdentity);

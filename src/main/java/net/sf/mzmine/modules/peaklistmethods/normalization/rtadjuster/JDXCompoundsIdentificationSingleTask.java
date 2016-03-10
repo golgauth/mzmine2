@@ -134,7 +134,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         rtSearchRangeC1 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C1).getValue();
         rtSearchRangeC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C2).getValue();
         simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
-        areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
+        areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(JDXCompoundsIdentificationParameters.MIN_SCORE).getValue();
         applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
@@ -202,7 +202,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                 FileWriter fileWriter;
                 BufferedWriter writer = null;
-                if (applyWithoutCheck && blastOutputFilename != null) {
+                if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
                     // Open file
                     fileWriter = new FileWriter(blastOutputFilename);
                     writer = new BufferedWriter(fileWriter);
@@ -270,8 +270,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                     //                    }
 
                     // If apply automatically, just get best scoring row id for each compound
-                    // TODO: Make CSV export("blastOutputFilename") available even if not "applyWithoutCheck".
-                    else if (!isCanceled()) {
+                    /* // TODO: Make CSV export("blastOutputFilename") available even if not "applyWithoutCheck". */
+                    /*else*/ if (!isCanceled()) {
 
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
@@ -282,12 +282,13 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             Arrays.sort(mtx, new ArrayComparator(i+1, false)); // +1: skip first column (row number)
 
                             PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[0][0]));
+                            double bestScore = mtx[0][i+1];
 
                             // Update identities
-                            applyIdentity(peakList, findCompounds[i], bestRow.getID());
+                            applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore);
 
                             // CSV export...
-                            if (blastOutputFilename != null) {
+                            if (!isEmptyFilename(blastOutputFilename)) {
 
                                 Feature bestPeak = bestRow.getBestPeak();
 
@@ -314,7 +315,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                                         + rtFormat.format(bestPeak.getRT()) + " / " + areaFormat.format(bestPeak.getArea());
                                 objects.add(peakToStr);
                                 // Add score of selected peak
-                                objects.add(mtx[0][i+1]);
+                                objects.add(bestScore);
                                 // Add RT  of selected peak
                                 objects.add(bestPeak.getRT());
                                 // Add area  of selected peak
@@ -325,7 +326,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         }
 
                         // CSV export: Write row
-                        if (applyWithoutCheck && blastOutputFilename != null) {
+                        if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
                             // Write to CSV
                             for (int k=0; k < objects.size(); ++k) {
 
@@ -343,7 +344,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                 }
                 
                 // CSV export: Close file
-                if (applyWithoutCheck && blastOutputFilename != null) {
+                if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
                     writer.close();
                 }
 
@@ -371,24 +372,27 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
      * @param peaklist
      * @param peak
      */
-    public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId) {
+    public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score) {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
+            // Add possible identities to peaks (need to renew for the sake of unicity)
             JDXCompound unknownComp = JDXCompound.createUnknownCompound();
-
-            // Add possible identities to peaks
-            a_pl_row.addPeakIdentity(identity, false);
+            JDXCompound newIdentity = (JDXCompound) identity.clone();
+            a_pl_row.addPeakIdentity(newIdentity, false);
             a_pl_row.addPeakIdentity(unknownComp, false);
 
             // Set new identity.
-            if (a_pl_row.getID() == rowId) {
-                a_pl_row.setPreferredPeakIdentity(identity);
+            if (a_pl_row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
+                a_pl_row.setPreferredPeakIdentity(newIdentity);
                 // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                identity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+                // Save score
+                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
             }
             // Erase / reset identity.
-            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
+            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
+                unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
                 a_pl_row.setPreferredPeakIdentity(unknownComp);
             }
 
@@ -479,6 +483,13 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         } 
 
         return simScore;
+    }
+    
+    private boolean isEmptyFilename(File file) {
+        return (file == null 
+                || file.getPath().isEmpty() 
+                || file.getPath().toLowerCase().equals("csv")
+                || file.getPath().toLowerCase().equals(".csv"));
     }
 
     private void printMatrixToFile(Object[][] mtx, String filename) {

@@ -53,6 +53,10 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
 	
 	public static final ComboParameter<SimilarityMethodType> SIMILARITY_METHOD = new ComboParameter<SimilarityMethodType>(
 			"Similarity method", "Similarity method", SimilarityMethodType.values());
+	
+        public static final DoubleParameter AREA_MIX_FACTOR = new DoubleParameter(
+                "Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantged).",
+                MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
 
 	public static final DoubleParameter MIN_SCORE = new DoubleParameter(
                 "Minimum score", 
@@ -66,6 +70,7 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
 	                + "(displaying validation table) first", false);
+	 */
         public static final FileNameParameter BLAST_OUTPUT_FILENAME = new FileNameParameter(
                 "Blast output filename",
                 " Requires \"Apply without checking\" checked." +
@@ -76,13 +81,18 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                 "Field separator",
                 " Requires \"Apply without checking\" checked." +
                 "Character(s) used to separate fields in the exported file", ",");
-	 */
+	
+        public static final BooleanParameter BRUTE_FORCE_ERASE = new BooleanParameter(
+                "Erase previous identities", "Erases any previous identitification operation " 
+                        + "(use with caution)", false);
 	
 	public CustomJDXSearchParameters() {
 		super(new Parameter[] { PEAK_LISTS,
 		        //RI_SEARCH_WINDOW
-		        JDX_DIR, SIMILARITY_METHOD, MIN_SCORE
-			//,APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR 
+		        JDX_DIR, BRUTE_FORCE_ERASE, 
+		        SIMILARITY_METHOD, AREA_MIX_FACTOR, MIN_SCORE,
+			//APPLY_WITHOUT_CHECK, 
+		        BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR 
 		});
 	}
 

@@ -95,15 +95,16 @@ public class CustomJDXSearchTask extends AbstractTask {
     private final PeakList[] peakLists;
     
     private File searchDir;
+    private boolean bruteForceErase;
 //    private File jdxFileC1, jdxFileC2;
 //    private JDXCompound jdxComp1, jdxComp2;
 //    private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
     private SimilarityMethodType simMethodType;
-//    private double areaMixFactor;
+    private double areaMixFactor;
     private double minScore;
 //    private boolean applyWithoutCheck;
-//    private File blastOutputFilename;
-//    private String fieldSeparator;
+    private File blastOutputFilename;
+    private String fieldSeparator;
 
     private PeakListRow currentRow;
     private PeakList currentPeakList;
@@ -134,16 +135,17 @@ public class CustomJDXSearchTask extends AbstractTask {
         currentRow = null;
 
         searchDir = parameters.getParameter(CustomJDXSearchParameters.JDX_DIR).getValue();
+        bruteForceErase = parameters.getParameter(CustomJDXSearchParameters.BRUTE_FORCE_ERASE).getValue();
 //        jdxFileC1 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C1).getValue();
 //        jdxFileC2 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C2).getValue();
 //        rtSearchRangeC1 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C1).getValue();
 //        rtSearchRangeC2 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C2).getValue();
         simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
-//        areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.MIX_FACTOR).getValue();
+        areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(CustomJDXSearchParameters.MIN_SCORE).getValue();
 //        applyWithoutCheck = parameters.getParameter(CustomJDXSearchParameters.APPLY_WITHOUT_CHECK).getValue();
-//        blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
-//        fieldSeparator = parameters.getParameter(CustomJDXSearchParameters.FIELD_SEPARATOR).getValue();
+        blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
+        fieldSeparator = parameters.getParameter(CustomJDXSearchParameters.FIELD_SEPARATOR).getValue();
 
     }
 
@@ -180,14 +182,27 @@ public class CustomJDXSearchTask extends AbstractTask {
             }
         });        
         JDXCompound[] jdxCompounds = new JDXCompound[jdxFiles.length];
+        String[] columnNames = new String[1 + 4*jdxFiles.length];               
         
         if (!isCanceled()) {
             int i_f = 0;
             try {
+                
+                columnNames[0] = "Data file";
+                
                 for (i_f=0; i_f < jdxFiles.length; i_f++) {
+                    
+                    // Parse jdx files
                     jdxCompounds[i_f] = JDXCompound.parseJDXfile(jdxFiles[i_f]);
                     LOG.info("Parsed JDX file: " + jdxFiles[i_f].getName());
+                    // Build csv header row
+                    int col = 4 * (i_f % jdxFiles.length);
+                    columnNames[1 + col] = jdxCompounds[i_f].getName();
+                    columnNames[1 + col + 1] = " score";
+                    columnNames[1 + col + 2] = " rt";
+                    columnNames[1 + col + 3] = " area";
                 }
+                
             } catch (JCAMPException e) {
                 String msg = "Error while pasring JDX compound file: " + jdxFiles[i_f].getName();
                 LOG.log(Level.WARNING, msg, e);
@@ -217,14 +232,14 @@ public class CustomJDXSearchTask extends AbstractTask {
 //                    window = new ScoresResultWindow(columnNames, this);
 //                    window.setVisible(true);
 //                }
-//
-//                FileWriter fileWriter;
-//                BufferedWriter writer = null;
-//                if (applyWithoutCheck && blastOutputFilename != null) {
-//                    // Open file
-//                    fileWriter = new FileWriter(blastOutputFilename);
-//                    writer = new BufferedWriter(fileWriter);
-//                }
+
+                FileWriter fileWriter;
+                BufferedWriter writer = null;
+                if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
+                    // Open file
+                    fileWriter = new FileWriter(blastOutputFilename);
+                    writer = new BufferedWriter(fileWriter);
+                }
 
                 //              for (final PeakList peakList : peakLists) {
                 for (int j=0; j< peakLists.length; ++j) {
@@ -295,70 +310,71 @@ public class CustomJDXSearchTask extends AbstractTask {
                             Arrays.sort(mtx, new ArrayComparator(i+1, false)); // +1: skip first column (row number)
 
                             PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[0][0]));
+                            double bestScore = mtx[0][i+1];
 
                             // Update identities
-                            applyIdentity(peakList, findCompounds[i], bestRow.getID());
+                            applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore, bruteForceErase);
 
-//                            // CSV export...
-//                            if (blastOutputFilename != null) {
-//
-//                                Feature bestPeak = bestRow.getBestPeak();
-//
-//                                // CSV export: Write header
-//                                if (i == 0 && j == 0) {
-//                                    objects.addAll(Arrays.asList(columnNames));
-//                                    // Write to CSV
-//                                    for (Object obj: objects) {
-//                                        writer.write(obj.toString());
-//                                        writer.write(fieldSeparator);
-//                                    }
-//                                    writer.newLine();
-//                                    // Reset vector
-//                                    objects = new Vector<Object>();
-//                                }
-//
-//                                // Piaf name
-//                                if (i == 0) {
-//                                    String name = peakList.getName();
-//                                    objects.add(name.substring(0, name.indexOf(' ')));
-//                                }
-//                                // Add some peak string representation
-//                                String peakToStr = "#" + bestRow.getID() + " @" 
-//                                        + rtFormat.format(bestPeak.getRT()) + " / " + areaFormat.format(bestPeak.getArea());
-//                                objects.add(peakToStr);
-//                                // Add score of selected peak
-//                                objects.add(mtx[0][i+1]);
-//                                // Add RT  of selected peak
-//                                objects.add(bestPeak.getRT());
-//                                // Add area  of selected peak
-//                                objects.add(bestPeak.getArea());
-//
-//                            }
+                            // CSV export...
+                            if (!isEmptyFilename(blastOutputFilename)) {
+
+                                Feature bestPeak = bestRow.getBestPeak();
+
+                                // CSV export: Write header
+                                if (i == 0 && j == 0) {
+                                    objects.addAll(Arrays.asList(columnNames));
+                                    // Write to CSV
+                                    for (Object obj: objects) {
+                                        writer.write(obj.toString());
+                                        writer.write(fieldSeparator);
+                                    }
+                                    writer.newLine();
+                                    // Reset vector
+                                    objects = new Vector<Object>();
+                                }
+
+                                // Piaf name
+                                if (i == 0) {
+                                    String name = peakList.getName();
+                                    objects.add(name.substring(0, name.indexOf(' ')));
+                                }
+                                // Add some peak string representation
+                                String peakToStr = "#" + bestRow.getID() + " @" 
+                                        + rtFormat.format(bestPeak.getRT()) + " / " + areaFormat.format(bestPeak.getArea());
+                                objects.add(peakToStr);
+                                // Add score of selected peak
+                                objects.add(mtx[0][i+1]);
+                                // Add RT  of selected peak
+                                objects.add(bestPeak.getRT());
+                                // Add area  of selected peak
+                                objects.add(bestPeak.getArea());
+
+                            }
 
                         }
 
-//                        // CSV export: Write row
-//                        if (applyWithoutCheck && blastOutputFilename != null) {
-//                            // Write to CSV
-//                            for (int k=0; k < objects.size(); ++k) {
-//
-//                                Object obj = objects.get(k);
-//
-//                                writer.write(obj.toString());
-//                                if (k != objects.size() - 1) {
-//                                    writer.write(fieldSeparator);
-//                                }
-//                            }
-//                            writer.newLine();
-//                        }
+                        // CSV export: Write row
+                        if (!isEmptyFilename(blastOutputFilename)) {
+                            // Write to CSV
+                            for (int k=0; k < objects.size(); ++k) {
+
+                                Object obj = objects.get(k);
+
+                                writer.write(obj.toString());
+                                if (k != objects.size() - 1) {
+                                    writer.write(fieldSeparator);
+                                }
+                            }
+                            writer.newLine();
+                        }
 
                     }
                 }
                 
-//                // CSV export: Close file
-//                if (applyWithoutCheck && blastOutputFilename != null) {
-//                    writer.close();
-//                }
+                // CSV export: Close file
+                if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
+                    writer.close();
+                }
 
 
                 if (!isCanceled()) {
@@ -384,25 +400,32 @@ public class CustomJDXSearchTask extends AbstractTask {
      * @param peaklist
      * @param peak
      */
-    public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId) {
+    public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score, boolean bruteForce) {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
+            // Add possible identities to peaks (need to renew for the sake of unicity)
             JDXCompound unknownComp = JDXCompound.createUnknownCompound();
-
-            // Add possible identities to peaks
-            a_pl_row.addPeakIdentity(identity, false);
+            JDXCompound newIdentity = (JDXCompound) identity.clone();
+            a_pl_row.addPeakIdentity(newIdentity, false);
             a_pl_row.addPeakIdentity(unknownComp, false);
 
             // Set new identity.
-            if (a_pl_row.getID() == rowId) {
-                a_pl_row.setPreferredPeakIdentity(identity);
-                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                identity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+            if (a_pl_row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
+                // Do not overrule the current identity if marked as "ref compound"
+                if (a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF) != AlignedRowIdentity.TRUE
+                        || bruteForce) {
+                    // Save score
+                    newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+                    a_pl_row.setPreferredPeakIdentity(newIdentity);
+                }
             }
             // Erase / reset identity.
-            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
-                a_pl_row.setPreferredPeakIdentity(unknownComp);
+            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
+                if (bruteForce) {
+                    unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
+                    a_pl_row.setPreferredPeakIdentity(unknownComp);
+                }
             }
 
             // Notify MZmine about the change in the project
@@ -445,16 +468,16 @@ public class CustomJDXSearchTask extends AbstractTask {
 
         score = computeSimilarityScore(vec1, vec2);	
 
-//        // Adjust taking area in account (or not: areaMixFactor = 0.0).
-//        // TODO: Check if the following is pertinent with Pearson's correlation method
-//        //			(where scores are not normalized and can be negative).
-//        if (areaMixFactor > 0.0) {
-//            double maxArea = Double.MIN_VALUE;
-//            for (PeakListRow plr : currentPeakList.getRows()) {
-//                if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
-//            }
-//            score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
-//        }
+        // Adjust taking area in account (or not: areaMixFactor = 0.0).
+        // TODO: Check if the following is pertinent with Pearson's correlation method
+        //			(where scores are not normalized and can be negative).
+        if (areaMixFactor > 0.0) {
+            double maxArea = Double.MIN_VALUE;
+            for (PeakListRow plr : currentPeakList.getRows()) {
+                if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
+            }
+            score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
+        }
 
 
         LOG.info("Score: " + score);
@@ -492,6 +515,13 @@ public class CustomJDXSearchTask extends AbstractTask {
         } 
 
         return simScore;
+    }
+    
+    private boolean isEmptyFilename(File file) {
+        return (file == null 
+                || file.getPath().isEmpty() 
+                || file.getPath().toLowerCase().equals("csv")
+                || file.getPath().toLowerCase().equals(".csv"));
     }
 
     private void printMatrixToFile(Object[][] mtx, String filename) {

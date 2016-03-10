@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -57,6 +58,7 @@ import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.visualization.peaklisttable.ColumnSettingParameter;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
 import net.sf.mzmine.modules.visualization.peaklisttable.table.CommonColumnType;
@@ -186,8 +188,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
         int[] arrNbDetected = new int[peakList.getNumberOfRows()];
         PeakIdentity[] mainIdentities = new PeakIdentity[peakList.getNumberOfRows()];
         
-        String strAdjustedRTs = "", strIdentities = "";
-        String[] arrAdjustedRTs = null, arrIdentities = null;
+        String strAdjustedRTs = "", strIdentities = "", strScores = "";
+        String[] arrAdjustedRTs = null, arrIdentities = null, arrScores = null;
         
         // Build reference RDFs index
         RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
@@ -251,7 +253,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                             if (mainIdentity != null) {
                             
                                 strAdjustedRTs = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_RTS);
-                                strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                                strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES);
+                                strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
 
                                 // More than one rdf (align peak list) 
                                 if (this.peakList.getRawDataFiles().length > 1
@@ -259,20 +262,27 @@ public class PeakListFullTableModel extends DefaultTableModel implements
     
                                     arrAdjustedRTs = strAdjustedRTs.split(AlignedRowIdentity.IDENTITY_SEP, -1);
                                     arrIdentities = strIdentities.split(AlignedRowIdentity.IDENTITY_SEP, -1);
-    
+                                    arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                    
                                     int rdf_idx = Arrays.asList(rdf_sorted).indexOf(rdf);
                                     String peakAjustedRT = arrAdjustedRTs[rdf_idx];
                                     String peakIdentity = arrIdentities[rdf_idx];
-    
+                                    
                                     // Handle gap filled peaks
                                     if (peak.getFeatureStatus() == FeatureStatus.ESTIMATED) {
                                         peakAjustedRT = "ESTIMATED";
                                         peakIdentity = "NONE";
                                     }
+                                    String score = arrScores[rdf_idx];
+                                    String strScore = "";
+                                    if (score != null && !score.isEmpty())
+                                        strScore = " (" + rtFormat.format(Double.valueOf(score)) + ")";
+                                        
                                     objects.add(rtFormat.format(peak.getRT()) + 
                                                 " [" + peakAjustedRT + "]" + 
                                                 " / " + areaFormat.format(peak.getArea()) + 
-                                                " / " + peakIdentity);
+                                                " / " + peakIdentity
+                                                + strScore);
                                 } 
                                 // Handle regular single rdf peak list
                                 else {
@@ -305,21 +315,50 @@ public class PeakListFullTableModel extends DefaultTableModel implements
             if (mainIdentity != null) {
                 // Set identities info string (leave blank if single rdf/sample peak list)
                 if (this.peakList.getRawDataFiles().length > 1) {
-                    strIdentities2 = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_FREQ);
+                    
+                    strIdentities2 = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES);
+                    strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
                     if (strIdentities2 != null) {
+                        
                         arrIdentities = strIdentities2.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                        arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                        
+                        //--- Get sums
+                        
+                        Hashtable<String, Double> scoreAvgMap = new Hashtable<String, Double>();
+                        for (int i_s=0; i_s < arrIdentities.length; ++i_s) {
+                            
+                            // Skip 'no identity' peaks (that are not even 'Unknown') 
+                            if (arrIdentities[i_s] == null || arrIdentities[i_s].isEmpty())
+                                continue;
+                            
+                            if (!scoreAvgMap.keySet().contains(arrIdentities[i_s])) {
+                                scoreAvgMap.put(arrIdentities[i_s], Double.valueOf(arrScores[i_s]));
+                            } else {
+                                double curSum = scoreAvgMap.get(arrIdentities[i_s]);
+                                scoreAvgMap.put(arrIdentities[i_s], curSum + Double.valueOf(arrScores[i_s]));
+                            }
+                        }
+                        
+                        //---
+                        
                         Set<String> aSet = new HashSet<String>(Arrays.asList(arrIdentities));
                         strIdentities2 = "";
+                        
                         for (String str: aSet) {
+                            
                             if(str != null && !str.isEmpty()) {
                                 int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
-                                strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
+                                //strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
+                                double avgScore = scoreAvgMap.get(str) / (double) peakList.getRawDataFiles().length; // / (double) cardinality;
+                                strIdentities2 += str + " (" + rtFormat.format(avgScore) + ")" + AlignedRowIdentity.IDENTITY_SEP;
                             }
                         }
                         strIdentities2 = strIdentities2.substring(0, strIdentities2.length()-1);
                     }
                 } else {
-                    strIdentities2 = mainIdentity.getName() + " (1)";
+                    //strIdentities2 = mainIdentity.getName() + " (1)";
+                    strIdentities2 = mainIdentity.getName() + " (" + mainIdentity.getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE) + ")";
                 }
                 // Set most frequent identity
                 super.setValueAt(mainIdentity, nbHeaderRows-3, i+1);

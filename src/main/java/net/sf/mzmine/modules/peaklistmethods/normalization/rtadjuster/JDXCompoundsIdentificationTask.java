@@ -137,7 +137,7 @@ public class JDXCompoundsIdentificationTask extends AbstractTask {
 		rtSearchRangeC1 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C1).getValue();
 		rtSearchRangeC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.RT_SEARCH_WINDOW_C2).getValue();
 		simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
-		mixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.MIX_FACTOR).getValue();
+		mixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.AREA_MIX_FACTOR).getValue();
 		
 	        try {
 	            jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);

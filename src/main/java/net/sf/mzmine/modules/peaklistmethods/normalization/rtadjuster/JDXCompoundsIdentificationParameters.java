@@ -64,8 +64,8 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 
 	public static final ComboParameter<SimilarityMethodType> SIMILARITY_METHOD = new ComboParameter<SimilarityMethodType>(
 			"Similarity method", "Similarity method", SimilarityMethodType.values());
-        public static final DoubleParameter MIX_FACTOR = new DoubleParameter(
-                "Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is 'Similarity only')",
+        public static final DoubleParameter AREA_MIX_FACTOR = new DoubleParameter(
+                "Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantged).",
                 MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
         public static final DoubleParameter MIN_SCORE = new DoubleParameter(
                 "Minimum score", 
@@ -76,13 +76,13 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
 	                + "(displaying validation table) first", false);
-        public static final FileNameParameter BLAST_OUTPUT_FILENAME = new FileNameParameter(
-                "Blast output filename",
-                " Requires \"Apply without checking\" checked." +
-                        " Name of the resulting CSV file to write standard compounds best blast scores into." +
-                        " If the file already exists, it will be overwritten.",
-                "csv");
-        public static final StringParameter FIELD_SEPARATOR = new StringParameter(
+	public static final FileNameParameter BLAST_OUTPUT_FILENAME = new FileNameParameter(
+	        "Blast output filename",
+	        "Ignored if left blank." +
+	                " Name of the resulting CSV file to write standard compounds best blast scores into." +
+	                " If the file already exists, it will be overwritten.",
+	        "csv");
+	public static final StringParameter FIELD_SEPARATOR = new StringParameter(
                 "Field separator",
                 " Requires \"Apply without checking\" checked." +
                 "Character(s) used to separate fields in the exported file", ",");
@@ -92,7 +92,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 				SUFFIX,
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
-				SIMILARITY_METHOD, MIX_FACTOR,
+				SIMILARITY_METHOD, AREA_MIX_FACTOR,
 				MIN_SCORE,
 				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
 	}
