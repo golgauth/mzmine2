@@ -446,31 +446,45 @@ public class CustomJDXSearchTask extends AbstractTask {
      * @param peak
      */
     public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score, boolean bruteForce) {
+        
+        // Do not overrule the identity if marked as "ref compound"
+        if (!bruteForce) {
+            // Check if identity is available (no "IS_REF" using it)
+            for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
+                PeakListRow a_pl_row = peaklist.getRows()[i];
+                if (a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
+                    String isRefCompound = a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
+                    if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
+                        // Not available: the identity cannot be touched
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // If identity is available for change, feel free
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
             // Add possible identities to peaks (need to renew for the sake of unicity)
             JDXCompound unknownComp = JDXCompound.createUnknownCompound();
             JDXCompound newIdentity = (JDXCompound) identity.clone();
+            // Remove current (make sure we replace current identity by a copy)
+            a_pl_row.removePeakIdentity(identity);
+            // Add clone and use as preferred
             a_pl_row.addPeakIdentity(newIdentity, false);
             a_pl_row.addPeakIdentity(unknownComp, false);
 
             // Set new identity.
             if (a_pl_row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
-                // Do not overrule the current identity if marked as "ref compound"
-                if (a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF) != AlignedRowIdentity.TRUE
-                        || bruteForce) {
-                    // Save score
-                    newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
-                    a_pl_row.setPreferredPeakIdentity(newIdentity);
-                }
+                // Save score
+                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+                a_pl_row.setPreferredPeakIdentity(newIdentity);
             }
             // Erase / reset identity.
             else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
-                if (bruteForce) {
-                    unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
-                    a_pl_row.setPreferredPeakIdentity(unknownComp);
-                }
+                unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
+                a_pl_row.setPreferredPeakIdentity(unknownComp);
             }
 
             // Notify MZmine about the change in the project

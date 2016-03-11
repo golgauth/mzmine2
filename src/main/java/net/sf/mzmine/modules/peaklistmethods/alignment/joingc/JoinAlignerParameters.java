@@ -47,17 +47,20 @@ public class JoinAlignerParameters extends SimpleParameterSet {
 
     public static final MZToleranceParameter MZTolerance = new MZToleranceParameter();
     public static final DoubleParameter MZWeight = new DoubleParameter(
-	    "Weight for m/z", "Score for perfectly matching m/z values");
+	    "Weight for m/z", "Weight for chemical similarity. Score for perfectly matching m/z values.");
 
     public static final RTToleranceParameter RTTolerance = new RTToleranceParameter();
     public static final DoubleParameter RTWeight = new DoubleParameter(
-	    "Weight for RT", "Score for perfectly matching RT values");
+	    "Weight for RT", "Weight for retention times similarity. Score for perfectly matching RT values.");
     
     public static final DoubleParameter minScore = new DoubleParameter(
             "Minimum score", 
             "Minimum score for blast to be considered as successful " +
             "(WARN: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0)",
             NumberFormat.getNumberInstance(), JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE);
+    
+//    public static final DoubleParameter IDWeight = new DoubleParameter(
+//            "Weight for identity", "Weight for identities similarity. Score for perfectly matching identities.");
 
 
     //*** GLG HACK: Added...
@@ -95,6 +98,7 @@ public class JoinAlignerParameters extends SimpleParameterSet {
 	        MZTolerance, MZWeight,
 		RTTolerance, RTWeight,
 		minScore,
+//		IDWeight,
 		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,
 		compareIsotopePattern*/ 

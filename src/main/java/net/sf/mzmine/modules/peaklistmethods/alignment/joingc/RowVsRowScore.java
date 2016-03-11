@@ -80,7 +80,8 @@ class RowVsRowScore implements Comparable<RowVsRowScore> {
     
     RowVsRowScore(PeakList peakList, Hashtable<PeakList, double[]> rtAdjustementMapping,
             PeakListRow peakListRow, PeakListRow alignedRow,
-            double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight, 
+            double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,
+            double idWeight,
             boolean useApex, boolean useKnownCompoundsAsRef, RTTolerance rtToleranceAfter
             //, PeakListRow[] allRows, PeakListRow[] candidateRows
             ) 
@@ -282,8 +283,14 @@ class RowVsRowScore implements Comparable<RowVsRowScore> {
         // Scoring       
 //        score = ((1 - mzDiff / mzMaxDiff) * mzWeight)
 //                + ((1 - rtDiff / rtMaxDiff) * rtWeight);
+        
+        double idSimScore = (JDXCompound.isKnownIdentity(peakListRow.getPreferredPeakIdentity())
+                && JDXCompound.isKnownIdentity(alignedRow.getPreferredPeakIdentity())
+                && peakListRow.getPreferredPeakIdentity().getName() == alignedRow.getPreferredPeakIdentity().getName()) ? 1.0 : 0.0;
+        
         score = (chemSimScore * mzWeight)
                 + ((1 - rtDiff / rtMaxDiff) * rtWeight);
+                //+ idSimScore * idWeight;
 
     }
     

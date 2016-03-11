@@ -42,6 +42,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZTolerance;
@@ -73,6 +74,7 @@ class JoinAlignerTask extends AbstractTask {
     private RTTolerance rtTolerance;
     private double mzWeight, rtWeight;
     private double minScore;
+    private double idWeight;
     
     private boolean useApex, useKnownCompoundsAsRef;
     private RTTolerance rtToleranceAfter;
@@ -113,10 +115,14 @@ class JoinAlignerTask extends AbstractTask {
 
         rtWeight = parameters.getParameter(JoinAlignerParameters.RTWeight)
                 .getValue();
+        rtWeight = 0.0;
         
         minScore = parameters.getParameter(JoinAlignerParameters.minScore)
                 .getValue();
         
+//        idWeight = parameters.getParameter(JoinAlignerParameters.IDWeight)
+//                .getValue();
+        idWeight = 0.0;
         
         
         //***
@@ -226,7 +232,8 @@ class JoinAlignerTask extends AbstractTask {
 //                        allIdentified.add(row);
 //                    }
                     // If row actually was identified AND is a "reference compound"
-                    if (row.getPreferredPeakIdentity() != null) {
+                    //**if (row.getPreferredPeakIdentity() != null) {
+                    if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
                         String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
                         if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
                             allIdentified.add(row);
@@ -374,6 +381,7 @@ class JoinAlignerTask extends AbstractTask {
                             row, candidate,
                             RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
                             RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
+                            idWeight,
                             useApex, useKnownCompoundsAsRef, rtToleranceAfter);
 
                     // If match was not rejected afterwards and score is acceptable

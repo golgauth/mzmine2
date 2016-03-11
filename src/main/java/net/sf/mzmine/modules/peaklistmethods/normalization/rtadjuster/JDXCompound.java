@@ -241,6 +241,10 @@ public class JDXCompound extends SimplePeakIdentity {
         return new JDXCompound(UNKNOWN_JDX_COMP.getName(), null, null, null, null);
     }
 
+    public static boolean isKnownIdentity(PeakIdentity peakId) {
+        return (peakId != null && peakId.getName() != UNKNOWN_JDX_COMP.getName());
+    }
+    
 //    @Override
 //    public String toString() {
 //    	String thisAsHashCode = this.getClass().getName() + "@" + Integer.toHexString(hashCode()); 

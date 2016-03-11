@@ -388,6 +388,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             // Add possible identities to peaks (need to renew for the sake of unicity)
             JDXCompound unknownComp = JDXCompound.createUnknownCompound();
             JDXCompound newIdentity = (JDXCompound) identity.clone();
+            // Remove current (make sure we replace current identity by a copy)
+            a_pl_row.removePeakIdentity(identity);
+            // Add clone and use as preferred
             a_pl_row.addPeakIdentity(newIdentity, false);
             a_pl_row.addPeakIdentity(unknownComp, false);
 
