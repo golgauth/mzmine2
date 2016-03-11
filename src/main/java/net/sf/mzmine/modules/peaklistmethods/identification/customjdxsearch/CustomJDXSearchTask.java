@@ -19,15 +19,20 @@
 
 package net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Vector;
@@ -73,8 +78,7 @@ import com.google.common.collect.Range;
 public class CustomJDXSearchTask extends AbstractTask {
 
     // Logger.
-    private static final Logger LOG = Logger
-            .getLogger(CustomJDXSearchTask.class.getName());
+    private Logger logger = Logger.getLogger(this.getClass().getName());
 
     private final MZmineProject project;
 
@@ -102,6 +106,7 @@ public class CustomJDXSearchTask extends AbstractTask {
     private SimilarityMethodType simMethodType;
     private double areaMixFactor;
     private double minScore;
+    private boolean ignoreRanges;
 //    private boolean applyWithoutCheck;
     private File blastOutputFilename;
     private String fieldSeparator;
@@ -113,6 +118,7 @@ public class CustomJDXSearchTask extends AbstractTask {
     private NumberFormat mzFormat = MZmineCore.getConfiguration().getMZFormat();
     private NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
 
+    private Range<Double>[] rtSearchRanges;
 
 
     /**
@@ -143,6 +149,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
         areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(CustomJDXSearchParameters.MIN_SCORE).getValue();
+        ignoreRanges = parameters.getParameter(CustomJDXSearchParameters.IGNORE_RT_RANGES_FILES).getValue();
 //        applyWithoutCheck = parameters.getParameter(CustomJDXSearchParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(CustomJDXSearchParameters.FIELD_SEPARATOR).getValue();
@@ -182,7 +189,8 @@ public class CustomJDXSearchTask extends AbstractTask {
             }
         });        
         JDXCompound[] jdxCompounds = new JDXCompound[jdxFiles.length];
-        String[] columnNames = new String[1 + 4*jdxFiles.length];               
+        String[] columnNames = new String[1 + 4*jdxFiles.length];
+        rtSearchRanges = (Range<Double>[]) new Range[jdxFiles.length];
         
         if (!isCanceled()) {
             int i_f = 0;
@@ -194,18 +202,43 @@ public class CustomJDXSearchTask extends AbstractTask {
                     
                     // Parse jdx files
                     jdxCompounds[i_f] = JDXCompound.parseJDXfile(jdxFiles[i_f]);
-                    LOG.info("Parsed JDX file: " + jdxFiles[i_f].getName());
+                    logger.info("Parsed JDX file: " + jdxFiles[i_f].getName());
+
                     // Build csv header row
                     int col = 4 * (i_f % jdxFiles.length);
                     columnNames[1 + col] = jdxCompounds[i_f].getName();
                     columnNames[1 + col + 1] = " score";
                     columnNames[1 + col + 2] = " rt";
                     columnNames[1 + col + 3] = " area";
+                    
+                    // Try getting related ranges
+                    String rtFilename = jdxFiles[i_f].getPath() + ".rts";
+                    String line;
+                    try (
+                            InputStream fis = new FileInputStream(rtFilename);
+                            InputStreamReader isr = new InputStreamReader(fis/*, Charset.forName("UTF-8")*/);
+                            BufferedReader br = new BufferedReader(isr);
+                            ) {
+                        // Try get min and max
+                        Double min = Double.MIN_VALUE, max = Double.MAX_VALUE;
+                        while ((line = br.readLine()) != null) {
+                            if (line.startsWith("MIN_RT")) {
+                                min = Double.valueOf(line.split("=")[1]);
+                            }
+                            if (line.startsWith("MAX_RT")) {
+                                max = Double.valueOf(line.split("=")[1]);
+                            }
+                        }
+                        logger.info("Range file found: " + jdxFiles[i_f].getName() + ".rts" + " ([" + min + ", " + max + "])");
+                        rtSearchRanges[i_f] = Range.closed(min, max);
+                    } catch (/*FileNotFoundException |*/ IOException e) {
+                        rtSearchRanges[i_f] = Range.closed(Double.MIN_VALUE, Double.MAX_VALUE);
+                    }
                 }
                 
             } catch (JCAMPException e) {
                 String msg = "Error while pasring JDX compound file: " + jdxFiles[i_f].getName();
-                LOG.log(Level.WARNING, msg, e);
+                logger.log(Level.WARNING, msg, e);
                 setStatus(TaskStatus.ERROR);
                 setErrorMessage(msg + ": " + ExceptionUtils.exceptionToString(e));
                 return;
@@ -275,7 +308,10 @@ public class CustomJDXSearchTask extends AbstractTask {
                         // Retrieve results for each row.
                         scoreMatrix[finishedItems][0] = (double) finishedItems;
                         for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-//                            if (findRTranges[i].contains(a_row.getBestPeak().getRT())) {
+                            
+                            // Ignore range or inside range.
+                            if (ignoreRanges || rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
+                                
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
@@ -284,10 +320,11 @@ public class CustomJDXSearchTask extends AbstractTask {
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                                 else
                                     scoreMatrix[finishedItems][i+1] = score;
-//                            } else {
-//                                // Out of range.
-//                                scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
-//                            }
+                                
+                            } else {
+                                // Out of range.
+                                scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
+                            }
                         }
 
                         finishedItemsTotal++;
@@ -369,6 +406,14 @@ public class CustomJDXSearchTask extends AbstractTask {
                         }
 
                     }
+                    
+                    
+                    // Repaint the window to reflect the change in the peak list
+                    // (Only if not in "headless" mode)
+                    Desktop desktop = MZmineCore.getDesktop();
+                    if (!(desktop instanceof HeadLessDesktop))
+                        desktop.getMainWindow().repaint();
+
                 }
                 
                 // CSV export: Close file
@@ -383,12 +428,12 @@ public class CustomJDXSearchTask extends AbstractTask {
             } catch (Throwable t) {
                 StringWriter errors = new StringWriter();
                 t.printStackTrace(new PrintWriter(errors));
-                LOG.log(Level.WARNING, "Error stack!!! > " + errors.toString());
+                logger.log(Level.WARNING, "Error stack!!! > " + errors.toString());
 
                 final String msg = "Could not search standard compounds for list '" 
                         + ((curPeakList != null) ? curPeakList.getName() : "null") + "'."
                         + "Error stack!!! > " + errors.toString();
-                LOG.log(Level.WARNING, msg, t);
+                logger.log(Level.WARNING, msg, t);
                 setStatus(TaskStatus.ERROR);
                 setErrorMessage(msg + ": " + ExceptionUtils.exceptionToString(t));
             }
@@ -431,12 +476,7 @@ public class CustomJDXSearchTask extends AbstractTask {
             // Notify MZmine about the change in the project
             // TODO: Get the "project" from the instantiator of this class instead.
             MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-            project.notifyObjectChanged(i, false);
-            // Repaint the window to reflect the change in the peak list
-            // (Only if not in "headless" mode)
-            Desktop desktop = MZmineCore.getDesktop();
-            if (!(desktop instanceof HeadLessDesktop))
-                desktop.getMainWindow().repaint();
+            project.notifyObjectChanged(a_pl_row, false);
         }
     }
 
@@ -450,8 +490,8 @@ public class CustomJDXSearchTask extends AbstractTask {
 
         // Get scan of interest.
         Scan apexScan = refRDF.getScan(row.getBestPeak().getRepresentativeScanNumber());
-        LOG.info(refRDF + " | Computing score for row of id: " + row.getID());
-        LOG.info("Scan: " + apexScan);
+//        logger.info(refRDF + " | Computing score for row of id: " + row.getID());
+//        logger.info("Scan: " + apexScan);
 
         // Get scan m/z vector.
         double[] vec1 = new double[JDXCompound.MAX_MZ];
@@ -480,7 +520,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         }
 
 
-        LOG.info("Score: " + score);
+//        logger.info("Score: " + score);
 
         newComp.setBestScore(score);
 
@@ -511,7 +551,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                 simScore = new PearsonsCorrelation().correlation(vec1, vec2);
             }
         } catch (IllegalArgumentException e ) {
-            LOG.severe("Failed to compute similarity score for vec1.length=" + vec1.length + " and vec2.length=" + vec2.length);
+            logger.severe("Failed to compute similarity score for vec1.length=" + vec1.length + " and vec2.length=" + vec2.length);
         } 
 
         return simScore;

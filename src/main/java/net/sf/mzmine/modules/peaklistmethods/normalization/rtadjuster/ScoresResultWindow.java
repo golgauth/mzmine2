@@ -441,46 +441,46 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         ((ScoresResultTableModel)piafsScoresTable.getModel()).setColumnNames(columnNames);
     }
 
-    public void applyIdentities(PeakList peaklist, ComboboxPeak peak1, ComboboxPeak peak2) {
-        for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
-            PeakListRow a_pl_row = peaklist.getRows()[i];
-
-            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
-
-            // Add possible identities to peaks /*with score over 0.0*/.
-            a_pl_row.addPeakIdentity(peak1.getJDXCompound(), false);
-            a_pl_row.addPeakIdentity(peak2.getJDXCompound(), false);
-            a_pl_row.addPeakIdentity(unknownComp, false);
-
-            // Set new identity.
-            if (a_pl_row.getID() == peak1.getRowID()) {
-                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                peak1.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
-                //
-                a_pl_row.setPreferredPeakIdentity(peak1.getJDXCompound());
-            } else if (a_pl_row.getID() == peak2.getRowID()) {
-                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                peak2.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
-                //
-                a_pl_row.setPreferredPeakIdentity(peak2.getJDXCompound());
-            } 
-            // Erase / reset identity.
-            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(peak1.getJDXCompound().getName())
-                    || a_pl_row.getPreferredPeakIdentity().getName().equals(peak2.getJDXCompound().getName())) {
-                a_pl_row.setPreferredPeakIdentity(unknownComp);
-            }
-
-            // Notify the GUI about the change in the project
-            // TODO: Get the "project" from the instantiator of this class instead.
-            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-            project.notifyObjectChanged(i, false);
-            // Repaint the window to reflect the change in the peak list
-            Desktop desktop = MZmineCore.getDesktop();
-            if (!(desktop instanceof HeadLessDesktop))
-                desktop.getMainWindow().repaint();
-        }
-
-    }
+//    public void applyIdentities(PeakList peaklist, ComboboxPeak peak1, ComboboxPeak peak2) {
+//        for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
+//            PeakListRow a_pl_row = peaklist.getRows()[i];
+//
+//            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
+//
+//            // Add possible identities to peaks /*with score over 0.0*/.
+//            a_pl_row.addPeakIdentity(peak1.getJDXCompound(), false);
+//            a_pl_row.addPeakIdentity(peak2.getJDXCompound(), false);
+//            a_pl_row.addPeakIdentity(unknownComp, false);
+//
+//            // Set new identity.
+//            if (a_pl_row.getID() == peak1.getRowID()) {
+//                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+//                peak1.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+//                //
+//                a_pl_row.setPreferredPeakIdentity(peak1.getJDXCompound());
+//            } else if (a_pl_row.getID() == peak2.getRowID()) {
+//                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+//                peak2.getJDXCompound().setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+//                //
+//                a_pl_row.setPreferredPeakIdentity(peak2.getJDXCompound());
+//            } 
+//            // Erase / reset identity.
+//            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(peak1.getJDXCompound().getName())
+//                    || a_pl_row.getPreferredPeakIdentity().getName().equals(peak2.getJDXCompound().getName())) {
+//                a_pl_row.setPreferredPeakIdentity(unknownComp);
+//            }
+//
+//            // Notify the GUI about the change in the project
+//            // TODO: Get the "project" from the instantiator of this class instead.
+//            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+//            project.notifyObjectChanged(i, false);
+//            // Repaint the window to reflect the change in the peak list
+//            Desktop desktop = MZmineCore.getDesktop();
+//            if (!(desktop instanceof HeadLessDesktop))
+//                desktop.getMainWindow().repaint();
+//        }
+//
+//    }
 
 
     private void applyFoundIdentities() {
@@ -497,9 +497,20 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
 
             ComboboxPeak peak1 = (ComboboxPeak) cb1.getSelectedItem();
             ComboboxPeak peak2 = (ComboboxPeak) cb5.getSelectedItem();
+            
+            double scorePeak1 = (double) tableRow.get(2);
+            double scorePeak2 = (double) tableRow.get(6);
 
-            applyIdentities(pl, peak1, peak2);
+            //applyIdentities(pl, peak1, peak2);
+            JDXCompoundsIdentificationSingleTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1);
+            JDXCompoundsIdentificationSingleTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2);
         }
+        
+        // Repaint the window to reflect the change in the peak list
+        // (Only if not in "headless" mode)
+        Desktop desktop = MZmineCore.getDesktop();
+        if (!(desktop instanceof HeadLessDesktop))
+            desktop.getMainWindow().repaint();
 
         this.dispose(); 
     }

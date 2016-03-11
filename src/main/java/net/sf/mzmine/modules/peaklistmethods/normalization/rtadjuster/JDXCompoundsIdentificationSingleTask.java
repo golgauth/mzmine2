@@ -186,7 +186,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                 finishedItemsTotal = 0;
 
                 final JDXCompound[] findCompounds = { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
-                final Range[] findRTranges = { rtSearchRangeC1, rtSearchRangeC2 };
+                final Range[] rtSearchRanges = { rtSearchRangeC1, rtSearchRangeC2 };
 
                 String[] columnNames = { "Data file", 
                         jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
@@ -239,7 +239,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         // Retrieve results for each row.
                         scoreMatrix[finishedItems][0] = (double) finishedItems;
                         for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
-                            if (findRTranges[i].contains(a_row.getBestPeak().getRT())) {
+                            if (rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
@@ -285,7 +285,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             double bestScore = mtx[0][i+1];
 
                             // Update identities
-                            applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore);
+                            if (applyWithoutCheck)
+                                JDXCompoundsIdentificationSingleTask.applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore);
 
                             // CSV export...
                             if (!isEmptyFilename(blastOutputFilename)) {
@@ -341,6 +342,14 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         }
 
                     }
+                    
+                                        
+                    // Repaint the window to reflect the change in the peak list
+                    // (Only if not in "headless" mode)
+                    Desktop desktop = MZmineCore.getDesktop();
+                    if (!(desktop instanceof HeadLessDesktop))
+                        desktop.getMainWindow().repaint();                   
+                    
                 }
                 
                 // CSV export: Close file
@@ -372,7 +381,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
      * @param peaklist
      * @param peak
      */
-    public void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score) {
+    public static void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score) {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
             PeakListRow a_pl_row = peaklist.getRows()[i];
 
@@ -399,12 +408,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             // Notify MZmine about the change in the project
             // TODO: Get the "project" from the instantiator of this class instead.
             MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-            project.notifyObjectChanged(i, false);
-            // Repaint the window to reflect the change in the peak list
-            // (Only if not in "headless" mode)
-            Desktop desktop = MZmineCore.getDesktop();
-            if (!(desktop instanceof HeadLessDesktop))
-                desktop.getMainWindow().repaint();
+            project.notifyObjectChanged(a_pl_row, false);
         }
     }
 

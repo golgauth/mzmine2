@@ -175,8 +175,7 @@ public class JDXCompound extends SimplePeakIdentity {
         name = msSpectrum.getTitle();
         
         //if (jcampSpectrum != null) {
-        	LOG.info("This fucking lib is working and can parse : " + name);
-        	LOG.info("This fucking lib is working and can parse : " + msSpectrum.getYData().toArray());
+        	LOG.info("This f...g lib is working and can parse : " + name);
         //}
 //        spectrum = msSpectrum.getYData().toArray();
 //        LOG.info("spectrum: " + Arrays.toString(spectrum));
@@ -187,7 +186,6 @@ public class JDXCompound extends SimplePeakIdentity {
 //        spectrum = ((MassSpectrum)jcampSpectrum).getYData().toArray();
         
         // Full fill the spectrum
-        LOG.info("Length: " + msSpectrum.getXData().getLength());
 //        int minX = 0, maxX = 0;
         for (int i=0; i < msSpectrum.getXData().getLength(); ++i) {
 //        	if (msSpectrum.getYData().pointAt(i) > 0.0) {
@@ -196,8 +194,6 @@ public class JDXCompound extends SimplePeakIdentity {
 //        	}
         	spectrum[(int) Math.round(msSpectrum.getXData().pointAt(i))] = msSpectrum.getYData().pointAt(i);
         }
-        
-        LOG.info("spectrum: " + Arrays.toString(spectrum));
         
         jdxComp = new JDXCompound(name, id, spectrum, formula, jdxFile);
         //jdxComp.maxY = Doubles.max(spectrum);
@@ -267,8 +263,8 @@ public class JDXCompound extends SimplePeakIdentity {
                                                  spectrum,
                                                  getPropertyValue(PROPERTY_FORMULA),
                                                  compoundJDXfile);
-        LOG.info("Original hash: " + this.getClass().getName() + "@" + Integer.toHexString(hashCode()));
-        LOG.info("Clone hash: " + jdxCompound.getClass().getName() + "@" + Integer.toHexString(jdxCompound.hashCode()));
+//        LOG.info("Original hash: " + this.getClass().getName() + "@" + Integer.toHexString(hashCode()));
+//        LOG.info("Clone hash: " + jdxCompound.getClass().getName() + "@" + Integer.toHexString(jdxCompound.hashCode()));
         jdxCompound.setBestScore(bestScore);
         return jdxCompound;
     }

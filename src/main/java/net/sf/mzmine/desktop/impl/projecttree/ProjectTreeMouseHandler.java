@@ -32,6 +32,7 @@ import javax.swing.tree.TreePath;
 
 import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.MassList;
+import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
@@ -118,6 +119,8 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 "SHOW_PEAKLIST_TABLES");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list a'la Jul", this,
                 "SHOW_PEAKLIST_TABLES_ALA_JUL");
+        GUIUtils.addMenuItem(peakListPopupMenu, "Clear peak list identites", this,
+                "CLEAR_PEAKLIST_IDENTITIES");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list info", this,
                 "SHOW_PEAKLIST_INFO");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show scatter plot", this,
@@ -302,6 +305,22 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 //PeakListTableModule.showNewPeakListVisualizerWindow(peakList);
                 JoinAlignerGcModule.showNewPeakListVisualizerWindow(peakList);
             }
+        }
+        if (command.equals("CLEAR_PEAKLIST_IDENTITIES")) {
+            PeakList[] selectedPeakLists = tree
+                    .getSelectedObjects(PeakList.class);
+            for (PeakList peakList : selectedPeakLists) {
+                // Delete identities all rows
+                for (final PeakListRow row : peakList.getRows()) {
+                    for (final PeakIdentity id : row.getPeakIdentities()) {
+                        row.removePeakIdentity(id);
+                    }
+                    // Notify MZmine about the change in the project
+                    // TODO: Get the "project" from the instantiator of this class instead.
+                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+                    project.notifyObjectChanged(row, false);
+                }
+            }            
         }
         
         if (command.equals("SHOW_PEAKLIST_INFO")) {
