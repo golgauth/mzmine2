@@ -27,9 +27,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
@@ -48,17 +51,24 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
 
+import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.MassSpectrumType;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
+import net.sf.mzmine.datamodel.RawDataFileWriter;
+import net.sf.mzmine.datamodel.Scan;
+import net.sf.mzmine.datamodel.impl.SimpleDataPoint;
+import net.sf.mzmine.datamodel.impl.SimpleScan;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTablePopupMenu;
 //import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableWindow;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.visualization.spectra.SpectraVisualizerModule;
 import net.sf.mzmine.parameters.ParameterSet;
+import net.sf.mzmine.project.impl.RawDataFileImpl;
 import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
@@ -193,6 +203,144 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                         //      which we can store MZ peaks (See: "MergedPeak.addMzPeak") in.
                         //      after having averaged MZ intensities along all "table.peakList.getRawDataFiles()"
                         // ...
+                        
+                        double avgRT = Double.valueOf((String)table.getValueAt(row, col));
+                        Scan refScan = table.peakList.getRawDataFile(0).getScan(table.peakList.getRawDataFile(0).getScanNumbers()[0]);
+                        Scan refScan1 = table.peakList.getRawDataFile(0).getScan(table.peakList.getRawDataFile(0).getScanNumbers()[1]);
+                        Scan refScan2 = table.peakList.getRawDataFile(0).getScan(table.peakList.getRawDataFile(0).getScanNumbers()[2]);
+                        // Approximate time duration between two scans
+                        double approxDeltaRT = (
+                                (refScan1.getRetentionTime() - refScan.getRetentionTime())
+                                + (refScan2.getRetentionTime() - refScan1.getRetentionTime())
+                                ) / 2.0;
+                        
+                        RawDataFileWriter rawDataFileWriter = null;
+                        RawDataFile avgRDF = null;
+                        //**AveragedPeak avgPeak = null;
+                        
+                        try {
+                            //---- Build the said averaged feature
+                            //-- Averaged RDF
+                            rawDataFileWriter = MZmineCore.createNewFile("avg_rdf");
+                            avgRDF = new RawDataFileImpl("avg_rdf");
+    
+                            //-- Averaged Peak
+                            //**avgPeak = new AveragedPeak(avgRDF); //table.peakList.getRawDataFile(0));
+                            
+                            //-- Browse column
+                            // Scan numbers at average RT
+                            HashMap<RawDataFile, Integer> scansNumAtAvgMapping = new HashMap<RawDataFile, Integer>();
+                            
+                            for (int i = NB_HEADER_ROWS; i < table.getRowCount(); i++) {
+                                //RawDataFile rdf = table.peakList.getRawDataFile(i);
+                                Object value = table.getValueAt(i, col);
+                                if (value != null) {
+                                    // Skip non-detected rows
+                                    if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                                        RawDataFile rdf = table.peakList.getRawDataFile(i - NB_HEADER_ROWS);
+                                        PeakListRow a_row = peakListRows[col-1];
+                                        final Feature curPeak = a_row.getPeak(rdf);
+                                        // Add all dps to new peak
+                                        System.out.println(Arrays.toString(curPeak.getScanNumbers()));
+                                        // Scan number at average RT
+                                        //int avg_scan_num = -1;
+                                        double best_delta_rt = Double.MAX_VALUE;
+                                        double prev_delta_rt = Double.MAX_VALUE;
+                                        for (int scan_num : curPeak.getScanNumbers()) {
+                                            //**avgPeak.addMzPeak(/*fakeScanNum*/scan_num, curPeak.getDataPoint(scan_num));
+                                            
+                                            // Find scan nearest from average RT overall column
+                                            double delta_rt = Math.abs(avgRT - rdf.getScan(scan_num).getRetentionTime());
+                                            // If we go away back again from nearest, just stop, since scan_nums are RT ascending ordered
+                                            if (prev_delta_rt < delta_rt) break;
+                                            //
+                                            if (delta_rt < best_delta_rt) {
+                                                best_delta_rt = delta_rt;
+                                                scansNumAtAvgMapping.put(rdf, scan_num);
+                                            }
+                                            prev_delta_rt = delta_rt;
+                                        }
+                                       
+                                    }
+                                }
+                                
+                            }
+                            
+                            // 2nd pass
+                            int halfNbMarginScans = 10;
+                            for (int n = -halfNbMarginScans; n <= halfNbMarginScans; n++) {
+                                // Mapping per scan AND per mz
+                                HashMap<Double, ArrayList<DataPoint>> perMzDataPointsMapping = new HashMap<Double, ArrayList<DataPoint>>();
+                                
+                                RawDataFile cur_rdf;
+                                for (int i=NB_HEADER_ROWS; i < table.getRowCount(); i++) {
+                                    Object value = table.getValueAt(i, col);
+                                    if (value != null) {
+                                        // Skip non-detected rows
+                                        if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                                            cur_rdf = table.peakList.getRawDataFile(i - NB_HEADER_ROWS);
+                                            int scan_num = scansNumAtAvgMapping.get(cur_rdf) + n;
+                                            
+                                            Scan s = cur_rdf.getScan(scan_num);
+                                            // If current RDF does have a scan at index 'scan_num'
+                                            if (s != null) {
+                                                for (DataPoint dp : s.getDataPoints()) {
+                                                    ArrayList<DataPoint> perMzDps = perMzDataPointsMapping.get(dp.getMZ());
+                                                    if (perMzDps == null) {
+                                                        perMzDataPointsMapping.put(dp.getMZ(), new ArrayList<DataPoint>());
+                                                        perMzDps = perMzDataPointsMapping.get(dp.getMZ());
+                                                    }
+                                                    perMzDps.add(dp);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Build averaged dps list
+                                ArrayList<DataPoint> avgDps = new ArrayList<DataPoint>();
+                                for (Double mz : perMzDataPointsMapping.keySet()) {
+                                    ArrayList<DataPoint> mzDps = perMzDataPointsMapping.get(mz);
+                                    Double avg = 0d;
+                                    for (DataPoint dp : mzDps) {
+                                        avg += dp.getIntensity();
+                                    }
+                                    avg /= mzDps.size();
+                                    // New DataPoint at "fake" scan num
+                                    DataPoint avg_dp = new SimpleDataPoint(mz, avg);
+                                    avgDps.add(avg_dp);
+                                }
+                                
+                                SimpleScan newScan = new SimpleScan(refScan);
+                                newScan.setScanNumber(halfNbMarginScans + n + 1);
+                                newScan.setRetentionTime(avgRT + approxDeltaRT * n);
+                                newScan.setSpectrumType(MassSpectrumType.CENTROIDED);
+                                newScan.setDataPoints(avgDps.toArray(new DataPoint[avgDps.size()]));
+                                
+                                rawDataFileWriter.addScan(newScan);
+                            }
+                                
+                            // Create new averaged RDF
+                            // Finalize writing
+                            avgRDF = rawDataFileWriter.finishWriting();
+                            // project.addFile(avgRDF);
+
+                        
+
+                            // Done: finalize
+                            //**avgPeak.finishAveragedPeak();
+                            // And display
+                            SpectraVisualizerModule.showNewSpectrumWindow(
+                                    // avgPeak.getDataFile(),
+                                    avgRDF
+                                    , halfNbMarginScans + 1//1//avg_scan_num
+                                    //**, avgPeak.getRepresentativeScanNumber(), avgPeak
+                                    );
+                        
+                        } catch (Exception exception) {
+                            exception.printStackTrace();
+                        }
+                        
                     }
                     // Show MZ profile for given peak
                     else if (row >= NB_HEADER_ROWS) {
