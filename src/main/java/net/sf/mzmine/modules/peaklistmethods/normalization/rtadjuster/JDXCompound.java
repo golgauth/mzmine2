@@ -20,8 +20,10 @@
 package net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
@@ -35,11 +37,19 @@ import java.io.FileReader;
 //import org.apache.commons.lang.ArrayUtils;
 import org.jcamp.parser.JCAMPException;
 import org.jcamp.parser.JCAMPReader;
+import org.jcamp.parser.JCAMPWriter;
+import org.jcamp.spectrum.ArrayData;
 import org.jcamp.spectrum.MassSpectrum;
+import org.jcamp.spectrum.OrderedArrayData;
 import org.jcamp.spectrum.Spectrum;
+import org.jcamp.units.AliasUnit;
+import org.jcamp.units.BaseUnit;
+import org.jcamp.units.CommonUnit;
+import org.jcamp.units.DerivedUnit;
 
 import com.google.common.primitives.Doubles;
 
+import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 
@@ -51,7 +61,7 @@ public class JDXCompound extends SimplePeakIdentity {
 	// Logger.
 	private static final Logger LOG = Logger.getLogger(JDXCompound.class.getName());
 
-	public static final int MAX_MZ = 400; 
+	public static final int MAX_MZ = 800; 
 	
     //private final URL compoundUrl;
     private final /*URL*/ File compoundJDXfile;
@@ -68,6 +78,8 @@ public class JDXCompound extends SimplePeakIdentity {
     
     private int minX, maxX;
 
+    private Logger logger = Logger.getLogger(this.getClass().getName());
+    
     public static final JDXCompound UNKNOWN_JDX_COMP = new JDXCompound("Unknown", null, null, null, null);
     
     /**
@@ -205,6 +217,62 @@ public class JDXCompound extends SimplePeakIdentity {
         
     	return jdxComp;
     }
+    
+    public static boolean saveAsJDXfile(final String title, final DataPoint[] dataPoints, final File jdxFile) throws JCAMPException {
+        
+        String id = null;
+        String name = null;
+        String formula = null;
+        
+        double[] spectrum_x = new double[dataPoints.length];
+        double[] spectrum_y = new double[dataPoints.length];
+        ///Arrays.fill(spectrum, 0.0);
+        
+        Spectrum jcampSpectrum = null;
+        
+        BufferedWriter writer = null;
+        try {
+            
+            // If file doesnt exists, then create it
+            if (!jdxFile.exists()) { jdxFile.createNewFile(); }
+
+
+            for (int i=0; i < dataPoints.length; ++i) {
+                spectrum_x[i] = dataPoints[i].getMZ();
+                spectrum_y[i] = dataPoints[i].getIntensity();
+            }
+            
+            jcampSpectrum = new MassSpectrum(
+                    new OrderedArrayData(spectrum_x, new DerivedUnit("", "m/z", "m/z")), //CommonUnit.mz), //new AliasUnit(BaseUnit.generic, "m/z")), 
+                    new ArrayData(spectrum_y, new DerivedUnit("", "relative intensity", "relative intensity"))//CommonUnit.intensity) //new AliasUnit(BaseUnit.generic, "relative intensity"))
+                    );
+            
+            //jcampSpectrum = JCAMPReader.getInstance().createSpectrum(fileData.toString());
+            jcampSpectrum.setTitle(title);
+            
+            String jdxText = JCAMPWriter.getInstance().toJCAMP(jcampSpectrum);
+            
+            System.out.println(jdxText);
+            
+            writer = new BufferedWriter(new FileWriter(jdxFile.getAbsoluteFile()));
+            writer.write(jdxText);
+            
+        } catch (FileNotFoundException e) {
+            throw new JCAMPException("File not found: " + e.getMessage());
+        } catch (IOException | JCAMPException e) {
+            throw new JCAMPException("JDX writing error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new JCAMPException("Unknown error: " + e.getMessage());
+        } finally {
+            try {
+                if (writer != null) writer.close();
+            } catch ( IOException e) {
+                throw new JCAMPException("JDX writing error: " + e.getMessage());
+            }
+        }        
+        return true;
+    }
+    
 
     public double[] getSpectrum() {
     	return this.spectrum;

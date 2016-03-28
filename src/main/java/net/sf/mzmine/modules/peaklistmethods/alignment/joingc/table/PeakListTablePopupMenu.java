@@ -31,10 +31,12 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JFileChooser;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.ListSelectionModel;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 
 import net.sf.mzmine.datamodel.Feature;
@@ -84,6 +86,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //    private final JMenu searchMenu;
 //    private final JMenu idsMenu;
     private final JMenu exportMenu;
+    
 //    private final JMenuItem deleteRowsItem;
 //    private final JMenuItem addNewRowItem;
 //    private final JMenuItem plotRowsItem;
@@ -99,6 +102,8 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
     
     ////private final JMenuItem exportTableToCSVunified;
     private final JMenuItem exportTableToCSV;
+    private final JMenuItem exportColumnToJDX_Avg;
+    private final JMenuItem exportTableToJDX_Avg;
     
 //    private final JMenuItem manuallyDefineItem;
 //    private final JMenuItem showPeakRowSummaryItem;
@@ -168,7 +173,11 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
         ////exportTableToCSV = GUIUtils.addMenuItem(exportMenu,
         ////        "Table to CSV (2 files: \"-rt.csv\" + \"-area.csv\")", this);
         exportTableToCSV = GUIUtils.addMenuItem(exportMenu,
-                "Export table to CSV... (Cancelled: Use \"Peak list methods > Export\" menu instead)", this);
+                "¤ Export table to CSV... (Cancelled: Use \"Peak list methods > Export\" menu instead)", this);
+        exportColumnToJDX_Avg = GUIUtils.addMenuItem(exportMenu,
+                "¤ Export selected column averaged m/z profile to JDX...", this);
+        exportTableToJDX_Avg = GUIUtils.addMenuItem(exportMenu,
+                "Export table's averaged m/z profiles to JDX... (one JDX file per column)", this);
 
 //        // Identities menu.
 //        idsMenu = new JMenu("Identities");
@@ -568,6 +577,33 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //                logger.log(Level.SEVERE, "Could not write to files: " 
 //                        + this.table.getCSVfilenames()[1] + " | " + this.table.getCSVfilenames()[2]);
 //        }
+
+        if (exportTableToJDX_Avg.equals(src)) {
+            
+            final JFileChooser chooser = new JFileChooser();
+//            FileNameExtensionFilter filter = new FileNameExtensionFilter(
+//                "JDX & TXT Spectra Files", "txt", "jdx");
+//            chooser.setFileFilter(filter);
+            chooser.setCurrentDirectory(new java.io.File("."));
+            chooser.setDialogTitle("Select a directory to save JDX files to...");
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            // Disable the "All files" option
+            chooser.setAcceptAllFileFilterUsed(false);
+            int ret = chooser.showOpenDialog(this);
+            if(ret == JFileChooser.APPROVE_OPTION) {
+                
+                boolean success = this.table.exportToJDX(-1, chooser.getSelectedFile().getAbsolutePath());//getCurrentDirectory().getAbsolutePath());
+                if (success) {
+                    logger.log(Level.INFO, "Table saved to files: ");
+                    for (int i = 0; i < this.table.getJDXfilenames().length; i++)
+                        logger.log(Level.INFO, "> " + this.table.getJDXfilenames()[i]);
+                } else {
+                    logger.log(Level.SEVERE, "Could not write to files...");
+                }
+                
+            }
+            
+        }
 
 //        if (clearIdsItem.equals(src)) {
 //
