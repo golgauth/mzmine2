@@ -23,8 +23,10 @@ import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -434,11 +436,20 @@ class JoinAlignerTask extends AbstractTask {
                     alignedPeakList.addRow(targetRow);
                     //
                     infoRowsBackup.put(targetRow, new Object[] { 
-                            new Hashtable<RawDataFile, Double>(), 
-                            new Hashtable<RawDataFile, PeakIdentity>(), 
-                            new Hashtable<RawDataFile, RowVsRowScore>() 
+                            new HashMap<RawDataFile, Double>(), 
+                            new HashMap<RawDataFile, PeakIdentity>(), 
+                            new HashMap<RawDataFile, RowVsRowScore>() 
                             });
                 }
+                
+                // Add all non-existing identities from the original row to the
+                // aligned row
+                //PeakUtils.copyPeakListRowProperties(row, targetRow);
+                // Set the preferred identity
+                if (row.getPreferredPeakIdentity() != null)
+                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+                else
+                    targetRow.setPreferredPeakIdentity(JDXCompound.createUnknownCompound());
 
                 // Add all peaks from the original row to the aligned row
                 for (RawDataFile file : row.getRawDataFiles()) {
@@ -461,21 +472,23 @@ class JoinAlignerTask extends AbstractTask {
                             logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
 
                             targetRow.addPeak(file, adjustedPeak);
-                            //infoPeaksBackup.put(adjustedPeak, new Object[] { targetRow, originalPeak.getRT(), row.getPreferredPeakIdentity() });
+                            // Adjusted RT info
                             rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
-                            //infoRowsBackup.put(targetRow, new Object[] { targetRow, originalPeak.getRT(), row.getPreferredPeakIdentity() });
-                            ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]).put(file, adjustedRT);//originalPeak.getRT());
-                            ((Hashtable<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, row.getPreferredPeakIdentity());
-                            
-                            String strScore = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE);
-                            if (strScore != null)
-                                ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
-                            else
-                                ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
+                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]).put(file, adjustedRT);//originalPeak.getRT());
                             
                         } else {
                             targetRow.addPeak(file, originalPeak);
                         }
+                        
+                        // Identification info
+                        ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
+                        //
+                        String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE);
+                        if (strScore != null)
+                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
+                        else
+                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
+                        
                         logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
                     }
                     else {
@@ -483,14 +496,6 @@ class JoinAlignerTask extends AbstractTask {
                         setErrorMessage("Cannot run alignment, no originalPeak");
                         return;
                     }
-                }
-                
-                // Add all non-existing identities from the original row to the
-                // aligned row
-                //PeakUtils.copyPeakListRowProperties(row, targetRow);
-                // Set the preferred identity
-                if (targetRow.getPreferredPeakIdentity() == null) {
-                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
                 }
 
                 // Copy all possible peak identities, if these are not already present
@@ -538,14 +543,14 @@ class JoinAlignerTask extends AbstractTask {
             // Refresh averaged RTs...
             ((SimplePeakListRow) targetRow).update();
             
-            Hashtable<RawDataFile, Double> rowRTs = ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]);
-            Hashtable<RawDataFile, PeakIdentity> rowIDs = ((Hashtable<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]);
-            Hashtable<RawDataFile, Double> rowIDsScores = ((Hashtable<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]);
+            HashMap<RawDataFile, Double> rowRTs = ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]);
+            HashMap<RawDataFile, PeakIdentity> rowIDs = ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]);
+            HashMap<RawDataFile, Double> rowIDsScores = ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]);
             
             String[] rowIDsNames = new String[rowIDs.values().size()];
             int i = 0;
             for (PeakIdentity id: rowIDs.values()) {
-                rowIDsNames[i] = id.getName();
+                rowIDsNames[i] = (id != null) ? id.getName() : "";
                 ++i;
             }
             
@@ -568,10 +573,12 @@ class JoinAlignerTask extends AbstractTask {
                 if (Arrays.asList(targetRow.getRawDataFiles()).contains(rdf)) {
                     
                     // Adjusted RTs of source aligned rows used to compute target row
-                    double rt = rowRTs.get(rdf);
-                    strAdjustedRTs += rtFormat.format(rt) + AlignedRowIdentity.IDENTITY_SEP;
+                    if (recalibrateRT) {
+                        double rt = rowRTs.get(rdf);
+                        strAdjustedRTs += rtFormat.format(rt) + AlignedRowIdentity.IDENTITY_SEP;
+                    }
                     
-                    // Adjusted RTs of source aligned rows used to compute target row
+                    //
                     PeakIdentity id = rowIDs.get(rdf);
                     Double score = rowIDsScores.get(rdf);
                     
@@ -585,18 +592,24 @@ class JoinAlignerTask extends AbstractTask {
                     }
                     
                 } else {
-                    strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
+                    if (recalibrateRT) {
+                        strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
+                    }
                     strIdentities += AlignedRowIdentity.IDENTITY_SEP;
                     strScores += AlignedRowIdentity.IDENTITY_SEP;
                 }
                 
             }
-            strAdjustedRTs = strAdjustedRTs.substring(0, strAdjustedRTs.length()-1);
+            if (recalibrateRT) {
+                strAdjustedRTs = strAdjustedRTs.substring(0, strAdjustedRTs.length()-1);
+            }
             strIdentities = strIdentities.substring(0, strIdentities.length()-1);
             strScores = strScores.substring(0, strScores.length()-1);
             
-            // Need to set the "preferred" identity
-            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
+            //
+            if (recalibrateRT) {
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
+            }
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES, strIdentities);
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES, strScores);
             // Copy the original preferred identity's properties into the targetRow's preferred one

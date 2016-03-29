@@ -254,7 +254,7 @@ class CSVExportTask extends AbstractTask {
                     .getNumberOfRows()];
 
             String strAdjustedRTs = "", strIdentities = "", strScores = "";
-            String[] arrAdjustedRTs = null, arrIdentities = null, arrScores;
+            String[] arrAdjustedRTs = null, arrIdentities = null, arrScores = null;
 
             // Build reference RDFs index
             RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
@@ -326,23 +326,29 @@ class CSVExportTask extends AbstractTask {
                                             .getPropertyValue(AlignedRowIdentity.PROPERTY_RTS);
                                     strIdentities = ((SimplePeakIdentity) mainIdentity)
                                             .getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES);
-                                    strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
+                                    strScores = ((SimplePeakIdentity) mainIdentity)
+                                            .getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
 
                                     // More than one rdf (align peak list)
                                     if (peakList.getRawDataFiles().length > 1
                                             && (strAdjustedRTs != null && strIdentities != null)) {
 
-                                        arrAdjustedRTs = strAdjustedRTs
+                                        if (strAdjustedRTs != null)
+                                            arrAdjustedRTs = strAdjustedRTs
                                                 .split(AlignedRowIdentity.IDENTITY_SEP,
                                                         -1);
-                                        arrIdentities = strIdentities
+                                        if (strIdentities != null)
+                                            arrIdentities = strIdentities
                                                 .split(AlignedRowIdentity.IDENTITY_SEP,
                                                         -1);
-                                        arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                        if (strScores != null)
+                                            arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
 
                                         int rdf_idx = Arrays.asList(rdf_sorted)
                                                 .indexOf(rdf);
-                                        String peakAjustedRT = arrAdjustedRTs[rdf_idx];
+                                        String peakAjustedRT = null;
+                                        if (strAdjustedRTs != null)
+                                            peakAjustedRT = arrAdjustedRTs[rdf_idx];
                                         String peakIdentity = arrIdentities[rdf_idx];
 
                                         // Handle gap filled peaks
@@ -358,8 +364,7 @@ class CSVExportTask extends AbstractTask {
                                         objects.add(rtFormat.format(
                                                 peak.getRT())
                                                 + SEP_STR_CSV
-                                                + peakAjustedRT
-                                                + SEP_STR_CSV
+                                                + ((strAdjustedRTs != null) ? " [" + peakAjustedRT + "]" + SEP_STR_CSV : "")
                                                 + areaFormat.format(peak.getArea())
                                                 + SEP_STR_CSV + peakIdentity
                                                 + strScore);

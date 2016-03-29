@@ -257,15 +257,20 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                 strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES);
 
                                 // More than one rdf (align peak list) 
-                                if (this.peakList.getRawDataFiles().length > 1
-                                        && (strAdjustedRTs != null && strIdentities != null)) {
-    
-                                    arrAdjustedRTs = strAdjustedRTs.split(AlignedRowIdentity.IDENTITY_SEP, -1);
-                                    arrIdentities = strIdentities.split(AlignedRowIdentity.IDENTITY_SEP, -1);
-                                    arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                if (this.peakList.getRawDataFiles().length > 1) {
+                                    
+                                    if (strAdjustedRTs != null)
+                                        arrAdjustedRTs = strAdjustedRTs.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                    if (strIdentities != null)
+                                        arrIdentities = strIdentities.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                    if (strScores != null)
+                                        arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
                                     
                                     int rdf_idx = Arrays.asList(rdf_sorted).indexOf(rdf);
-                                    String peakAjustedRT = arrAdjustedRTs[rdf_idx];
+                                    //
+                                    String peakAjustedRT = null;
+                                    if (strAdjustedRTs != null) 
+                                        peakAjustedRT = arrAdjustedRTs[rdf_idx];
                                     String peakIdentity = arrIdentities[rdf_idx];
                                     
                                     // Handle gap filled peaks
@@ -279,7 +284,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                         strScore = " (" + rtFormat.format(Double.valueOf(score)) + ")";
                                         
                                     objects.add(rtFormat.format(peak.getRT()) + 
-                                                " [" + peakAjustedRT + "]" + 
+                                                ((strAdjustedRTs != null) ? " [" + peakAjustedRT + "]" : "") + 
                                                 " / " + areaFormat.format(peak.getArea()) + 
                                                 " / " + peakIdentity
                                                 + strScore);
