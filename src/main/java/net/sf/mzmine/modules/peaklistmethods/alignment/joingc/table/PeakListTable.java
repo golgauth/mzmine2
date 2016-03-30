@@ -297,6 +297,8 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 
     private static RawDataFile buildAverageRDF(PeakList peakList, int col, int halfNbMarginScans, double avgRT) {
         
+        boolean averageAtAvgRT = false;
+        
         // Sort rows by ascending RT
         final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(peakList);
         //PeakListRow pl_row = peakListRows[col];
@@ -326,7 +328,7 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
             // Scan numbers at average RT
             HashMap<RawDataFile, Integer> scansNumAtAvgMapping = new HashMap<RawDataFile, Integer>();
             
-            // 1st pass
+            // 1st pass: Map apex scan (or scan of interest) to RDF
             for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
                 
                 RawDataFile rdf = peakList.getRawDataFile(i);
@@ -334,30 +336,32 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 final Feature curPeak = a_row.getPeak(rdf);
                 
                 // Skip non-detected rows
-                if (curPeak != null) {
-                    // Add all dps to new peak
-                    System.out.println(Arrays.toString(curPeak.getScanNumbers()));
-                    // Scan number at average RT
-                    double best_delta_rt = Double.MAX_VALUE;
-                    double prev_delta_rt = Double.MAX_VALUE;
-                    for (int scan_num : curPeak.getScanNumbers()) {
-                        //**avgPeak.addMzPeak(/*fakeScanNum*/scan_num, curPeak.getDataPoint(scan_num));
-                        
-                        // Find scan nearest from average RT overall column
-                        double delta_rt = Math.abs(avgRT - rdf.getScan(scan_num).getRetentionTime());
-                        // If we go away back again from nearest, just stop, since scan_nums are RT ascending ordered
-                        if (prev_delta_rt < delta_rt) break;
-                        //
-                        if (delta_rt < best_delta_rt) {
-                            best_delta_rt = delta_rt;
-                            scansNumAtAvgMapping.put(rdf, scan_num);
+                if (curPeak != null) {               
+                    if (averageAtAvgRT) {
+                        // Scan number at average avgRT
+                        double best_delta_rt = Double.MAX_VALUE;
+                        double prev_delta_rt = Double.MAX_VALUE;
+                        for (int scan_num : curPeak.getScanNumbers()) {
+                            //**avgPeak.addMzPeak(/*fakeScanNum*/scan_num, curPeak.getDataPoint(scan_num));
+                            
+                            // Find scan nearest from average RT overall column
+                            double delta_rt = Math.abs(avgRT - rdf.getScan(scan_num).getRetentionTime());
+                            // If we go away back again from nearest, just stop, since scan_nums are RT ascending ordered
+                            if (prev_delta_rt < delta_rt) break;
+                            //
+                            if (delta_rt < best_delta_rt) {
+                                best_delta_rt = delta_rt;
+                                scansNumAtAvgMapping.put(rdf, scan_num);
+                            }
+                            prev_delta_rt = delta_rt;
                         }
-                        prev_delta_rt = delta_rt;
+                    } else {
+                        scansNumAtAvgMapping.put(rdf, curPeak.getRepresentativeScanNumber());
                     }
                 }
             }
             
-            // 2nd pass
+            // 2nd pass: Compute averaged RDF (only a subset of scans before and after the scan of interest)
             for (int n = -halfNbMarginScans; n <= halfNbMarginScans; n++) {
                 // Mapping per scan AND per mz
                 HashMap<Double, ArrayList<DataPoint>> perMzDataPointsMapping = new HashMap<Double, ArrayList<DataPoint>>();
