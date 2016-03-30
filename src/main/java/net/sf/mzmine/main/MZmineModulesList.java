@@ -43,7 +43,10 @@ import net.sf.mzmine.modules.peaklistmethods.identification.adductsearch.AdductS
 import net.sf.mzmine.modules.peaklistmethods.identification.camera.CameraSearchModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.complexsearch.ComplexSearchModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.customdbsearch.CustomDBSearchModule;
+
 import net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch.CustomJDXSearchModule;
+import net.sf.mzmine.modules.peaklistmethods.identification.nistgc.NistMsSearchGCModule;
+
 import net.sf.mzmine.modules.peaklistmethods.identification.formulaprediction.FormulaPredictionModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.formulapredictionpeaklist.FormulaPredictionPeakListModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.fragmentsearch.FragmentSearchModule;
@@ -178,6 +181,7 @@ public class MZmineModulesList {
             // Identification
             // GLG:
             CustomJDXSearchModule.class,
+            NistMsSearchGCModule.class,
             //
             CustomDBSearchModule.class, FormulaPredictionModule.class,
             FragmentSearchModule.class, AdductSearchModule.class,
