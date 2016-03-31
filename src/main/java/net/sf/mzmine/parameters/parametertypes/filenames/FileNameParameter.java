@@ -100,8 +100,8 @@ public class FileNameParameter
         File compValue = component.getValue();
         if (extension != null) {
             if (!(compValue.getName().toUpperCase()
-                    .endsWith(extension.toUpperCase()) || compValue.getName()
-                    .toLowerCase().endsWith(extension.toLowerCase())))
+                    .endsWith(extension) || compValue.getName()
+                    .toLowerCase().endsWith(extension)))
                 compValue = new File(compValue.getPath() + "." + extension);
         }
         this.value = compValue;

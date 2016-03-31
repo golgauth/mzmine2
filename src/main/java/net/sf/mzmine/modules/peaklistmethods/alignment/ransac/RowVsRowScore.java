@@ -28,7 +28,9 @@ import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
 
 /**
  * This class represents a score between peak list row and aligned peak list row
@@ -106,26 +108,9 @@ public class RowVsRowScore implements Comparable<RowVsRowScore> {
         double simScore = 0.0;
 
         try {
-
-            //                if (this.simMethodType == SimilarityMethodType.DOT) {
-            double[] vec1_norm = new double[vec1.length];
-            double[] vec2_norm = new double[vec2.length];
-
-            double div1 = 0.0, div2 = 0.0;
-            for (int i=0; i < vec1.length; ++i) {
-                div1 += vec1[i] * vec1[i];
-                div2 += vec2[i] * vec2[i];
-            }
-            for (int i=0; i < vec1.length; ++i) {
-                vec1_norm[i] = vec1[i] / Math.sqrt(div1);
-                vec2_norm[i] = vec2[i] / Math.sqrt(div2);
-            }
-            simScore = (new ArrayRealVector(vec1_norm)).dotProduct(vec2_norm);
-            //                } else if (this.simMethodType == SimilarityMethodType.PEARSON) {
-                //                        simScore = new PearsonsCorrelation().correlation(vec1, vec2);
-            //                }
+            simScore = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
         } catch (IllegalArgumentException e ) {
-            LOG.severe("Failed to compute similarity score for vec1.length=" + vec1.length + " and vec2.length=" + vec2.length);
+            LOG.severe(e.getMessage());
         } 
 
         return simScore;

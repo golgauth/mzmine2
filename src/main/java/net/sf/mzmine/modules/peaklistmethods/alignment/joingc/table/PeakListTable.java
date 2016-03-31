@@ -22,6 +22,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -34,6 +35,10 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
@@ -118,7 +123,11 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     
     private static String[] jdxFilenames = null;
     
-    
+    // Cells multi-select
+    private Map<Integer, Set<Integer>> selectedCells = new HashMap<>();
+    private Point firstExtendCell;
+    private Point lastExtendCell;
+
 
     public PeakListTable(PeakListTableAlaJulWindow window, ParameterSet parameters,
 	    PeakList peakList) {
@@ -242,38 +251,72 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
         });
     }
 
-    public boolean exportToJDX(int column, String directoryPath) {
+    public boolean exportToJDX(int column, String dirPath) {
+        
+        int col_begin, col_end;
         
         // Export whole table
         if (column == -1) {
-            jdxFilenames = new String[this.getColumnCount()-1];
-            for (int col=1; col < this.getColumnCount(); col++) {
-                
-                double avgRT = Double.valueOf((String)this.getValueAt(0, col));
-                String avgRT_formatted = String.format("%03d", col) + "_" + avgRT;
-                String identity = ((PeakIdentity)this.getValueAt(1, col)).getName();
-                
-                RawDataFile avgRDF = PeakListTable.buildAverageRDF(this.peakList, col-1, 0, avgRT);
-                Scan scan = avgRDF.getScan(avgRDF.getScanNumbers()[0]);
-                
-                // Scan m/z profile to JDX file
-                jdxFilenames[col-1] = directoryPath + File.separator + avgRT_formatted + "_" + identity + ".jdx";
-                try {
-                    JDXCompound.saveAsJDXfile(identity, scan.getDataPoints(), new File(jdxFilenames[col-1]));
-                } catch (JCAMPException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                    return false;
-                }
+            col_begin = 1;
+            col_end  = this.getColumnCount();
+        } else {
+            col_begin = column;
+            col_end  = column+1;
+        }
+            
+        jdxFilenames = new String[this.getColumnCount()-1];
+        for (int col = col_begin; col < col_end; col++) {
+            
+            double avgRT = Double.valueOf((String)this.getValueAt(0, col));
+            String avgRT_formatted = String.format("%03d", col) + "_" + avgRT;
+            String identity = ((PeakIdentity)this.getValueAt(1, col)).getName();
+            
+            RawDataFile avgRDF = PeakListTable.buildAverageRDF(this.peakList, col-1, 0, avgRT);
+            Scan scan = avgRDF.getScan(avgRDF.getScanNumbers()[0]);
+            
+            // Scan m/z profile to JDX file
+//            if (column == -1) {
+                jdxFilenames[col-1] = dirPath + File.separator + avgRT_formatted + "_" + identity + ".jdx";
+//            } else {
+//                jdxFilenames[col-1] = path;
+//            }
+            try {
+                JDXCompound.saveAsJDXfile(identity, scan.getDataPoints(), new File(jdxFilenames[col-1]));
+            } catch (JCAMPException e) {
+                e.printStackTrace();
+                return false;
             }
-        } 
-        // Export single column
-        else {
-            // TODO: ... 
         }
         
         return true;
     }
+    
+    public Map<RawDataFile, PeakListRow> getPeakAt(int row, int col) {
+        
+        //Feature peak = null;
+        Map<RawDataFile, PeakListRow> peak = null;
+        
+        if (row >= NB_HEADER_ROWS && col >= 1) {
+                
+            // Sort rows by ascending RT
+            final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(this.peakList);
+            PeakListRow pl_row = peakListRows[col-1];
+            
+            Object value = this.getValueAt(row, col);
+            if (value != null) {
+                if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                    RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                    //logger.info("rdf: " + rdf.getName());
+                    //peak = pl_row.getPeak(rdf);
+                    peak = new HashMap<RawDataFile, PeakListRow>();
+                    peak.put(rdf, pl_row);
+                }
+            }
+        }
+        
+        return peak;
+    }
+    
 
 //    private void resizeColumns() {
 //        // Auto size column width based on data
@@ -779,5 +822,102 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
         return PeakListTable.jdxFilenames;
     }
     
+    @Override
+    public void setRowHeight(int row, int rowHeight) {
+        int oldRowHeight = getRowHeight(row);
+        super.setRowHeight(row, rowHeight);
+        // Fire the row changed
+        firePropertyChange("singleRowHeight", oldRowHeight, row);
+    }
+
+    
+    // Extending JTable features (multi-select cells with CTRL+...)
+    @Override
+    public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend) {
+        if (toggle && isCellSelected(rowIndex, columnIndex) && !extend && selectedCells.containsKey(rowIndex)) {
+            selectedCells.get(rowIndex).remove(columnIndex);
+        } else {
+            if (!toggle && !extend) {
+                lastExtendCell = null;
+                selectedCells.clear();
+            }
+            addCellToSelection(rowIndex, columnIndex);
+            Point extendCell = new Point(rowIndex, columnIndex);
+            if (!extend) {
+                firstExtendCell = extendCell;
+                lastExtendCell = null;
+            } else if (lastExtendCell == null || !extendCell.equals(lastExtendCell)) {
+                for (int i = Math.min(firstExtendCell.x, rowIndex); i <= Math.max(firstExtendCell.x, rowIndex); i++) {
+                    for (int j = Math.min(firstExtendCell.y, columnIndex); j <= Math.max(firstExtendCell.y, columnIndex); j++) {
+                        addCellToSelection(i, j);
+                    }
+                }
+                lastExtendCell = extendCell;
+            }
+        }
+        super.changeSelection(rowIndex, columnIndex, toggle, extend);
+    }
+
+    private void addCellToSelection(int row, int column) {
+        Set<Integer> selectedColumns = selectedCells.get(row);
+        if (selectedColumns == null) {
+            selectedColumns = new TreeSet<>();
+            selectedCells.put(row, selectedColumns);
+        }
+        selectedColumns.add(column);
+    }
+
+    @Override
+    public void addRowSelectionInterval(int index0, int index1) {
+        for (int i = index0; i <= index1; i++) {
+            selectedCells.remove(i);
+        }
+        getColumnModel().getSelectionModel().addSelectionInterval(0, getColumnCount() - 1);
+        super.addRowSelectionInterval(index0, index1);
+    }
+
+    @Override
+    public void removeRowSelectionInterval(int index0, int index1) {
+        for (int i = index0; i <= index1; i++) {
+            selectedCells.remove(i);
+        }
+        super.removeRowSelectionInterval(index0, index1);
+    }
+
+    @Override
+    public void selectAll() {
+        selectedCells.clear();
+        super.selectAll();
+    }
+
+    @Override
+    public void clearSelection() {
+        if (selectedCells != null) {
+            selectedCells.clear();
+        }
+        super.clearSelection();
+    }
+
+    @Override
+    public boolean isCellSelected(int row, int column) {
+        if (!getSelectionModel().isSelectedIndex(row)) {
+            return false;
+        }
+        if (getSelectionModel().isSelectedIndex(row) && selectedCells.get(row) == null) {
+            return true;
+        }
+        return selectedCells.get(row).contains(column);
+    }
+
+    @Override
+    public void print(Graphics g) {
+        boolean showHGrid = getShowHorizontalLines();
+        boolean showVGrid = getShowVerticalLines();
+        setShowGrid(false);
+        super.print(g);
+        setShowHorizontalLines(showHGrid);
+        setShowVerticalLines(showVGrid);
+    }
+
     
 }

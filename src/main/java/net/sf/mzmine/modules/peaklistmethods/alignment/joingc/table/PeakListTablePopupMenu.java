@@ -28,27 +28,36 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.ListSelectionModel;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 
+import org.jcamp.parser.JCAMPException;
+
+import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
+import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.identification.formulaprediction.FormulaPredictionModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.nist.NistMsSearchModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.onlinedbsearch.OnlineDBSearchModule;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
 import net.sf.mzmine.modules.rawdatamethods.peakpicking.manual.ManualPeakPickerModule;
 import net.sf.mzmine.modules.visualization.intensityplot.IntensityPlotModule;
 import net.sf.mzmine.modules.visualization.peaklisttable.export.IsotopePatternExportModule;
@@ -86,6 +95,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //    private final JMenu searchMenu;
 //    private final JMenu idsMenu;
     private final JMenu exportMenu;
+    private final JMenu indentificationMenu;
     
 //    private final JMenuItem deleteRowsItem;
 //    private final JMenuItem addNewRowItem;
@@ -104,6 +114,15 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
     private final JMenuItem exportTableToCSV;
     private final JMenuItem exportColumnToJDX_Avg;
     private final JMenuItem exportTableToJDX_Avg;
+    //
+    private static String latestImportDir = ".";
+    
+    private final JMenuItem computeRowVsRowSim;
+    private final JMenuItem computeRowVsRefCompSim;
+    //
+    private static String latestExportDir = ".";
+    
+    
     
 //    private final JMenuItem manuallyDefineItem;
 //    private final JMenuItem showPeakRowSummaryItem;
@@ -175,9 +194,16 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
         exportTableToCSV = GUIUtils.addMenuItem(exportMenu,
                 "¤ Export table to CSV... (Cancelled: Use \"Peak list methods > Export\" menu instead)", this);
         exportColumnToJDX_Avg = GUIUtils.addMenuItem(exportMenu,
-                "¤ Export selected column averaged m/z profile to JDX...", this);
+                "Export selected column averaged m/z profile to JDX...", this);
         exportTableToJDX_Avg = GUIUtils.addMenuItem(exportMenu,
                 "Export table's averaged m/z profiles to JDX... (one JDX file per column)", this);
+        
+        indentificationMenu = new JMenu("Identification");
+        add(indentificationMenu);
+        computeRowVsRowSim = GUIUtils.addMenuItem(indentificationMenu,
+                "Compute the similarity score between two selected peaks", this);
+        computeRowVsRefCompSim = GUIUtils.addMenuItem(indentificationMenu,
+                "Compute the similarity score between the selected peak and a JDX compound", this);
 
 //        // Identities menu.
 //        idsMenu = new JMenu("Identities");
@@ -579,31 +605,136 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //        }
 
         if (exportTableToJDX_Avg.equals(src)) {
+            this.exportAvgToJDX(-1);
+        }
+        if (exportColumnToJDX_Avg.equals(src)) {
+            this.exportAvgToJDX(this.table.getSelectedColumn());
+        }
+        
+        
+        
+        if (computeRowVsRowSim.equals(src)) {
+            
+            // Get peaks
+            Map<RawDataFile, PeakListRow> peak1 = null, peak2 = null;           
+            for(int row = 0 ; row < table.getRowCount() ; row++) {
+                for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                    if(table.isCellSelected(row, col)) {
+                        if (peak1 == null)
+                            peak1 = table.getPeakAt(row, col);
+                        else if (peak2 == null)
+                            peak2 = table.getPeakAt(row, col);
+                        else
+                            break;
+                    }
+                }
+            }
+            
+            String msg_title = "Similarity score";
+            int msg_type = JOptionPane.INFORMATION_MESSAGE;
+            // Compute & display
+            if (peak1 != null && peak2 != null) {
+                
+                // Compute
+                double[] vec1 = new double[JDXCompound.MAX_MZ];
+                Arrays.fill(vec1, 0.0);
+                double[] vec2 = new double[JDXCompound.MAX_MZ];
+                Arrays.fill(vec2, 0.0);
+                
+                Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
+                RawDataFile rdf = entry.getKey();
+                PeakListRow pl_row = entry.getValue();                
+                Scan apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+                DataPoint[] dataPoints = apexScan.getDataPoints();
+                for (int j=0; j < dataPoints.length; ++j) {
+                    DataPoint dp = dataPoints[j];
+                    vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                }
+                //-
+                entry = peak2.entrySet().iterator().next();
+                rdf = entry.getKey();
+                pl_row = entry.getValue();                
+                apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+                dataPoints = apexScan.getDataPoints();
+                for (int j=0; j < dataPoints.length; ++j) {
+                    DataPoint dp = dataPoints[j];
+                    vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                }
+                //-
+                double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+                
+                // Display
+                JOptionPane.showMessageDialog(this, "Method:\t + " + SimilarityMethodType.DOT + "" + "\nScore:\t" + score, msg_title, msg_type);
+            
+            } else {
+                JOptionPane.showMessageDialog(this, "Select 2 peaks in the table using 'Ctrl+LMB'...", msg_title, msg_type);                
+            }
+        }
+        
+        if (computeRowVsRefCompSim.equals(src)) {
             
             final JFileChooser chooser = new JFileChooser();
-//            FileNameExtensionFilter filter = new FileNameExtensionFilter(
-//                "JDX & TXT Spectra Files", "txt", "jdx");
-//            chooser.setFileFilter(filter);
-            chooser.setCurrentDirectory(new java.io.File("."));
-            chooser.setDialogTitle("Select a directory to save JDX files to...");
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            FileNameExtensionFilter filter = new FileNameExtensionFilter("JDX Files", "jdx");
+            chooser.setFileFilter(filter);
+            chooser.setCurrentDirectory(new java.io.File(latestImportDir));
+            chooser.setDialogTitle("Select a JDX file to compare to...");
             // Disable the "All files" option
             chooser.setAcceptAllFileFilterUsed(false);
             int ret = chooser.showOpenDialog(this);
             if(ret == JFileChooser.APPROVE_OPTION) {
                 
-                boolean success = this.table.exportToJDX(-1, chooser.getSelectedFile().getAbsolutePath());//getCurrentDirectory().getAbsolutePath());
-                if (success) {
-                    logger.log(Level.INFO, "Table saved to files: ");
-                    for (int i = 0; i < this.table.getJDXfilenames().length; i++)
-                        logger.log(Level.INFO, "> " + this.table.getJDXfilenames()[i]);
-                } else {
-                    logger.log(Level.SEVERE, "Could not write to files...");
+                latestImportDir = chooser.getSelectedFile().getPath();
+                
+                String msg_title = "Similarity score";
+                int info = JOptionPane.INFORMATION_MESSAGE;
+                int err  = JOptionPane.ERROR_MESSAGE;
+                
+                try {
+                    // Get selected peak
+                    Map<RawDataFile, PeakListRow> peak1 = null;           
+                    for(int row = 0 ; row < table.getRowCount() ; row++) {
+                        for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                            if(table.isCellSelected(row, col)) {
+                                if (peak1 == null)
+                                    peak1 = table.getPeakAt(row, col);
+                                else
+                                    break;
+                            }
+                        }
+                    }
+                    JDXCompound jdxComp = JDXCompound.parseJDXfile(chooser.getSelectedFile());
+                    
+                    // Compute
+                    double[] vec1 = new double[JDXCompound.MAX_MZ];
+                    Arrays.fill(vec1, 0.0);
+                    double[] vec2 = new double[JDXCompound.MAX_MZ];
+                    Arrays.fill(vec2, 0.0);
+                    
+                    Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
+                    RawDataFile rdf = entry.getKey();
+                    PeakListRow pl_row = entry.getValue();                
+                    Scan apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+                    DataPoint[] dataPoints = apexScan.getDataPoints();
+                    for (int j=0; j < dataPoints.length; ++j) {
+                        DataPoint dp = dataPoints[j];
+                        vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                    }
+                    //-
+                    vec2 = jdxComp.getSpectrum();
+                    //-
+                    double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+                    
+                    // Display
+                    JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+                } catch (JCAMPException e1) {
+                    logger.log(Level.SEVERE, e1.getMessage());
+                    JOptionPane.showMessageDialog(this, e1.getMessage(), "Error [" + msg_title + "]", err);
                 }
                 
             }
             
         }
+
 
 //        if (clearIdsItem.equals(src)) {
 //
@@ -697,14 +828,41 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 range.upperEndpoint() + rtLen);
     }
 
-    /**
-     * Get the selected peak.
-     * 
-     * @return the peak.
-     */
-    private Feature getSelectedPeak() {
-
-        return clickedDataFile != null ? clickedPeakListRow
-                .getPeak(clickedDataFile) : clickedPeakListRow.getBestPeak();
+//    /**
+//     * Get the selected peak.
+//     * 
+//     * @return the peak.
+//     */
+//    private Feature getSelectedPeak() {
+//
+//        return clickedDataFile != null ? clickedPeakListRow
+//                .getPeak(clickedDataFile) : clickedPeakListRow.getBestPeak();
+//    }            
+        
+    private void exportAvgToJDX(int col) { 
+    
+        final JFileChooser chooser = new JFileChooser();
+        chooser.setCurrentDirectory(new java.io.File(latestExportDir));
+        chooser.setDialogTitle("Select a directory to save JDX files to...");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        // Disable the "All files" option
+        chooser.setAcceptAllFileFilterUsed(false);
+        
+        int ret = chooser.showOpenDialog(this);
+        if(ret == JFileChooser.APPROVE_OPTION) {
+            
+            latestExportDir = chooser.getSelectedFile().getPath();
+            
+            boolean success = this.table.exportToJDX(col, chooser.getSelectedFile().getAbsolutePath());
+            if (success) {
+                logger.log(Level.INFO, "Table column(s) saved to file(s): ");
+                for (int i = 0; i < this.table.getJDXfilenames().length; i++)
+                    logger.log(Level.INFO, "> " + this.table.getJDXfilenames()[i]);
+            } else {
+                logger.log(Level.SEVERE, "Could not write to file(s)...");
+            }
+            
+        }
     }
+
 }

@@ -316,7 +316,7 @@ class JoinAlignerTask extends AbstractTask {
             PeakList peakList = peakLists[newIds[i]];
             
             // Create a sorted set of scores matching
-            TreeSet<RowVsRowScore> scoreSet = new TreeSet<RowVsRowScore>();
+            TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
 
             PeakListRow allRows[] = peakList.getRows();
             logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
@@ -378,7 +378,7 @@ class JoinAlignerTask extends AbstractTask {
 //                            RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
 //                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight);
                     // GLG HACK: Use apex rather than average!
-                    RowVsRowScore score = new RowVsRowScore(
+                    RowVsRowScoreGC score = new RowVsRowScoreGC(
                             peakList, rtAdjustementMapping,
                             row, candidate,
                             RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
@@ -403,11 +403,11 @@ class JoinAlignerTask extends AbstractTask {
             Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
 
             // Iterate scores by descending order
-            Iterator<RowVsRowScore> scoreIterator = scoreSet.iterator();
+            Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
             //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
             while (scoreIterator.hasNext()) {
 
-                RowVsRowScore score = scoreIterator.next();
+                RowVsRowScoreGC score = scoreIterator.next();
 
                 // Check if the row is already mapped
                 if (alignmentMapping.containsKey(score.getPeakListRow()))
@@ -438,7 +438,7 @@ class JoinAlignerTask extends AbstractTask {
                     infoRowsBackup.put(targetRow, new Object[] { 
                             new HashMap<RawDataFile, Double>(), 
                             new HashMap<RawDataFile, PeakIdentity>(), 
-                            new HashMap<RawDataFile, RowVsRowScore>() 
+                            new HashMap<RawDataFile, RowVsRowScoreGC>() 
                             });
                 }
                 

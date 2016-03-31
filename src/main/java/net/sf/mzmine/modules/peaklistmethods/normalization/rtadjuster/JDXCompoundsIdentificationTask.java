@@ -40,6 +40,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.MZmineProcessingStep;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopepatternscore.IsotopePatternScoreCalculator;
 import net.sf.mzmine.modules.peaklistmethods.isotopes.isotopeprediction.IsotopePatternCalculator;
 import net.sf.mzmine.parameters.ParameterSet;
@@ -306,20 +307,16 @@ public class JDXCompoundsIdentificationTask extends AbstractTask {
 	}
 
 	private double computeSimilarityScore(double[] vec1, double[] vec2) {
-		
-		double simScore = 0.0;
-		
-		try {
-			if (this.simMethodType == SimilarityMethodType.DOT) {
-				simScore = new ArrayRealVector(vec1).dotProduct(vec2);
-			} else if (this.simMethodType == SimilarityMethodType.PEARSON) {
-				simScore = new PearsonsCorrelation().correlation(vec1, vec2);
-			}
-		} catch (IllegalArgumentException e ) {
-			LOG.severe("Failed to compute similarity score for vec1.length=" + vec1.length + " and vec2.length=" + vec2.length);
-		} 
-		
-		return simScore;
+
+	    double simScore = 0.0;
+
+	    try {
+	        simScore = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+	    } catch (IllegalArgumentException e ) {
+	        LOG.severe(e.getMessage());
+	    } 
+
+	    return simScore;
 	}
 	
 	

@@ -51,6 +51,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
@@ -541,35 +542,20 @@ public class CustomJDXSearchTask extends AbstractTask {
         return score;
     }
 
+    // Compute chemical similarity score according to given similarity method
     private double computeSimilarityScore(double[] vec1, double[] vec2) {
 
         double simScore = 0.0;
 
         try {
-
-            if (this.simMethodType == SimilarityMethodType.DOT) {
-                double[] vec1_norm = new double[vec1.length];
-                double[] vec2_norm = new double[vec2.length];
-
-                double div1 = 0.0, div2 = 0.0;
-                for (int i=0; i < vec1.length; ++i) {
-                    div1 += vec1[i] * vec1[i];
-                    div2 += vec2[i] * vec2[i];
-                }
-                for (int i=0; i < vec1.length; ++i) {
-                    vec1_norm[i] = vec1[i] / Math.sqrt(div1);
-                    vec2_norm[i] = vec2[i] / Math.sqrt(div2);
-                }
-                simScore = (new ArrayRealVector(vec1_norm)).dotProduct(vec2_norm);
-            } else if (this.simMethodType == SimilarityMethodType.PEARSON) {
-                simScore = new PearsonsCorrelation().correlation(vec1, vec2);
-            }
+            simScore = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, this.simMethodType);
         } catch (IllegalArgumentException e ) {
-            logger.severe("Failed to compute similarity score for vec1.length=" + vec1.length + " and vec2.length=" + vec2.length);
+            logger.severe(e.getMessage());
         } 
 
         return simScore;
     }
+    
     
     private boolean isEmptyFilename(File file) {
         return (file == null 
