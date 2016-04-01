@@ -556,10 +556,17 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if and i/o problem occurs.
      */
-    public static /*private*/ List<PeakIdentity> readSearchResults(
+    private List<PeakIdentity> readSearchResults(
             final File nistMsSearchDir,
             final int minMatchFactor, final int minReverseMatchFactor,
             final PeakListRow row)
+                    throws IOException {
+        return readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, row.getID());
+    }
+    public static /*private*/ List<PeakIdentity> readSearchResults(
+            final File nistMsSearchDir,
+            final int minMatchFactor, final int minReverseMatchFactor,
+            final int resultId)
                     throws IOException {
 
 	// Search results.
@@ -583,7 +590,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 		if (scanMatcher.matches()) {
 
 		    // Is the row ID correct?
-		    final int rowID = row.getID();
+		    final int rowID = resultId;
 		    final int hitID = Integer.parseInt(scanMatcher.group(1));
 		    if (rowID == hitID) {
 
@@ -773,6 +780,51 @@ public class NistMsSearchGCTask extends AbstractTask {
 	    writer.close();
 	}
 	return spectraFile;
+    }
+    public static File writeSpectraFile(final Scan scan, final int resultId,
+            final Collection<PeakListRow> neighbourRows) throws IOException {
+
+        final File spectraFile = File.createTempFile(SPECTRA_FILE_PREFIX,
+                SPECTRA_FILE_SUFFIX);
+        spectraFile.deleteOnExit();
+        final BufferedWriter writer = new BufferedWriter(new FileWriter(
+                spectraFile));
+        try {
+            LOG.finest("Writing spectra to file " + spectraFile);
+
+            // Write header.
+            final String name = SPECTRUM_NAME_PREFIX + resultId; //"Undefined";
+            writer.write("Name: "
+                    + name.substring(0,
+                            Math.min(SPECTRUM_NAME_MAX_LENGTH, name.length())));
+            writer.newLine();
+//          writer.write("Num Peaks: " + neighbourRows.size());
+//          writer.newLine();
+//
+//          for (final PeakListRow row : neighbourRows) {
+//              final Feature peak = row.getBestPeak();
+//              final int charge = peak.getCharge();
+//              final double mass = (peak.getMZ() - ionType.getAddedMass())
+//                      * (charge == 0 ? 1.0 : (double) charge);
+//              writer.write(mass + "\t" + peak.getHeight());
+//              writer.newLine();
+//          }
+            
+            writer.write("Num Peaks: " + scan.getDataPoints().length);
+            writer.newLine();
+
+            for (final DataPoint dp : scan.getDataPoints()) {
+                writer.write(dp.getMZ() + "\t" + dp.getIntensity());
+                writer.newLine();
+            }
+
+            
+        } finally {
+
+            // Close the open file.
+            writer.close();
+        }
+        return spectraFile;
     }
 
     /**

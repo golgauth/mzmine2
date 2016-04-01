@@ -437,7 +437,7 @@ public class CSVExportTask extends AbstractTask {
                             strIdentities2 = "";
                             for (String str : aSet) {
                                 if (str != null && !str.isEmpty()) {
-                                    int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
+                                    //int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
                                     //strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
                                     double avgScore = scoreAvgMap.get(str) / (double) peakList.getRawDataFiles().length; // / (double) cardinality;
                                     strIdentities2 += str + " (" + /*rtFormat.format(*/ avgScore /*)*/ + ")" + AlignedRowIdentity.IDENTITY_SEP;

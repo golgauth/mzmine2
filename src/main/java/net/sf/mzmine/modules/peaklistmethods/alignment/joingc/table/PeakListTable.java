@@ -22,6 +22,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -293,28 +294,67 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     
     public Map<RawDataFile, PeakListRow> getPeakAt(int row, int col) {
         
-        //Feature peak = null;
         Map<RawDataFile, PeakListRow> peak = null;
         
-        if (row >= NB_HEADER_ROWS && col >= 1) {
+        if (col >= 1) {
+            // Regular peak
+            if (row >= NB_HEADER_ROWS) {
+                    
+                // Sort rows by ascending RT
+                final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(this.peakList);
+                PeakListRow pl_row = peakListRows[col-1];
                 
-            // Sort rows by ascending RT
-            final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(this.peakList);
-            PeakListRow pl_row = peakListRows[col-1];
-            
-            Object value = this.getValueAt(row, col);
-            if (value != null) {
-                if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
-                    RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
-                    //logger.info("rdf: " + rdf.getName());
-                    //peak = pl_row.getPeak(rdf);
-                    peak = new HashMap<RawDataFile, PeakListRow>();
-                    peak.put(rdf, pl_row);
+                Object value = this.getValueAt(row, col);
+                if (value != null) {
+                    if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                        RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                        peak = new HashMap<RawDataFile, PeakListRow>();
+                        peak.put(rdf, pl_row);
+                    }
                 }
+            } 
+            // Averaged peak
+            else if (row == 0) {
+                int halfNbMarginScans = 0; // Get apex scan only
+                double avgRT = Double.valueOf((String)this.getValueAt(row, col));
+                RawDataFile avgRDF = PeakListTable.buildAverageRDF(this.peakList, col-1, halfNbMarginScans, avgRT);
+                // TODO: ... Build an AveragedPeak (The class already exists, but is pretty much unused for now)...
             }
         }
         
         return peak;
+    }
+    
+    public Scan getApexScanAt(int row, int col) {
+        
+        Scan apexScan = null;
+        
+        if (col >= 1) {
+            // Regular peak
+            if (row >= NB_HEADER_ROWS) {
+                    
+                // Sort rows by ascending RT
+                final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(this.peakList);
+                PeakListRow pl_row = peakListRows[col-1];
+                
+                Object value = this.getValueAt(row, col);
+                if (value != null) {
+                    if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                        RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                        apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+                    }
+                }
+            } 
+            // Averaged peak
+            else if (row == 0) {
+                int halfNbMarginScans = 0; // Get apex scan only
+                double avgRT = Double.valueOf((String)this.getValueAt(row, col));
+                RawDataFile avgRDF = PeakListTable.buildAverageRDF(this.peakList, col-1, halfNbMarginScans, avgRT);
+                apexScan = avgRDF.getScan(1);
+            }
+        }
+        
+        return apexScan;
     }
     
 
@@ -919,5 +959,7 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
         setShowVerticalLines(showVGrid);
     }
 
-    
+    public Frame getWindow() {
+        return this.window;
+    }
 }

@@ -20,9 +20,17 @@
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table;
 
 import java.awt.Component;
+import java.awt.Dialog.ModalityType;
+import java.awt.FlowLayout;
+import java.awt.Frame;
+import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -36,12 +44,18 @@ import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.ListSelectionModel;
+import javax.swing.UIManager;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 
@@ -133,6 +147,8 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
     //
     private static String latestExportDir = ".";
     
+    
+    private final NumberFormat format = new DecimalFormat("#0.0000");
     
     
 //    private final JMenuItem manuallyDefineItem;
@@ -637,27 +653,93 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
         
         
         
+//        if (computeRowVsRowSim.equals(src)) {
+//            
+//            // Get peaks
+//            Map<RawDataFile, PeakListRow> peak1 = null, peak2 = null;           
+//            for(int row = 0 ; row < table.getRowCount() ; row++) {
+//                for(int col = 0 ; col < table.getColumnCount() ; col++) {
+//                    if(table.isCellSelected(row, col)) {
+//                        if (peak1 == null)
+//                            peak1 = table.getPeakAt(row, col);
+//                        else if (peak2 == null)
+//                            peak2 = table.getPeakAt(row, col);
+//                        else
+//                            break;
+//                    }
+//                }
+//            }
+//            
+//            String msg_title = "Similarity score";
+//            int info = JOptionPane.INFORMATION_MESSAGE;
+//            // Compute & display
+//            if (peak1 != null && peak2 != null) {
+//                
+//                // Compute
+//                double[] vec1 = new double[JDXCompound.MAX_MZ];
+//                Arrays.fill(vec1, 0.0);
+//                double[] vec2 = new double[JDXCompound.MAX_MZ];
+//                Arrays.fill(vec2, 0.0);
+//                
+//                Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
+//                RawDataFile rdf = entry.getKey();
+//                PeakListRow pl_row = entry.getValue();                
+//                Scan apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+//                DataPoint[] dataPoints = apexScan.getDataPoints();
+//                for (int j=0; j < dataPoints.length; ++j) {
+//                    DataPoint dp = dataPoints[j];
+//                    vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+//                }
+//                //-
+//                entry = peak2.entrySet().iterator().next();
+//                rdf = entry.getKey();
+//                pl_row = entry.getValue();                
+//                apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+//                dataPoints = apexScan.getDataPoints();
+//                for (int j=0; j < dataPoints.length; ++j) {
+//                    DataPoint dp = dataPoints[j];
+//                    vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+//                }
+//                //-
+//                double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+//                
+//                // Display
+//                JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+//            
+//            } else {
+//                JOptionPane.showMessageDialog(this, "Select 2 peaks in the table using 'Ctrl+LMB'...", msg_title, info);                
+//            }
+//        }
         if (computeRowVsRowSim.equals(src)) {
             
             // Get peaks
-            Map<RawDataFile, PeakListRow> peak1 = null, peak2 = null;           
+            String rt1 = null, rt2 = null;
+            Scan peak1 = null, peak2 = null;           
             for(int row = 0 ; row < table.getRowCount() ; row++) {
                 for(int col = 0 ; col < table.getColumnCount() ; col++) {
                     if(table.isCellSelected(row, col)) {
-                        if (peak1 == null)
-                            peak1 = table.getPeakAt(row, col);
-                        else if (peak2 == null)
-                            peak2 = table.getPeakAt(row, col);
-                        else
+                        if (peak1 == null) {
+                            //peak1 = table.getPeakAt(row, col);
+                            peak1 = table.getApexScanAt(row, col);
+                            if (peak1 != null)
+                                rt1 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
+                        } else if (peak2 == null) {
+                            //peak2 = table.getPeakAt(row, col);
+                            peak2 = table.getApexScanAt(row, col);
+                            if (peak2 != null)
+                                rt2 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak2.getRetentionTime());
+                        } else
                             break;
                     }
                 }
             }
             
-            String msg_title = "Similarity score";
-            int msg_type = JOptionPane.INFORMATION_MESSAGE;
+            String msg_title = "Similarity";
+            int info = JOptionPane.INFORMATION_MESSAGE;
             // Compute & display
             if (peak1 != null && peak2 != null) {
+                
+                msg_title += " - [" + format.format(Double.valueOf(rt1)) + " / " + format.format(Double.valueOf(rt2)) + "]";
                 
                 // Compute
                 double[] vec1 = new double[JDXCompound.MAX_MZ];
@@ -665,21 +747,13 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 double[] vec2 = new double[JDXCompound.MAX_MZ];
                 Arrays.fill(vec2, 0.0);
                 
-                Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
-                RawDataFile rdf = entry.getKey();
-                PeakListRow pl_row = entry.getValue();                
-                Scan apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
-                DataPoint[] dataPoints = apexScan.getDataPoints();
+                DataPoint[] dataPoints = peak1.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
                 //-
-                entry = peak2.entrySet().iterator().next();
-                rdf = entry.getKey();
-                pl_row = entry.getValue();                
-                apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
-                dataPoints = apexScan.getDataPoints();
+                dataPoints = peak2.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
@@ -688,10 +762,14 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
                 
                 // Display
-                JOptionPane.showMessageDialog(this, "Method:\t + " + SimilarityMethodType.DOT + "" + "\nScore:\t" + score, msg_title, msg_type);
-            
+                //JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+                JDialog dialog = createInfoDialog(table.getWindow(), 
+                        "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + format.format(score), 
+                        msg_title);
+                dialog.setVisible(true);
+                
             } else {
-                JOptionPane.showMessageDialog(this, "Select 2 peaks in the table using 'Ctrl+LMB'...", msg_title, msg_type);                
+                JOptionPane.showMessageDialog(this, "Select 2 peaks in the table using 'Ctrl+LMB'...", msg_title, info);                
             }
         }
         
@@ -709,25 +787,33 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 
                 latestImportDir = chooser.getSelectedFile().getPath();
                 
-                String msg_title = "Similarity score";
+                String msg_title = "Similarity";
                 int info = JOptionPane.INFORMATION_MESSAGE;
                 int err  = JOptionPane.ERROR_MESSAGE;
                 
                 try {
                     // Get selected peak
-                    Map<RawDataFile, PeakListRow> peak1 = null;           
+                    //Map<RawDataFile, PeakListRow> peak1 = null;
+                    Scan peak1 = null;
+                    String rt = null;
                     for(int row = 0 ; row < table.getRowCount() ; row++) {
                         for(int col = 0 ; col < table.getColumnCount() ; col++) {
                             if(table.isCellSelected(row, col)) {
-                                if (peak1 == null)
-                                    peak1 = table.getPeakAt(row, col);
-                                else
+                                if (peak1 == null) {
+                                    //peak1 = table.getPeakAt(row, col);
+                                    peak1 = table.getApexScanAt(row, col);
+                                    if (peak1 != null)
+                                        rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
+                                } else
                                     break;
                             }
                         }
                     }
                     // Compute & display
                     if (peak1 != null) {
+                        
+                        msg_title += " - [" + format.format(Double.valueOf(rt)) + "]";
+                        
                         JDXCompound jdxComp = JDXCompound.parseJDXfile(chooser.getSelectedFile());
                         
                         // Compute
@@ -736,11 +822,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         double[] vec2 = new double[JDXCompound.MAX_MZ];
                         Arrays.fill(vec2, 0.0);
                         
-                        Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
-                        RawDataFile rdf = entry.getKey();
-                        PeakListRow pl_row = entry.getValue();                
-                        Scan apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
-                        DataPoint[] dataPoints = apexScan.getDataPoints();
+                        DataPoint[] dataPoints = peak1.getDataPoints();
                         for (int j=0; j < dataPoints.length; ++j) {
                             DataPoint dp = dataPoints[j];
                             vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
@@ -751,7 +833,11 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
                         
                         // Display
-                        JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+//                        JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+                        JDialog dialog = createInfoDialog(table.getWindow(), 
+                                "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + format.format(score), 
+                                msg_title);
+                        dialog.setVisible(true);
                     } else {
                         JOptionPane.showMessageDialog(this, "Select a peak in the table...", msg_title, err);                
                     }
@@ -778,24 +864,30 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 int minReverseMatchFactor = params.getParameter(NistParameters.MIN_REVERSE_MATCH_FACTOR).getValue();
                            
                 // Get selected peak
-                Map<RawDataFile, PeakListRow> peak1 = null;           
+                //Map<RawDataFile, PeakListRow> peak1 = null;
+                Scan peak1 = null;
+                String rt = null;
                 for(int row = 0 ; row < table.getRowCount() ; row++) {
                     for(int col = 0 ; col < table.getColumnCount() ; col++) {
                         if(table.isCellSelected(row, col)) {
-                            if (peak1 == null)
-                                peak1 = table.getPeakAt(row, col);
-                            else
+                            if (peak1 == null) {
+                                //peak1 = table.getPeakAt(row, col);
+                                peak1 = table.getApexScanAt(row, col);
+                                if (peak1 != null)
+                                    rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
+                            } else
                                 break;
                         }
                     }
                 }
                 
-                String msg_title = "Similarity scores (NIST)";
+                String msg_title = "Similarities (NIST)";
                 int info = JOptionPane.INFORMATION_MESSAGE;
                 int err  = JOptionPane.ERROR_MESSAGE;
                 // Compute & display
                 if (peak1 != null) {
                     
+                    msg_title += " - [" + format.format(Double.valueOf(rt)) + "]";
                     // Compute...
                 
                     try {
@@ -822,13 +914,18 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         final String command = nistMsSearchExe.getAbsolutePath() + ' '
                                 + NistMsSearchGCTask.COMMAND_LINE_ARGS;
                         
+                        final int resultId = peak1.getScanNumber();
+                        
+                        /*
                         Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
                         RawDataFile rdf = entry.getKey();
-                        PeakListRow pl_row = entry.getValue();                
+                        PeakListRow pl_row = entry.getValue();
+                        */                
                         //-
                         // Write spectra file.
-                        final File spectraFile = NistMsSearchGCTask.writeSpectraFile(table.getPeakList(), pl_row, null);
-        
+                        //final File spectraFile = NistMsSearchGCTask.writeSpectraFile(table.getPeakList(), pl_row, null);
+                        final File spectraFile = NistMsSearchGCTask.writeSpectraFile(peak1, resultId, null);
+                        
                         // Write locator file.
                         NistMsSearchGCTask.writeSecondaryLocatorFile(locatorFile2, spectraFile);
         
@@ -837,11 +934,10 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
         
                         // Read the search results file and store the
                         // results.
-                        List<PeakIdentity> identities = NistMsSearchGCTask.readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, pl_row);
+                        List<PeakIdentity> identities = NistMsSearchGCTask.readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, resultId);
                         
                         
                         //-
-                        NumberFormat format = new DecimalFormat("#0.000");
                         String msg = "";
                         for (PeakIdentity id : identities) {
                             double a_score = Double.valueOf(id.getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE));
@@ -849,10 +945,13 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         }
                         
                         // Display
-                        JOptionPane.showMessageDialog(this, msg, msg_title, info);
+//                        JOptionPane.showMessageDialog(this, msg, msg_title, info);
+                        JDialog dialog = createInfoDialog(table.getWindow(), msg, msg_title);
+                        dialog.setVisible(true);
                         
                     } catch (IOException e1) {
-                        JOptionPane.showMessageDialog(this, "Select a peak in the table...", msg_title, err);
+                        JOptionPane.showMessageDialog(this, e1.getMessage(), msg_title, err);
+                        e1.printStackTrace();
                     }
                 } else {
                     JOptionPane.showMessageDialog(this, "Select a peak in the table...", msg_title, err);                
@@ -988,5 +1087,58 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
             
         }
     }
+    
+    // Non-modal dialog...
+    static JDialog createInfoDialog(Frame parent, String message, String title) {
+        
+        final JDialog optionPaneDialog = new JDialog(parent, title);
+        
+        //Note we are creating an instance of a JOptionPane
+        //Normally it's just a call to a static method.
+        Object[] options = {"OK"};
+        JOptionPane optPane = new JOptionPane(message, 
+                JOptionPane.INFORMATION_MESSAGE, JOptionPane.OK_OPTION, 
+                UIManager.getIcon("OptionPane.informationIcon"),
+                options); //JOptionPane.OK_CANCEL_OPTION);
+             
+        //Listen for the JOptionPane button click. It comes through as property change 
+        //event with the property called "value". 
+        optPane.addPropertyChangeListener(new PropertyChangeListener()
+        {
+           public void propertyChange(PropertyChangeEvent e)
+           {
+              if (e.getPropertyName().equals("value"))
+              {
+//                switch ((Integer)e.getNewValue())
+//                {
+//                   case JOptionPane.OK_OPTION:
+//                       //user clicks OK
+//                      break;
+//                   case JOptionPane.CANCEL_OPTION:
+//                      //user clicks CANCEL
+//                      break;                       
+//                }
+                  switch ((String) e.getNewValue())
+                  {
+                  case "OK":
+                      //user clicks OK
+                      break;
+                  }
+                  optionPaneDialog.dispose();
+              }
+              //System.out.println(e.getPropertyName());
+           }
+        });
+        optionPaneDialog.setContentPane(optPane);
+             
+        //Let the JDialog figure out how big it needs to be
+        //based on the size of JOptionPane by calling the pack() method
+        optionPaneDialog.pack();
+        optionPaneDialog.setLocationRelativeTo(parent);
+        optionPaneDialog.setVisible(true);
+
+        return optionPaneDialog;
+    }
+    
 
 }
