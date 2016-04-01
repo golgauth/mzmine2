@@ -47,6 +47,7 @@ import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
+import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
@@ -503,7 +504,8 @@ public class CustomJDXSearchTask extends AbstractTask {
             // Check if identity is available (no "IS_REF" using it)
             for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
                 PeakListRow a_pl_row = peaklist.getRows()[i];
-                if (a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
+                if (a_pl_row.getPreferredPeakIdentity() != null 
+                        && a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
                     String isRefCompound = a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
                     if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
                         // Not available: the identity cannot be touched
@@ -547,6 +549,7 @@ public class CustomJDXSearchTask extends AbstractTask {
             }
             // Erase / reset identity.
             else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
+                //a_pl_row.removePeakIdentity(unknownComp);
                 unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
                 a_pl_row.setPreferredPeakIdentity(unknownComp);
             }
@@ -565,7 +568,7 @@ public class CustomJDXSearchTask extends AbstractTask {
             for (int j=0; j < a_pl_row.getPeakIdentities().length; ++j) {
                 for (int k=0; k < findCompounds.length; ++k) {
                     if (a_pl_row.getPeakIdentities()[j].getName().equals(findCompounds[k].getName())) {
-                        JDXCompound curIdentity = (JDXCompound) a_pl_row.getPeakIdentities()[j];
+                        SimplePeakIdentity curIdentity = (SimplePeakIdentity) a_pl_row.getPeakIdentities()[j];
                         // Score at row 'i' for compound 'k'
                         double score = scoreMatrix[i][k+1];
                         curIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
@@ -446,10 +447,18 @@ class JoinAlignerGCTask extends AbstractTask {
                 // aligned row
                 //PeakUtils.copyPeakListRowProperties(row, targetRow);
                 // Set the preferred identity
-                if (row.getPreferredPeakIdentity() != null)
+                ////if (row.getPreferredPeakIdentity() != null)
+                if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
                     targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+//                    //JDXCompound.setPreferredPeakIdentity(targetRow, row.getPreferredPeakIdentity());
+//                    SimplePeakIdentity newIdentity = new SimplePeakIdentity(prop);
+//                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+                }
                 else
                     targetRow.setPreferredPeakIdentity(JDXCompound.createUnknownCompound());
+//                    JDXCompound.setPreferredPeakIdentity(targetRow, JDXCompound.createUnknownCompound());
+                
+                    
 
                 // Add all peaks from the original row to the aligned row
                 for (RawDataFile file : row.getRawDataFiles()) {
@@ -554,16 +563,19 @@ class JoinAlignerGCTask extends AbstractTask {
                 ++i;
             }
             
-            // Save preferred (most frequent) identity
-            // Open question: Shouldn't we be set as "most frequent", the most 
-            //                  frequent excluding UNKNOWN??? (See *[Note2])
+//            // Save preferred (most frequent) identity
+//            // Open question: Shouldn't we be set as "most frequent", the most 
+//            //                  frequent excluding UNKNOWN??? (See *[Note2])
             int mainIdentityCard = 0;
+            double mainIdentitySum = 0.0;
             PeakIdentity mainIdentity = null;
 
             // Save original RTs and Identities
             String strAdjustedRTs = "";
             String strIdentities = "";
             String strScores = "";
+            // Object[] = { sum, cardinality }
+            HashMap<String, Object[]> scoreQuantMapping = new HashMap<String, Object[]>();
             
             /** Tricky: using preferred row identity to store information **/
             for (RawDataFile rdf: rdf_sorted) {
@@ -571,7 +583,7 @@ class JoinAlignerGCTask extends AbstractTask {
                 logger.info(">>>> RDF_write: " + rdf.getName());
                 
                 if (Arrays.asList(targetRow.getRawDataFiles()).contains(rdf)) {
-                    
+                                    
                     // Adjusted RTs of source aligned rows used to compute target row
                     if (recalibrateRT) {
                         double rt = rowRTs.get(rdf);
@@ -580,17 +592,49 @@ class JoinAlignerGCTask extends AbstractTask {
                     
                     //
                     PeakIdentity id = rowIDs.get(rdf);
-                    Double score = rowIDsScores.get(rdf);
+                    double score = rowIDsScores.get(rdf);
                     
-                    int cardinality = CollectionUtils.cardinality(id.getName(), Arrays.asList(rowIDsNames));
                     strIdentities += id.getName() + AlignedRowIdentity.IDENTITY_SEP;
                     strScores += score + AlignedRowIdentity.IDENTITY_SEP;
                     
-                    if (cardinality > mainIdentityCard) {// && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName()) /* *[Note2] */) {
+                    
+//                    int cardinality = CollectionUtils.cardinality(id.getName(), Arrays.asList(rowIDsNames));
+//                    if (cardinality > mainIdentityCard) {// && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName()) /* *[Note2] */) {
+//                        mainIdentity = id;
+//                        mainIdentityCard = cardinality;
+//                    }
+
+                    int cardinality = 0;
+                    double sum = 0.0;
+                    for (RawDataFile rdf2: rdf_sorted) {
+                        PeakIdentity id2 = rowIDs.get(rdf2);
+                        if (id2 != null && id2.getName().equals(id.getName())) {
+                            cardinality++;
+                            sum += rowIDsScores.get(rdf2);
+                        }
+                    }
+                    // If overall score is zero 'cardinality' prevails, Otherwise 'sum' prevails
+                    // (With sum only check 'null' and 'Unknown' identities would be in concurrency)
+                    if ((sum == 0.0 && cardinality > mainIdentityCard) || sum > mainIdentitySum) {
                         mainIdentity = id;
                         mainIdentityCard = cardinality;
+                        logger.info(">> found max for: " + mainIdentity.getName() + " / " + sum + ", " + mainIdentitySum + " / " + cardinality + ", " + mainIdentityCard);
+                        mainIdentitySum = sum;
                     }
                     
+                
+                    //-
+
+                    if (scoreQuantMapping.get(id.getName()) == null) {
+                        Object[] infos = { score, 1 };
+                        scoreQuantMapping.put(id.getName(), infos);
+                    } else {
+                        Object[] infos = scoreQuantMapping.get(id.getName());
+                        infos[0] = score + (double) infos[0];
+                        infos[1] = 1 + (Integer) infos[1];
+                    }
+                    
+
                 } else {
                     if (recalibrateRT) {
                         strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
@@ -606,22 +650,42 @@ class JoinAlignerGCTask extends AbstractTask {
             strIdentities = strIdentities.substring(0, strIdentities.length()-1);
             strScores = strScores.substring(0, strScores.length()-1);
             
+            String strQuant = "";
+            double mainIdentityQuant = Double.MIN_VALUE;
+            // Calculate normalized quantification & deduce most present identity
+            for (String idName : scoreQuantMapping.keySet()) {
+                Object[] infos = scoreQuantMapping.get(idName);
+                infos[0] = (double) infos[0] / (double) rdf_sorted.length;
+                strQuant += idName + "=" + infos[0] + AlignedRowIdentity.IDENTITY_SEP;
+                if ((double) infos[0] > mainIdentityQuant) {
+                    mainIdentityQuant = (double) infos[0];
+                }
+            }
+            strQuant = strQuant.substring(0, strQuant.length()-1);
+            ////strQuant = String.valueOf(mainIdentityQuant);
+            
             //
             if (recalibrateRT) {
+                logger.info(">> found max for: " + mainIdentity);
                 ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
             }
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES, strIdentities);
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES, strScores);
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_QUANT, strQuant);
             // Copy the original preferred identity's properties into the targetRow's preferred one
+            // and update the mainIdentity properties
             for (PeakIdentity p: targetRow.getPeakIdentities()) {
                 if (p.getName().equals(mainIdentity.getName())) {
+                ///if (p.getName().equals(mainIdentityName)) {
                     PeakIdentity targetMainIdentity = p;
                     targetRow.setPreferredPeakIdentity(targetMainIdentity);
+                //////JDXCompound.setPreferredPeakIdentity(targetRow, targetMainIdentity);
                     // Copy props
                     for (String key: mainIdentity.getAllProperties().keySet()) {
                         String value = mainIdentity.getAllProperties().get(key);
                         ((SimplePeakIdentity) targetMainIdentity).setPropertyValue(key, value);
                     }
+                    
                     break;
                 }
             }

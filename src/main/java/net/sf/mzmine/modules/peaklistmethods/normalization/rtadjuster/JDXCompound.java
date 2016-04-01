@@ -51,6 +51,7 @@ import com.google.common.primitives.Doubles;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.PeakIdentity;
+import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 
 //import jspecview.source.;
@@ -312,6 +313,31 @@ public class JDXCompound extends SimplePeakIdentity {
     public static boolean isKnownIdentity(PeakIdentity peakId) {
         return (peakId != null && peakId.getName() != UNKNOWN_JDX_COMP.getName());
     }
+    
+    public static void setPreferredPeakIdentity(PeakListRow row, PeakIdentity identity) {
+
+        if (identity == null)
+            return;
+
+        // Make sure we don not set an existing identity twice
+        // (PeakListRow.setPreferredPeakIdentity() doesn't guaranty that!)
+        for (PeakIdentity p : row.getPeakIdentities()) {
+            if (p.getName().equals(identity.getName())) {
+                row.setPreferredPeakIdentity(p);
+                return;
+            }
+        }
+        
+        row.setPreferredPeakIdentity(identity);
+        
+//        preferredIdentity = identity;
+//
+//        if (!identities.contains(identity)) {
+//            identities.add(identity);
+//        }
+
+    }
+
     
 //    @Override
 //    public String toString() {

@@ -328,22 +328,22 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         arrIdentities = strIdentities2.split(AlignedRowIdentity.IDENTITY_SEP, -1);
                         arrScores = strScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
                         
-                        //--- Get sums
-                        
-                        Hashtable<String, Double> scoreAvgMap = new Hashtable<String, Double>();
-                        for (int i_s=0; i_s < arrIdentities.length; ++i_s) {
-                            
-                            // Skip 'no identity' peaks (that are not even 'Unknown') 
-                            if (arrIdentities[i_s] == null || arrIdentities[i_s].isEmpty())
-                                continue;
-                            
-                            if (!scoreAvgMap.keySet().contains(arrIdentities[i_s])) {
-                                scoreAvgMap.put(arrIdentities[i_s], Double.valueOf(arrScores[i_s]));
-                            } else {
-                                double curSum = scoreAvgMap.get(arrIdentities[i_s]);
-                                scoreAvgMap.put(arrIdentities[i_s], curSum + Double.valueOf(arrScores[i_s]));
-                            }
-                        }
+//                        //--- Get sums
+//                        
+//                        Hashtable<String, Double> scoreAvgMap = new Hashtable<String, Double>();
+//                        for (int i_s=0; i_s < arrIdentities.length; ++i_s) {
+//                            
+//                            // Skip 'no identity' peaks (that are not even 'Unknown') 
+//                            if (arrIdentities[i_s] == null || arrIdentities[i_s].isEmpty())
+//                                continue;
+//                            
+//                            if (!scoreAvgMap.keySet().contains(arrIdentities[i_s])) {
+//                                scoreAvgMap.put(arrIdentities[i_s], Double.valueOf(arrScores[i_s]));
+//                            } else {
+//                                double curSum = scoreAvgMap.get(arrIdentities[i_s]);
+//                                scoreAvgMap.put(arrIdentities[i_s], curSum + Double.valueOf(arrScores[i_s]));
+//                            }
+//                        }
                         
                         //---
                         
@@ -355,7 +355,20 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                             if(str != null && !str.isEmpty()) {
                                 //int cardinality = CollectionUtils.cardinality(str, Arrays.asList(arrIdentities));
                                 //strIdentities2 += str + " (" + cardinality + ")" + AlignedRowIdentity.IDENTITY_SEP;
-                                double avgScore = scoreAvgMap.get(str) / (double) peakList.getRawDataFiles().length; // / (double) cardinality;
+                                
+                                ////double avgScore = scoreAvgMap.get(str) / (double) peakList.getRawDataFiles().length; // / (double) cardinality;
+                                ////strIdentities2 += str + " (" + rtFormat.format(avgScore) + ")" + AlignedRowIdentity.IDENTITY_SEP;
+                                String strAvgScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_QUANT);
+                                String[] arrAvgScores = strAvgScores.split(AlignedRowIdentity.IDENTITY_SEP, -1);
+                                // Find the proper avgScore
+                                double avgScore = 0.0;
+                                for (int k = 0; k < arrAvgScores.length; ++k) {
+                                    String[] key_val = arrAvgScores[k].split("=", -1);
+                                    if (key_val[0].equals(str)) {
+                                        avgScore = Double.valueOf(key_val[1]);
+                                        break;
+                                    }
+                                }
                                 strIdentities2 += str + " (" + rtFormat.format(avgScore) + ")" + AlignedRowIdentity.IDENTITY_SEP;
                             }
                         }

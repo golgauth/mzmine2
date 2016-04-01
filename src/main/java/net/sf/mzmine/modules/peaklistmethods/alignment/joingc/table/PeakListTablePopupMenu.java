@@ -916,11 +916,6 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         
                         final int resultId = peak1.getScanNumber();
                         
-                        /*
-                        Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
-                        RawDataFile rdf = entry.getKey();
-                        PeakListRow pl_row = entry.getValue();
-                        */                
                         //-
                         // Write spectra file.
                         //final File spectraFile = NistMsSearchGCTask.writeSpectraFile(table.getPeakList(), pl_row, null);

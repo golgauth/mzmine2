@@ -35,8 +35,13 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -118,6 +123,9 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
     
     public static final int NB_HEADER_ROWS = 4;
+        
+    static final boolean AVERAGE_AT_AVG_RT = false;
+    private static final double SMALL_PEAKS_THRESHOLD = 0.75;
     
     private static String csvFilename = "";
     private static String[] csvFilenames = null;
@@ -380,8 +388,6 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 
     private static RawDataFile buildAverageRDF(PeakList peakList, int col, int halfNbMarginScans, double avgRT) {
         
-        boolean averageAtAvgRT = false;
-        
         // Sort rows by ascending RT
         final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(peakList);
         //PeakListRow pl_row = peakListRows[col];
@@ -411,16 +417,47 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
             // Scan numbers at average RT
             HashMap<RawDataFile, Integer> scansNumAtAvgMapping = new HashMap<RawDataFile, Integer>();
             
-            // 1st pass: Map apex scan (or scan of interest) to RDF
+            PeakListRow a_row = peakListRows[col];
+            RawDataFile curRdf;
+            Feature curPeak = null;
+            
+            ArrayList<Integer> smallPeaksIndices = new ArrayList<Integer>();
+            Map<RawDataFile, Double> areasMap = new HashMap<RawDataFile, Double>();
             for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
+                curRdf = peakList.getRawDataFile(i);
+                curPeak = a_row.getPeak(curRdf);
+                if (curPeak != null) 
+                    areasMap.put(curRdf, curPeak.getArea());
+            }
+            for (RawDataFile rdf : areasMap.keySet()) {
+                System.out.println("> " + areasMap.get(rdf));
+            }
+            areasMap = PeakListTable.sortByValue(areasMap);
+            for (RawDataFile rdf : areasMap.keySet()) {
+                System.out.println("# " + areasMap.get(rdf));
+            }
+            // Find last quarter
+            int startIdx = (int) Math.round(areasMap.size() * SMALL_PEAKS_THRESHOLD);
+            
+            // 1st pass: Map apex scan (or scan of interest) to RDF
+            //for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {RawDataFile rdf : areasMap.keySet()
+            int cnt = -1;
+            for (RawDataFile rdf : areasMap.keySet()) {
                 
-                RawDataFile rdf = peakList.getRawDataFile(i);
-                PeakListRow a_row = peakListRows[col];
-                final Feature curPeak = a_row.getPeak(rdf);
+                // Move to end (and do at least one)
+                System.out.println("#1 shift: " + cnt + " / " + startIdx);
+                ++cnt;
+                if (cnt < startIdx && cnt < areasMap.size()-1) {
+                    continue;
+                }
+                System.out.println("#2 shift: " + cnt + " / " + startIdx);
+                
+                //curRdf = peakList.getRawDataFile(i);
+                curPeak = a_row.getPeak(rdf);
                 
                 // Skip non-detected rows
                 if (curPeak != null) {               
-                    if (averageAtAvgRT) {
+                    if (AVERAGE_AT_AVG_RT) {
                         // Scan number at average avgRT
                         double best_delta_rt = Double.MAX_VALUE;
                         double prev_delta_rt = Double.MAX_VALUE;
@@ -439,9 +476,11 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                             prev_delta_rt = delta_rt;
                         }
                     } else {
+                        System.out.println("# Mapping: " + curPeak.getArea());
                         scansNumAtAvgMapping.put(rdf, curPeak.getRepresentativeScanNumber());
                     }
                 }
+                
             }
             
             // 2nd pass: Compute averaged RDF (only a subset of scans before and after the scan of interest)
@@ -449,17 +488,16 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 // Mapping per scan AND per mz
                 HashMap<Double, ArrayList<DataPoint>> perMzDataPointsMapping = new HashMap<Double, ArrayList<DataPoint>>();
                 
-                RawDataFile cur_rdf;
                 for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
                     
-                    cur_rdf = peakList.getRawDataFile(i);
-                    Integer scn = scansNumAtAvgMapping.get(cur_rdf);
+                    curRdf = peakList.getRawDataFile(i);
+                    Integer scn = scansNumAtAvgMapping.get(curRdf);
                     
                     // Skip non-detected rows
                     if (scn != null) {
                         int scan_num = scn + n;
                         
-                        Scan s = cur_rdf.getScan(scan_num);
+                        Scan s = curRdf.getScan(scan_num);
                         // If current RDF does have a scan at index 'scan_num'
                         if (s != null) {
                             for (DataPoint dp : s.getDataPoints()) {
@@ -962,4 +1000,29 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     public Frame getWindow() {
         return this.window;
     }
+    
+    
+    public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue( Map<K, V> map )
+    {
+        List<Map.Entry<K, V>> list =
+                new LinkedList<>( map.entrySet() );
+                Collections.sort( list, new Comparator<Map.Entry<K, V>>()
+                        {
+                    @Override
+                    public int compare( Map.Entry<K, V> o1, Map.Entry<K, V> o2 )
+                    {
+                        return (o1.getValue()).compareTo( o2.getValue() );
+                    }
+                        } );
+
+                Map<K, V> result = new LinkedHashMap<>();
+                for (Map.Entry<K, V> entry : list)
+                {
+                    result.put( entry.getKey(), entry.getValue() );
+                }
+                return result;
+    }
+
+    
+    
 }
