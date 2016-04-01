@@ -11,6 +11,6 @@ public class AlignedRowIdentity extends SimplePeakIdentity {
     public static final String PROPERTY_IS_REF = "Is reference compound";
     public static final String FALSE = "false";
     public static final String TRUE = "true";
-    public static final String PROPERTY_ID_SCORE = "Preferred identity score";
+    public static final String PROPERTY_ID_SCORE = "Identitification score";
 
 }

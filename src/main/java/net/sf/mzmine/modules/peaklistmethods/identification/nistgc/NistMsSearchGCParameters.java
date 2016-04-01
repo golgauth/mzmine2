@@ -60,7 +60,7 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
      * Ionization method.
      */
     public static final ComboParameter<IonizationType> IONIZATION_METHOD = new ComboParameter<IonizationType>(
-	    "¤Ionization method",
+	    "Ionization method",
 	    "Type of ion used to calculate the neutral mass",
 	    IonizationType.values());
 
@@ -68,7 +68,7 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
      * Spectrum RT width.
      */
     public static final RTToleranceParameter SPECTRUM_RT_WIDTH = new RTToleranceParameter(
-	    "¤Spectrum RT tolerance",
+	    "Spectrum RT tolerance",
 	    "The RT tolerance (>= 0) to use when forming search spectra; include all other"
 	    	+"\ndetected peaks whose RT is within the specified tolerance of a given peak");
 
@@ -76,7 +76,7 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
      * Maximum number of peaks per spectrum.
      */
     public static final IntegerParameter MAX_NUM_PEAKS = new IntegerParameter(
-	    "¤Max. peaks per spectrum",
+	    "Max. peaks per spectrum",
 	    "The maximum number of peaks to include in a spectrum (0 -> unlimited)",
 	    1000, 0, null);
 

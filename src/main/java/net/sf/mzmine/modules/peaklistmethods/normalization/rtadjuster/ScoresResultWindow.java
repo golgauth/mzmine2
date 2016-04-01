@@ -64,6 +64,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch.CustomJDXSearchTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ScoresResultTableModel.ComboboxPeak;
 import net.sf.mzmine.modules.visualization.molstructure.MolStructureViewer;
 import net.sf.mzmine.modules.visualization.spectra.SpectraVisualizerModule;
@@ -502,8 +503,8 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
             double scorePeak2 = (double) tableRow.get(6);
 
             //applyIdentities(pl, peak1, peak2);
-            JDXCompoundsIdentificationSingleTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1);
-            JDXCompoundsIdentificationSingleTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2);
+            CustomJDXSearchTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1, true);
+            CustomJDXSearchTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2, true);
         }
         
         // Repaint the window to reflect the change in the peak list

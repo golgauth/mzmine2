@@ -64,6 +64,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -82,10 +83,10 @@ public class NistMsSearchGCTask extends AbstractTask {
 	    .getName());
 
     // Command-line arguments passed to executable.
-    private static final String COMMAND_LINE_ARGS = "/par=2 /instrument";
+    public /*private*/ static final String COMMAND_LINE_ARGS = "/par=2 /instrument";
 
     // The locator file names.
-    private static final String PRIMARY_LOCATOR_FILE_NAME = "AUTOIMP.MSD";
+    public /*private*/ static final String PRIMARY_LOCATOR_FILE_NAME = "AUTOIMP.MSD";
     private static final String SECONDARY_LOCATOR_FILE_NAME = "MZMINE2.MSD";
 
     // Spectra file prefix and suffix.
@@ -193,6 +194,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 	nistMsSearchDir = params.getParameter(NIST_MS_SEARCH_DIR).getValue();
 	nistMsSearchExe = ((NistMsSearchGCParameters) params)
 		.getNistMsSearchExecutable();
+	
     }
 
     @Override
@@ -258,7 +260,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 		    // Configure locator files.
 		    final File locatorFile1 = new File(nistMsSearchDir,
 			    PRIMARY_LOCATOR_FILE_NAME);
-		    locatorFile2 = getSecondLocatorFile(locatorFile1);
+		    locatorFile2 = getSecondLocatorFile(nistMsSearchDir, locatorFile1);
 		    if (locatorFile2 == null) {
 
 			throw new IOException("Primary locator file "
@@ -270,8 +272,8 @@ public class NistMsSearchGCTask extends AbstractTask {
 		    if (locatorFile2.exists()) {
 
 			throw new IllegalStateException(
-				"NIST MS Search appears to be busy - please wait until it finishes its current task and then try again.  Alternatively, try manually deleting the file "
-					+ locatorFile2);
+				"NIST MS Search appears to be busy - please wait until it finishes its current task and then try again.  Alternatively, try manually deleting the file(s) "
+					+ locatorFile2 + ", " + SEARCH_RESULTS_FILE_NAME);
 		    }
 		}
 
@@ -317,19 +319,19 @@ public class NistMsSearchGCTask extends AbstractTask {
 			if (!isCanceled()) {
 
 			    // Write spectra file.
-			    final File spectraFile = writeSpectraFile(row,
-				    neighbours);
+			    final File spectraFile = writeSpectraFile(peakList, 
+			            row, neighbours);
 
 			    // Write locator file.
 			    writeSecondaryLocatorFile(locatorFile2, spectraFile);
 
 			    // Run the search.
-			    runNistMsSearch(command);
+			    runNistMsSearch(nistMsSearchDir, command);
 
 			    // Read the search results file and store the
 			    // results.
 			    rowIdentities.put(neighbours,
-				    readSearchResults(row));
+				    readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, row));
 			}
 		    }
 
@@ -554,8 +556,11 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if and i/o problem occurs.
      */
-    private List<PeakIdentity> readSearchResults(final PeakListRow row)
-	    throws IOException {
+    public static /*private*/ List<PeakIdentity> readSearchResults(
+            final File nistMsSearchDir,
+            final int minMatchFactor, final int minReverseMatchFactor,
+            final PeakListRow row)
+                    throws IOException {
 
 	// Search results.
 	List<PeakIdentity> hitList = null;
@@ -610,6 +615,13 @@ public class NistMsSearchGCTask extends AbstractTask {
 				    matchFactor);
 			    id.setPropertyValue(REVERSE_MATCH_FACTOR_PROPERTY,
 				    reverseMatchFactor);
+			    
+			    // GLG: Begin
+			    // For compatibility with CustomJDXSearch & TwoStandardCompoundsSearch...
+			    double score = Double.valueOf(matchFactor) / 1000.0;
+			    id.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+			    // GLG: End
+			    
 			    id.setPropertyValue(CAS_PROPERTY,
 				    hitMatcher.group(5));
 			    id.setPropertyValue(MOLECULAR_WEIGHT_PROPERTY,
@@ -647,30 +659,58 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if there are i/o problems.
      */
-    private void runNistMsSearch(final String command) throws IOException {
+    private void runNistMsSearch(final File nistMsSearchDir,
+            final String command) throws IOException {
 
-	// Remove the results polling file.
-	final File srcReady = new File(nistMsSearchDir, SEARCH_POLL_FILE_NAME);
-	if (srcReady.exists() && !srcReady.delete()) {
-	    throw new IOException(
-		    "Couldn't delete the search results polling file "
-			    + srcReady + ".  Please delete it manually.");
-	}
+        // Remove the results polling file.
+        final File srcReady = new File(nistMsSearchDir, SEARCH_POLL_FILE_NAME);
+        if (srcReady.exists() && !srcReady.delete()) {
+            throw new IOException(
+                    "Couldn't delete the search results polling file "
+                            + srcReady + ".  Please delete it manually.");
+        }
 
-	// Execute NIS MS Search.
-	LOG.finest("Executing " + command);
-	Runtime.getRuntime().exec(command);
+        // Execute NIS MS Search.
+        LOG.finest("Executing " + command);
+        Runtime.getRuntime().exec(command);
 
-	// Wait for the search to finish by polling the results file.
-	while (!srcReady.exists() && !isCanceled()) {
-	    try {
+        // Wait for the search to finish by polling the results file.
+        while (!srcReady.exists() && !isCanceled()) {
+            try {
 
-		Thread.sleep(POLL_RESULTS);
-	    } catch (InterruptedException ignore) {
+                Thread.sleep(POLL_RESULTS);
+            } catch (InterruptedException ignore) {
 
-		// uninterruptible.
-	    }
-	}
+                // uninterruptible.
+            }
+        }
+    }
+    // GLG:final File nistMsSearchDir
+    public static void runNistMsSearchNoTask(final File nistMsSearchDir, 
+            final String command) throws IOException {
+
+        // Remove the results polling file.
+        final File srcReady = new File(nistMsSearchDir, SEARCH_POLL_FILE_NAME);
+        if (srcReady.exists() && !srcReady.delete()) {
+            throw new IOException(
+                    "Couldn't delete the search results polling file "
+                            + srcReady + ".  Please delete it manually.");
+        }
+
+        // Execute NIS MS Search.
+        LOG.finest("Executing " + command);
+        Runtime.getRuntime().exec(command);
+
+        // Wait for the search to finish by polling the results file.
+        while (!srcReady.exists() /*&& !isCanceled()*/) {
+            try {
+
+                Thread.sleep(POLL_RESULTS);
+            } catch (InterruptedException ignore) {
+
+                // uninterruptible.
+            }
+        }
     }
 
     /**
@@ -684,7 +724,7 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if an i/o problem occurs.
      */
-    private File writeSpectraFile(final PeakListRow peakRow,
+    public static File writeSpectraFile(final PeakList peakList, final PeakListRow peakRow,
 	    final Collection<PeakListRow> neighbourRows) throws IOException {
 
 	final File spectraFile = File.createTempFile(SPECTRA_FILE_PREFIX,
@@ -745,7 +785,7 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if an i/o problem occurs.
      */
-    private static void writeSecondaryLocatorFile(final File locatorFile,
+    public /*private*/ static void writeSecondaryLocatorFile(final File locatorFile,
 	    final File spectraFile) throws IOException {
 
 	// Write the spectra file name to the secondary locator file.
@@ -772,7 +812,8 @@ public class NistMsSearchGCTask extends AbstractTask {
      * @throws IOException
      *             if there are i/o problems.
      */
-    private File getSecondLocatorFile(final File primaryLocatorFile)
+    public static /*private*/ File getSecondLocatorFile(final File nistMsSearchDir,
+            final File primaryLocatorFile)
 	    throws IOException {
 
 	// Check for the primary locator file.

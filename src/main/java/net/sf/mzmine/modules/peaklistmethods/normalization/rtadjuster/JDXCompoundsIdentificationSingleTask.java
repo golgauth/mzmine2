@@ -45,6 +45,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch.CustomJDXSearchTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -271,7 +272,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                     // If apply automatically, just get best scoring row id for each compound
                     /* // TODO: Make CSV export("blastOutputFilename") available even if not "applyWithoutCheck". */
-                    /*else*/ if (!isCanceled()) {
+                    /*else*/ 
+                    if (!isCanceled()) {
 
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
@@ -286,7 +288,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                             // Update identities
                             if (applyWithoutCheck)
-                                JDXCompoundsIdentificationSingleTask.applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore);
+                                CustomJDXSearchTask.applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore, true);
 
                             // CSV export...
                             if (!isEmptyFilename(blastOutputFilename)) {
@@ -324,7 +326,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                             }
 
-                        }
+                        }                        
+                        CustomJDXSearchTask.setAllScores(peakList, findCompounds, scoreMatrix);
+
 
                         // CSV export: Write row
                         if (/*applyWithoutCheck &&*/ !isEmptyFilename(blastOutputFilename)) {
@@ -376,45 +380,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         }
     }
 
-    /**
-     * Apply an identity (type JDX) to a peak list
-     * @param peaklist
-     * @param peak
-     */
-    public static void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score) {
-        for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
-            PeakListRow a_pl_row = peaklist.getRows()[i];
-
-            // Add possible identities to peaks (need to renew for the sake of unicity)
-            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
-            JDXCompound newIdentity = (JDXCompound) identity.clone();
-            // Remove current (make sure we replace current identity by a copy)
-            a_pl_row.removePeakIdentity(identity);
-            // Add clone and use as preferred
-            a_pl_row.addPeakIdentity(newIdentity, false);
-            a_pl_row.addPeakIdentity(unknownComp, false);
-
-            // Set new identity.
-            if (a_pl_row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
-                a_pl_row.setPreferredPeakIdentity(newIdentity);
-                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
-                // Save score
-                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
-            }
-            // Erase / reset identity.
-            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
-                unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
-                a_pl_row.setPreferredPeakIdentity(unknownComp);
-            }
-
-            // Notify MZmine about the change in the project
-            // TODO: Get the "project" from the instantiator of this class instead.
-            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-            project.notifyObjectChanged(a_pl_row, false);
-        }
-    }
-
+    
     private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, final JDXCompound compound)
             throws IOException {
 

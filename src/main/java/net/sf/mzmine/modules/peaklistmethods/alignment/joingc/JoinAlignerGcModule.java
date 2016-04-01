@@ -55,7 +55,7 @@ public class JoinAlignerGcModule implements MZmineProcessingModule {
     @Nonnull
     public ExitCode runModule(@Nonnull MZmineProject project,
 	    @Nonnull ParameterSet parameters, @Nonnull Collection<Task> tasks) {
-	Task newTask = new JoinAlignerTask(project, parameters);
+	Task newTask = new JoinAlignerGCTask(project, parameters);
 	tasks.add(newTask);
 	return ExitCode.OK;
 
@@ -76,7 +76,7 @@ public class JoinAlignerGcModule implements MZmineProcessingModule {
 
     @Override
     public @Nonnull Class<? extends ParameterSet> getParameterSetClass() {
-	return JoinAlignerParameters.class;
+	return JoinAlignerGCParameters.class;
     }
 
 }

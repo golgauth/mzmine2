@@ -58,7 +58,7 @@ import net.sf.mzmine.util.RangeUtils;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
 
-class CSVExportTask extends AbstractTask {
+public class CSVExportTask extends AbstractTask {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
