@@ -42,7 +42,9 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -421,7 +423,6 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
             RawDataFile curRdf;
             Feature curPeak = null;
             
-            ArrayList<Integer> smallPeaksIndices = new ArrayList<Integer>();
             Map<RawDataFile, Double> areasMap = new HashMap<RawDataFile, Double>();
             for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
                 curRdf = peakList.getRawDataFile(i);
@@ -429,31 +430,28 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 if (curPeak != null) 
                     areasMap.put(curRdf, curPeak.getArea());
             }
-            for (RawDataFile rdf : areasMap.keySet()) {
+            
+            /*for (RawDataFile rdf : areasMap.keySet()) {
                 System.out.println("> " + areasMap.get(rdf));
-            }
+            }*/
             areasMap = PeakListTable.sortByValue(areasMap);
-            for (RawDataFile rdf : areasMap.keySet()) {
+            /*for (RawDataFile rdf : areasMap.keySet()) {
                 System.out.println("# " + areasMap.get(rdf));
-            }
-            // Find last quarter
-            int startIdx = (int) Math.round(areasMap.size() * SMALL_PEAKS_THRESHOLD);
+            }*/
+            
+            // Find last quarter (process at least one peak)
+            int startIdx = Math.min(areasMap.size()-1, (int) Math.round(areasMap.size() * SMALL_PEAKS_THRESHOLD));
             
             // 1st pass: Map apex scan (or scan of interest) to RDF
-            //for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {RawDataFile rdf : areasMap.keySet()
-            int cnt = -1;
-            for (RawDataFile rdf : areasMap.keySet()) {
+            ListIterator<RawDataFile> iter = new ArrayList<>(areasMap.keySet()).listIterator(areasMap.size());
+            int cnt = areasMap.size()-1;
+            while (iter.hasPrevious()) {
                 
-                // Move to end (and do at least one)
-                System.out.println("#1 shift: " + cnt + " / " + startIdx);
-                ++cnt;
-                if (cnt < startIdx && cnt < areasMap.size()-1) {
-                    continue;
-                }
-                System.out.println("#2 shift: " + cnt + " / " + startIdx);
+                if (cnt < startIdx) break;
+                --cnt;
                 
-                //curRdf = peakList.getRawDataFile(i);
-                curPeak = a_row.getPeak(rdf);
+                curRdf = iter.previous();
+                curPeak = a_row.getPeak(curRdf);
                 
                 // Skip non-detected rows
                 if (curPeak != null) {               
@@ -462,22 +460,21 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                         double best_delta_rt = Double.MAX_VALUE;
                         double prev_delta_rt = Double.MAX_VALUE;
                         for (int scan_num : curPeak.getScanNumbers()) {
-                            //**avgPeak.addMzPeak(/*fakeScanNum*/scan_num, curPeak.getDataPoint(scan_num));
                             
                             // Find scan nearest from average RT overall column
-                            double delta_rt = Math.abs(avgRT - rdf.getScan(scan_num).getRetentionTime());
+                            double delta_rt = Math.abs(avgRT - curRdf.getScan(scan_num).getRetentionTime());
                             // If we go away back again from nearest, just stop, since scan_nums are RT ascending ordered
                             if (prev_delta_rt < delta_rt) break;
                             //
                             if (delta_rt < best_delta_rt) {
                                 best_delta_rt = delta_rt;
-                                scansNumAtAvgMapping.put(rdf, scan_num);
+                                scansNumAtAvgMapping.put(curRdf, scan_num);
                             }
                             prev_delta_rt = delta_rt;
                         }
                     } else {
-                        System.out.println("# Mapping: " + curPeak.getArea());
-                        scansNumAtAvgMapping.put(rdf, curPeak.getRepresentativeScanNumber());
+                        //System.out.println("# Mapping: " + curPeak.getArea());
+                        scansNumAtAvgMapping.put(curRdf, curPeak.getRepresentativeScanNumber());
                     }
                 }
                 
