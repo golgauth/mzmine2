@@ -363,7 +363,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                 // Find the proper avgScore
                                 double avgScore = 0.0;
                                 for (int k = 0; k < arrAvgScores.length; ++k) {
-                                    String[] key_val = arrAvgScores[k].split("=", -1);
+                                    String[] key_val = arrAvgScores[k].split(AlignedRowIdentity.KEYVAL_SEP, -1);
                                     if (key_val[0].equals(str)) {
                                         avgScore = Double.valueOf(key_val[1]);
                                         break;

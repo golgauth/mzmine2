@@ -38,6 +38,7 @@ import net.sf.mzmine.modules.peaklistmethods.filtering.peakfilter.PeakFilterModu
 import net.sf.mzmine.modules.peaklistmethods.filtering.rowsfilter.RowsFilterModule;
 // GLG Standby: import net.sf.mzmine.modules.peaklistmethods.filtering.shapefilter.ShapeFilterModule;
 import net.sf.mzmine.modules.peaklistmethods.gapfilling.peakfinder.PeakFinderModule;
+import net.sf.mzmine.modules.peaklistmethods.gapfilling.peakfindergc.PeakFinderGCModule;
 import net.sf.mzmine.modules.peaklistmethods.gapfilling.samerange.SameRangeGapFillerModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.adductsearch.AdductSearchModule;
 import net.sf.mzmine.modules.peaklistmethods.identification.camera.CameraSearchModule;
@@ -143,7 +144,9 @@ public class MZmineModulesList {
             MzTabImportModule.class, XMLImportModule.class,
 
             // Gap filling
-            PeakFinderModule.class, SameRangeGapFillerModule.class,
+            PeakFinderModule.class, 
+            PeakFinderGCModule.class, 
+            SameRangeGapFillerModule.class,
 
             // Isotopes
             IsotopeGrouperModule.class, IsotopePatternCalculator.class,

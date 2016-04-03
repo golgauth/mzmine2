@@ -656,7 +656,7 @@ class JoinAlignerGCTask extends AbstractTask {
             for (String idName : scoreQuantMapping.keySet()) {
                 Object[] infos = scoreQuantMapping.get(idName);
                 infos[0] = (double) infos[0] / (double) rdf_sorted.length;
-                strQuant += idName + "=" + infos[0] + AlignedRowIdentity.IDENTITY_SEP;
+                strQuant += idName + AlignedRowIdentity.KEYVAL_SEP + infos[0] + AlignedRowIdentity.IDENTITY_SEP;
                 if ((double) infos[0] > mainIdentityQuant) {
                     mainIdentityQuant = (double) infos[0];
                 }
