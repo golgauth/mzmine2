@@ -63,7 +63,8 @@ class Gap {
 	this.intTolerance = intTolerance;
 	this.mzRange = mzRange;
 	this.rtRange = rtRange;
-
+	
+	this.bestPeakHeight = Double.MIN_VALUE;
     }
 
     void offerNextScan(Scan scan) {
@@ -297,7 +298,11 @@ class Gap {
 	if ((bestPeakDataPoints == null) || (bestPeakHeight < currentMaxHeight)) {
 	    bestPeakDataPoints = currentPeakDataPoints.subList(startInd,
 		    toIndex);
+	    bestPeakHeight = currentMaxHeight;
 	}
+//	if (bestPeakHeight < currentMaxHeight) {
+//	    bestPeakHeight = currentMaxHeight;
+//	}
 
     }
 

@@ -46,6 +46,7 @@ class GapGC {
     private List<GapDataPoint> currentPeakDataPoints;
     private List<GapDataPoint> bestPeakDataPoints;
     private double bestPeakHeight;
+    private double bestChemSimScore;
 
     /**
      * Constructor: Initializes an empty gap
@@ -80,7 +81,8 @@ class GapGC {
 	    return;
 
 	// Find top m/z peak in our range
-	DataPoint basePeak = ScanUtils.findBasePeak(scan, mzRange);
+        ////DataPoint basePeak = ScanUtils.findBasePeak(scan, mzRange);
+        DataPoint basePeak = ScanUtils.findBasePeak(scan, mzRange);
 
 	GapDataPoint currentDataPoint;
 	if (basePeak != null) {
@@ -236,68 +238,96 @@ class GapGC {
     }
 
     private void checkCurrentPeak() {
-
-	// 1) Check if currentpeak has a local maximum inside the search range
-	int highestMaximumInd = -1;
-	double currentMaxHeight = 0f;
-	for (int i = 1; i < currentPeakDataPoints.size() - 1; i++) {
-
-	    if (rtRange.contains(currentPeakDataPoints.get(i).getRT())) {
-
-		if ((currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
-			.get(i + 1).getIntensity())
-			&& (currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
-				.get(i - 1).getIntensity())) {
-
-		    if (currentPeakDataPoints.get(i).getIntensity() > currentMaxHeight) {
-
-			currentMaxHeight = currentPeakDataPoints.get(i)
-				.getIntensity();
-			highestMaximumInd = i;
-		    }
-		}
-	    }
-	}
-
-	// If no local maximum, return
-	if (highestMaximumInd == -1)
-	    return;
-
-	// 2) Find elution start and stop
-	int startInd = highestMaximumInd;
-	double currentInt = currentPeakDataPoints.get(startInd).getIntensity();
-	while (startInd > 0) {
-	    double nextInt = currentPeakDataPoints.get(startInd - 1)
-		    .getIntensity();
-	    if (currentInt < (nextInt * (1 - intTolerance)))
-		break;
-	    startInd--;
-	    if (nextInt == 0) { break; }
-	    currentInt = nextInt;
-	}
-
-	// Since subList does not include toIndex value then find highest
-	// possible value of stopInd+1 and currentPeakDataPoints.size()
-	int stopInd = highestMaximumInd, toIndex = highestMaximumInd;
-	currentInt = currentPeakDataPoints.get(stopInd).getIntensity();
-	while (stopInd < (currentPeakDataPoints.size() - 1)) {
-	    double nextInt = currentPeakDataPoints.get(stopInd + 1)
-		    .getIntensity();
-	    if (nextInt > (currentInt * (1 + intTolerance))) {
-		toIndex = Math.min(currentPeakDataPoints.size(), stopInd+1);
-		break;
-	    }	
-	    stopInd++;
-	    toIndex = Math.min(currentPeakDataPoints.size(), stopInd+1);
-	    if (nextInt == 0) { stopInd++; toIndex=stopInd; break; }
-	    currentInt = nextInt;
-	}
-
-	// 3) Check if this is the best candidate for a peak
-	if ((bestPeakDataPoints == null) || (bestPeakHeight < currentMaxHeight)) {
-	    bestPeakDataPoints = currentPeakDataPoints.subList(startInd,
-		    toIndex);
-	}
+//
+//	// 1) Check if currentpeak has a local maximum inside the search range
+////	int highestMaximumInd = -1;
+////	double currentMaxHeight = 0f;
+////	for (int i = 1; i < currentPeakDataPoints.size() - 1; i++) {
+////
+////	    if (rtRange.contains(currentPeakDataPoints.get(i).getRT())) {
+////
+////		if ((currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
+////			.get(i + 1).getIntensity())
+////			&& (currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
+////				.get(i - 1).getIntensity())) {
+////
+////		    if (currentPeakDataPoints.get(i).getIntensity() > currentMaxHeight) {
+////
+////			currentMaxHeight = currentPeakDataPoints.get(i)
+////				.getIntensity();
+////			highestMaximumInd = i;
+////		    }
+////		}
+////	    }
+////	}
+//        double currentChemSimScore = Double.MIN_VALUE;
+//        for (int i = 1; i < currentPeakDataPoints.size() - 1; i++) {
+//
+//            if (rtRange.contains(currentPeakDataPoints.get(i).getRT())) {
+//
+//                if ((currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
+//                        .get(i + 1).getIntensity())
+//                        && (currentPeakDataPoints.get(i).getIntensity() >= currentPeakDataPoints
+//                                .get(i - 1).getIntensity())) {
+//
+//                    if (currentPeakDataPoints.get(i).getIntensity() > currentMaxHeight) {
+//
+//                        currentMaxHeight = currentPeakDataPoints.get(i)
+//                                .getIntensity();
+//                        highestMaximumInd = i;
+//                    }
+//                }
+//            }
+//        }
+//
+//	// If no local maximum, return
+//	if (highestMaximumInd == -1)
+//	    return;
+//
+//	// 2) Find elution start and stop
+//	int startInd = highestMaximumInd;
+//	double currentInt = currentPeakDataPoints.get(startInd).getIntensity();
+//	while (startInd > 0) {
+//	    double nextInt = currentPeakDataPoints.get(startInd - 1)
+//		    .getIntensity();
+//	    if (currentInt < (nextInt * (1 - intTolerance)))
+//		break;
+//	    startInd--;
+//	    if (nextInt == 0) { break; }
+//	    currentInt = nextInt;
+//	}
+//
+//	// Since subList does not include toIndex value then find highest
+//	// possible value of stopInd+1 and currentPeakDataPoints.size()
+//	int stopInd = highestMaximumInd, toIndex = highestMaximumInd;
+//	currentInt = currentPeakDataPoints.get(stopInd).getIntensity();
+//	while (stopInd < (currentPeakDataPoints.size() - 1)) {
+//	    double nextInt = currentPeakDataPoints.get(stopInd + 1)
+//		    .getIntensity();
+//	    if (nextInt > (currentInt * (1 + intTolerance))) {
+//		toIndex = Math.min(currentPeakDataPoints.size(), stopInd+1);
+//		break;
+//	    }	
+//	    stopInd++;
+//	    toIndex = Math.min(currentPeakDataPoints.size(), stopInd+1);
+//	    if (nextInt == 0) { stopInd++; toIndex=stopInd; break; }
+//	    currentInt = nextInt;
+//	}
+//
+//        // 3) Check if this is the best candidate for a peak
+////        if ((bestPeakDataPoints == null) || (bestPeakHeight < currentMaxHeight)) {
+////            bestPeakDataPoints = currentPeakDataPoints.subList(startInd,
+////                    toIndex);
+////        }
+//        if ((bestPeakDataPoints == null) || (bestChemSimScore < currentChemSimScore)) {
+//            bestPeakDataPoints = currentPeakDataPoints.subList(startInd,
+//                    toIndex);
+//        }
+//        
+//        // GLG
+//        if (bestChemSimScore < currentChemSimScore) {
+//            bestChemSimScore = currentChemSimScore;
+//        }
 
     }
 

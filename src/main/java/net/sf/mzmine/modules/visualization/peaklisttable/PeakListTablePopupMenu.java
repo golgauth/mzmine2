@@ -389,10 +389,13 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                 for (final Feature peak : row.getPeaks()) {
 
                     allClickedPeaks.add(peak);
-                    if (peak.getDataFile() == clickedDataFile) {
-                        selectedClickedPeaks.add(peak);
-                    }
+                    // GLG HACK: default to "All selected"
+//                    if (peak.getDataFile() == clickedDataFile) {
+//                        selectedClickedPeaks.add(peak);
+//                    }
+                    selectedClickedPeaks.add(peak);
 
+                    
                     if (mzRange == null) {
                         mzRange = peak.getRawDataPointsMZRange();
                     } else {

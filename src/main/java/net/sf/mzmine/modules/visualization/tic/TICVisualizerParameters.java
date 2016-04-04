@@ -57,7 +57,8 @@ public class TICVisualizerParameters extends SimpleParameterSet {
     public static final ComboParameter<TICPlotType> PLOT_TYPE = new ComboParameter<TICPlotType>(
             "Plot type",
             "Type of Y value calculation (TIC = sum, base peak = max)",
-            TICPlotType.values());
+            TICPlotType.values(),
+            TICPlotType.BASEPEAK);
 
     /**
      * m/z range.

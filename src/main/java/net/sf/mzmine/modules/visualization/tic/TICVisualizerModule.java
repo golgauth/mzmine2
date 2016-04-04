@@ -122,8 +122,9 @@ public class TICVisualizerModule implements MZmineRunnableModule {
         final TICVisualizerParameters myParameters = (TICVisualizerParameters) MZmineCore
                 .getConfiguration()
                 .getModuleParameters(TICVisualizerModule.class);
+        // GLG HACK:
         myParameters.getParameter(TICVisualizerParameters.PLOT_TYPE)
-                .setValue(TICPlotType.BASEPEAK);
+                .setValue(TICPlotType.TIC/*.BASEPEAK*/);
 
         if (scanSelection != null) {
             myParameters.getParameter(TICVisualizerParameters.scanSelection)
@@ -134,6 +135,23 @@ public class TICVisualizerModule implements MZmineRunnableModule {
             myParameters.getParameter(TICVisualizerParameters.MZ_RANGE)
                     .setValue(mzRange);
         }
+        // GLG HACK:
+        Range<Double> mzRange2 = null;
+        for (RawDataFile file : allFiles) {
+            Scan scans[] = scanSelection.getMatchingScans(file);
+            for (Scan s : scans) {
+                Range<Double> scanRange = s.getDataPointMZRange();
+                if (scanRange == null)
+                    continue;
+                if (mzRange2 == null)
+                    mzRange2 = scanRange;
+                else
+                    mzRange2 = mzRange2.span(scanRange);
+            }
+        }
+        if (mzRange2 != null)
+            myParameters.getParameter(TICVisualizerParameters.MZ_RANGE).setValue(mzRange2);
+
 
         if (myParameters.showSetupDialog(null, true, allFiles, selectedFiles,
                 allPeaks, selectedPeaks) == ExitCode.OK) {

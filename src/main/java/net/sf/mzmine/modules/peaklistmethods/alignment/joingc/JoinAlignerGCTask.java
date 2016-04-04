@@ -437,9 +437,9 @@ class JoinAlignerGCTask extends AbstractTask {
                     alignedPeakList.addRow(targetRow);
                     //
                     infoRowsBackup.put(targetRow, new Object[] { 
-                            new HashMap<RawDataFile, Double>(), 
+                            new HashMap<RawDataFile, Double[]>(), 
                             new HashMap<RawDataFile, PeakIdentity>(), 
-                            new HashMap<RawDataFile, RowVsRowScoreGC>() 
+                            new HashMap<RawDataFile, Double>() 
                             });
                 }
                 
@@ -483,7 +483,7 @@ class JoinAlignerGCTask extends AbstractTask {
                             targetRow.addPeak(file, adjustedPeak);
                             // Adjusted RT info
                             rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
-                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]).put(file, adjustedRT);//originalPeak.getRT());
+                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
                             
                         } else {
                             targetRow.addPeak(file, originalPeak);
@@ -552,7 +552,7 @@ class JoinAlignerGCTask extends AbstractTask {
             // Refresh averaged RTs...
             ((SimplePeakListRow) targetRow).update();
             
-            HashMap<RawDataFile, Double> rowRTs = ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[0]);
+            HashMap<RawDataFile, Double[]> rowRTinfo = ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]);
             HashMap<RawDataFile, PeakIdentity> rowIDs = ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]);
             HashMap<RawDataFile, Double> rowIDsScores = ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]);
             
@@ -571,7 +571,7 @@ class JoinAlignerGCTask extends AbstractTask {
             PeakIdentity mainIdentity = null;
 
             // Save original RTs and Identities
-            String strAdjustedRTs = "";
+            String strAdjustedRTs = "", strOffsets = "", strScales = "";
             String strIdentities = "";
             String strScores = "";
             // Object[] = { sum, cardinality }
@@ -586,8 +586,12 @@ class JoinAlignerGCTask extends AbstractTask {
                                     
                     // Adjusted RTs of source aligned rows used to compute target row
                     if (recalibrateRT) {
-                        double rt = rowRTs.get(rdf);
+                        double rt = rowRTinfo.get(rdf)[0];
+                        double offset = rowRTinfo.get(rdf)[1];
+                        double scale = rowRTinfo.get(rdf)[2];
                         strAdjustedRTs += rtFormat.format(rt) + AlignedRowIdentity.IDENTITY_SEP;
+                        strOffsets += rtFormat.format(offset) + AlignedRowIdentity.IDENTITY_SEP;
+                        strScales += rtFormat.format(scale) + AlignedRowIdentity.IDENTITY_SEP;
                     }
                     
                     //
@@ -638,6 +642,8 @@ class JoinAlignerGCTask extends AbstractTask {
                 } else {
                     if (recalibrateRT) {
                         strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
+                        strOffsets += AlignedRowIdentity.IDENTITY_SEP;
+                        strScales += AlignedRowIdentity.IDENTITY_SEP;
                     }
                     strIdentities += AlignedRowIdentity.IDENTITY_SEP;
                     strScores += AlignedRowIdentity.IDENTITY_SEP;
@@ -646,6 +652,8 @@ class JoinAlignerGCTask extends AbstractTask {
             }
             if (recalibrateRT) {
                 strAdjustedRTs = strAdjustedRTs.substring(0, strAdjustedRTs.length()-1);
+                strOffsets = strOffsets.substring(0, strOffsets.length()-1);
+                strScales = strScales.substring(0, strScales.length()-1);
             }
             strIdentities = strIdentities.substring(0, strIdentities.length()-1);
             strScores = strScores.substring(0, strScores.length()-1);
@@ -668,6 +676,8 @@ class JoinAlignerGCTask extends AbstractTask {
             if (recalibrateRT) {
                 logger.info(">> found max for: " + mainIdentity);
                 ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_OFFSETS, strOffsets);
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_SCALES, strScales);
             }
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES, strIdentities);
             ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES, strScores);

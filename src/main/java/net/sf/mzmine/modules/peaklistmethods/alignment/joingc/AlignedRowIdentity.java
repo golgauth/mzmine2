@@ -4,7 +4,9 @@ import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 
 public class AlignedRowIdentity extends SimplePeakIdentity {
 
-    public static final String PROPERTY_RTS = "Retention times used for alignment";
+    public static final String PROPERTY_RTS = "Adjusted RTs used for alignment";
+    public static final String PROPERTY_OFFSETS = "RT offsets used for alignment";
+    public static final String PROPERTY_SCALES = "RT scales used for alignment";
     public static final String PROPERTY_IDENTITIES_NAMES = "Source identities";
     public static final String PROPERTY_IDENTITIES_SCORES = "Source identities scores";
     public static final String PROPERTY_IDENTITIES_QUANT = "Source identities quant";
