@@ -316,6 +316,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 		    // Has this neighbourhood's search been run already?
 		    if (!rowIdentities.containsKey(neighbours)) {
 
+                        System.out.println(">> SEARCH: " + row);
 			if (!isCanceled()) {
 
 			    // Write spectra file.
@@ -333,6 +334,8 @@ public class NistMsSearchGCTask extends AbstractTask {
 			    rowIdentities.put(neighbours,
 				    readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, row));
 			}
+		    } else {
+		        System.out.println(">> SKIPPED from SEARCH: " + row);
 		    }
 
 		    // Get the search results.
