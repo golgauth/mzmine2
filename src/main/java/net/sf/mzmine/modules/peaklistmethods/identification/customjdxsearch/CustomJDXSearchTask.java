@@ -51,7 +51,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
@@ -506,8 +506,8 @@ public class CustomJDXSearchTask extends AbstractTask {
                 PeakListRow a_pl_row = peaklist.getRows()[i];
                 if (a_pl_row.getPreferredPeakIdentity() != null 
                         && a_pl_row.getPreferredPeakIdentity().getName().equals(identity.getName())) {
-                    String isRefCompound = a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
-                    if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
+                    String isRefCompound = a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                    if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
                         // Not available: the identity cannot be touched
                         return;
                     }
@@ -542,15 +542,15 @@ public class CustomJDXSearchTask extends AbstractTask {
                 a_pl_row.setPreferredPeakIdentity(newIdentity);
                 // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
                 if (canTagAsRef) {
-                    newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF, AlignedRowIdentity.TRUE);
+                    newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
                 }
                 // Save score
-                newIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+                newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
             }
             // Erase / reset identity.
             else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
                 //a_pl_row.removePeakIdentity(unknownComp);
-                unknownComp.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(0.0));
+                unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(0.0));
                 a_pl_row.setPreferredPeakIdentity(unknownComp);
             }
 
@@ -571,7 +571,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                         SimplePeakIdentity curIdentity = (SimplePeakIdentity) a_pl_row.getPeakIdentities()[j];
                         // Score at row 'i' for compound 'k'
                         double score = scoreMatrix[i][k+1];
-                        curIdentity.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+                        curIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
                     }
                 }
             }

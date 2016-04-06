@@ -64,7 +64,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -626,7 +626,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 			    // GLG: Begin
 			    // For compatibility with CustomJDXSearch & TwoStandardCompoundsSearch...
 			    double score = Double.valueOf(matchFactor) / 1000.0;
-			    id.setPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE, String.valueOf(score));
+			    id.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
 			    // GLG: End
 			    
 			    id.setPropertyValue(CAS_PROPERTY,

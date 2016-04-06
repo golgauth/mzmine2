@@ -60,7 +60,7 @@ import net.sf.mzmine.util.SortingProperty;
 
 import com.google.common.collect.Range;
 
-class JoinAlignerGCTask extends AbstractTask {
+public class JoinAlignerGCTask extends AbstractTask {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -210,7 +210,7 @@ class JoinAlignerGCTask extends AbstractTask {
 
         /** RTAdjustement mapping **/
         boolean recalibrateRT = useKnownCompoundsAsRef;
-        Hashtable<PeakList, double[]> rtAdjustementMapping = new Hashtable<PeakList, double[]>();
+        Hashtable<RawDataFile, double[]> rtAdjustementMapping = new Hashtable<RawDataFile, double[]>();
         if (recalibrateRT) {
             
             boolean rtAdjustOk = true;
@@ -237,13 +237,13 @@ class JoinAlignerGCTask extends AbstractTask {
                     // If row actually was identified AND is a "reference compound"
                     //**if (row.getPreferredPeakIdentity() != null) {
                     if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
-                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF);
-                        if (isRefCompound != null && isRefCompound.equals(AlignedRowIdentity.TRUE)) {
+                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
                             allIdentified.add(row);
                         }
                     } else {
                         logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
-                        logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_IS_REF));                       
+                        logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF));                       
                     }
                 }
                 //
@@ -272,15 +272,16 @@ class JoinAlignerGCTask extends AbstractTask {
                     b_offset = 0.0;
                     a_scale = 0.0;
                     //
-                    rtAdjustementMapping.put(a_pl, new double[]{ b_offset, a_scale, rt1, rt2 });
+                    rtAdjustementMapping.put(a_pl.getRawDataFile(0), new double[]{ b_offset, a_scale, rt1, rt2 });
                 } else {
-                    double rt1_ref = rtAdjustementMapping.get(peakLists[0])[2];
-                    double rt2_ref = rtAdjustementMapping.get(peakLists[0])[3];
+                    RawDataFile refPL_RDF = peakLists[0].getRawDataFile(0);
+                    double rt1_ref = rtAdjustementMapping.get(refPL_RDF)[2];
+                    double rt2_ref = rtAdjustementMapping.get(refPL_RDF)[3];
                     //
                     a_scale = ((rt2_ref - rt2) - (rt1_ref - rt1)) / (rt2 - rt1);
                     b_offset = (rt1_ref - rt1) - (a_scale * rt1);
                     //
-                    rtAdjustementMapping.put(a_pl, new double[]{ b_offset, a_scale, rt1, rt2 });
+                    rtAdjustementMapping.put(a_pl.getRawDataFile(0), new double[]{ b_offset, a_scale, rt1, rt2 });
                     logger.info(">> peakLists[0]/peakLists[i]:" + peakLists[0] + "/" + peakLists[i]);
                     logger.info(">> rt1_ref/rt1:" + rt1_ref + "/" + rt1);
                     logger.info(">> rt2_ref/rt2:" + rt2_ref + "/" + rt2);
@@ -380,7 +381,7 @@ class JoinAlignerGCTask extends AbstractTask {
 //                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight);
                     // GLG HACK: Use apex rather than average!
                     RowVsRowScoreGC score = new RowVsRowScoreGC(
-                            peakList, rtAdjustementMapping,
+                            row.getRawDataFiles()[0], rtAdjustementMapping,
                             row, candidate,
                             RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
                             RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
@@ -461,50 +462,75 @@ class JoinAlignerGCTask extends AbstractTask {
                     
 
                 // Add all peaks from the original row to the aligned row
-                for (RawDataFile file : row.getRawDataFiles()) {
-                    Feature originalPeak = row.getPeak(file);
-                    if (originalPeak != null) {
-                        
-                        if (recalibrateRT) {
-                            // Set adjusted retention time to all peaks in this row
-                            // *[Note 1]
-                            logger.info("{" + rtAdjustementMapping.get(peakList)[0] + ", " + rtAdjustementMapping.get(peakList)[1] + "}");
-                            double b_offset = rtAdjustementMapping.get(peakList)[0];
-                            double a_scale = rtAdjustementMapping.get(peakList)[1];
-                            //
-                            double delta_rt = a_scale * originalPeak.getRT() + b_offset;
-                            double adjustedRT = originalPeak.getRT() + delta_rt;
-                            
-                            SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
-                            PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
-                            adjustedPeak.setRT(adjustedRT);
-                            logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+                //for (RawDataFile file : row.getRawDataFiles()) {
+                for (RawDataFile file : alignedPeakList.getRawDataFiles()) {
+                    
+//                    if (recalibrateRT) {
+//                        if (!Arrays.asList(row.getRawDataFiles()).contains(file)) {
+//                            double b_offset = rtAdjustementMapping.get(peakList)[0];
+//                            double a_scale = rtAdjustementMapping.get(peakList)[1];
+//                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+//                            //continue;
+//                            //break;
+//                        }
+//                    }
 
-                            targetRow.addPeak(file, adjustedPeak);
-                            // Adjusted RT info
-                            rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
-                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
+                    if (Arrays.asList(row.getRawDataFiles()).contains(file)) {
+                        
+                        Feature originalPeak = row.getPeak(file);
+                        if (originalPeak != null) {
                             
-                        } else {
-                            targetRow.addPeak(file, originalPeak);
+                            if (recalibrateRT) {
+                                // Set adjusted retention time to all peaks in this row
+                                // *[Note 1]
+                                RawDataFile pl_RDF = peakList.getRawDataFile(0);
+                                logger.info("{" + rtAdjustementMapping.get(pl_RDF)[0] + ", " + rtAdjustementMapping.get(pl_RDF)[1] + "}");
+                                double b_offset = rtAdjustementMapping.get(pl_RDF)[0];
+                                double a_scale = rtAdjustementMapping.get(pl_RDF)[1];
+                                //
+                                double adjustedRT = JoinAlignerGCTask.getAdjustedRT(originalPeak.getRT(), b_offset, a_scale);
+                                
+                                SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
+                                PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
+                                adjustedPeak.setRT(adjustedRT);
+                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+    
+                                targetRow.addPeak(file, adjustedPeak);
+                                // Adjusted RT info
+                                rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
+                                ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
+                                
+                            } else {
+                                targetRow.addPeak(file, originalPeak);
+                            }
+                            
+                            // Identification info
+                            ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
+                            //
+                            String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE);
+                            if (strScore != null)
+                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
+                            else
+                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
+                            
+                            logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
                         }
-                        
-                        // Identification info
-                        ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
-                        //
-                        String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE);
-                        if (strScore != null)
-                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
-                        else
-                            ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
-                        
-                        logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
-                    }
-                    else {
-                        setStatus(TaskStatus.ERROR);
-                        setErrorMessage("Cannot run alignment, no originalPeak");
-                        return;
-                    }
+                        else {
+                            setStatus(TaskStatus.ERROR);
+                            setErrorMessage("Cannot run alignment, no originalPeak");
+                            return;
+                        }
+    
+                    } 
+//                    else {
+//                        if (recalibrateRT) {
+//                            double b_offset = rtAdjustementMapping.get(peakList)[0];
+//                            double a_scale = rtAdjustementMapping.get(peakList)[1];
+//                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+//                            //continue;
+//                        }
+//                    }
+
                 }
 
                 // Copy all possible peak identities, if these are not already present
@@ -583,23 +609,23 @@ class JoinAlignerGCTask extends AbstractTask {
                 logger.info(">>>> RDF_write: " + rdf.getName());
                 
                 if (Arrays.asList(targetRow.getRawDataFiles()).contains(rdf)) {
-                                    
+
                     // Adjusted RTs of source aligned rows used to compute target row
                     if (recalibrateRT) {
                         double rt = rowRTinfo.get(rdf)[0];
-                        double offset = rowRTinfo.get(rdf)[1];
-                        double scale = rowRTinfo.get(rdf)[2];
-                        strAdjustedRTs += rtFormat.format(rt) + AlignedRowIdentity.IDENTITY_SEP;
-                        strOffsets += rtFormat.format(offset) + AlignedRowIdentity.IDENTITY_SEP;
-                        strScales += rtFormat.format(scale) + AlignedRowIdentity.IDENTITY_SEP;
+//                        double offset = rowRTinfo.get(rdf)[1];
+//                        double scale = rowRTinfo.get(rdf)[2];
+                        strAdjustedRTs += rtFormat.format(rt) + AlignedRowProps.PROP_SEP;
+//                        strOffsets += rtFormat.format(offset) + AlignedRowIdentity.IDENTITY_SEP;
+//                        strScales += rtFormat.format(scale) + AlignedRowIdentity.IDENTITY_SEP;
                     }
                     
                     //
                     PeakIdentity id = rowIDs.get(rdf);
                     double score = rowIDsScores.get(rdf);
                     
-                    strIdentities += id.getName() + AlignedRowIdentity.IDENTITY_SEP;
-                    strScores += score + AlignedRowIdentity.IDENTITY_SEP;
+                    strIdentities += id.getName() + AlignedRowProps.PROP_SEP;
+                    strScores += score + AlignedRowProps.PROP_SEP;
                     
                     
 //                    int cardinality = CollectionUtils.cardinality(id.getName(), Arrays.asList(rowIDsNames));
@@ -641,14 +667,21 @@ class JoinAlignerGCTask extends AbstractTask {
 
                 } else {
                     if (recalibrateRT) {
-                        strAdjustedRTs += AlignedRowIdentity.IDENTITY_SEP;
-                        strOffsets += AlignedRowIdentity.IDENTITY_SEP;
-                        strScales += AlignedRowIdentity.IDENTITY_SEP;
+                        
+                        strAdjustedRTs += AlignedRowProps.PROP_SEP;
+//                      strOffsets += AlignedRowIdentity.IDENTITY_SEP;
+//                      strScales += AlignedRowIdentity.IDENTITY_SEP;
                     }
-                    strIdentities += AlignedRowIdentity.IDENTITY_SEP;
-                    strScores += AlignedRowIdentity.IDENTITY_SEP;
+                    strIdentities += AlignedRowProps.PROP_SEP;
+                    strScores += AlignedRowProps.PROP_SEP;
                 }
-                
+                if (recalibrateRT) {
+                    // Gaps must have recalibration info as well, so do it whether or not
+                    double offset = rtAdjustementMapping.get(rdf)[0];
+                    double scale = rtAdjustementMapping.get(rdf)[1];
+                    strOffsets += rtFormat.format(offset) + AlignedRowProps.PROP_SEP;
+                    strScales += rtFormat.format(scale) + AlignedRowProps.PROP_SEP;
+                }                
             }
             if (recalibrateRT) {
                 strAdjustedRTs = strAdjustedRTs.substring(0, strAdjustedRTs.length()-1);
@@ -664,7 +697,7 @@ class JoinAlignerGCTask extends AbstractTask {
             for (String idName : scoreQuantMapping.keySet()) {
                 Object[] infos = scoreQuantMapping.get(idName);
                 infos[0] = (double) infos[0] / (double) rdf_sorted.length;
-                strQuant += idName + AlignedRowIdentity.KEYVAL_SEP + infos[0] + AlignedRowIdentity.IDENTITY_SEP;
+                strQuant += idName + AlignedRowProps.KEYVAL_SEP + infos[0] + AlignedRowProps.PROP_SEP;
                 if ((double) infos[0] > mainIdentityQuant) {
                     mainIdentityQuant = (double) infos[0];
                 }
@@ -675,13 +708,13 @@ class JoinAlignerGCTask extends AbstractTask {
             //
             if (recalibrateRT) {
                 logger.info(">> found max for: " + mainIdentity);
-                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_RTS, strAdjustedRTs);
-                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_OFFSETS, strOffsets);
-                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_SCALES, strScales);
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_OFFSETS, strOffsets);
+                ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_SCALES, strScales);
             }
-            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_NAMES, strIdentities);
-            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_SCORES, strScores);
-            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowIdentity.PROPERTY_IDENTITIES_QUANT, strQuant);
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_IDENTITIES_NAMES, strIdentities);
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_IDENTITIES_SCORES, strScores);
+            ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_IDENTITIES_QUANT, strQuant);
             // Copy the original preferred identity's properties into the targetRow's preferred one
             // and update the mainIdentity properties
             for (PeakIdentity p: targetRow.getPeakIdentities()) {
@@ -721,6 +754,16 @@ class JoinAlignerGCTask extends AbstractTask {
         logger.info("Finished join aligner");
         setStatus(TaskStatus.FINISHED);
 
+    }
+
+    public static double getAdjustedRT(double rt, double b_offset, double a_scale) {
+        double delta_rt = a_scale * rt + b_offset;
+        return (rt + delta_rt);
+    }
+
+    public static double getReverseAdjustedRT(double rt, double b_offset, double a_scale) {
+        double delta_rt = a_scale * rt + b_offset;
+        return (rt - delta_rt);
     }
 
 }

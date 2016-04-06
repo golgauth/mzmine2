@@ -387,12 +387,26 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 //        }
 //
 //    }
-
+    // Internal
     private static RawDataFile buildAverageRDF(PeakList peakList, int col, int halfNbMarginScans, double avgRT) {
+        return buildAverageRDF(peakList, col, halfNbMarginScans, avgRT, true);
+    }
+    // External
+    public static Scan getAverageScanAt(PeakList peakList, int col, double avgRT) {
+        RawDataFile avgRDF = buildAverageRDF(peakList, col, 0, avgRT, false);
+        return avgRDF.getScan(1);
+    }
+    // Generic
+    private static RawDataFile buildAverageRDF(PeakList peakList, int col, int halfNbMarginScans, double avgRT, boolean rtSort) {
         
-        // Sort rows by ascending RT
-        final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(peakList);
-        //PeakListRow pl_row = peakListRows[col];
+        final PeakListRow[] peakListRows;
+        if (rtSort) {
+            // Sort rows by ascending RT
+            peakListRows = PeakListTable.getPeakListSortedByRT(peakList);
+            //PeakListRow pl_row = peakListRows[col];
+        } else {
+            peakListRows = peakList.getRows();
+        }
 
         Scan refScan = peakList.getRawDataFile(0).getScan(peakList.getRawDataFile(0).getScanNumbers()[0]);
         Scan refScan1 = peakList.getRawDataFile(0).getScan(peakList.getRawDataFile(0).getScanNumbers()[1]);

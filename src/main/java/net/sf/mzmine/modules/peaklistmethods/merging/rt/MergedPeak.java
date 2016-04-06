@@ -14,7 +14,9 @@ import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.IsotopePattern;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
+import net.sf.mzmine.datamodel.Feature.FeatureStatus;
 import net.sf.mzmine.datamodel.impl.SimpleDataPoint;
+import net.sf.mzmine.datamodel.impl.SimpleFeature;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.util.CollectionUtils;
 import net.sf.mzmine.util.MathUtils;
@@ -56,19 +58,28 @@ public class MergedPeak implements Feature {
     private int[] scanNumbers;
 
     private int rowId;
+    
+    private FeatureStatus peakStatus;
 
     public int getRowID() {
         return this.rowId;
     }
-
     public void setRowID(int rowID) {
         this.rowId = rowID;
     }
+    
+    //-
+    private DataPoint dataPointsPerScan[];
+    // Boundaries of the peak raw data points
+    private Range<Double> rtRange, mzRange, intensityRange;
+    // Number of most intense fragment scan
+    private int fragmentScanNumber;
+
 
     /**
      * Initializes this MergedPeak
      */
-    public MergedPeak(RawDataFile dataFile, int rowId) {
+    public MergedPeak(RawDataFile dataFile, int rowId, FeatureStatus status) {
         this.dataFile = dataFile;
 
         this.rowId = rowId;
@@ -79,12 +90,19 @@ public class MergedPeak implements Feature {
         // new Range(dataFile.getDataRTRange(1));
 
         dataPointsMap = new Hashtable<Integer, DataPoint>();
+        
+        peakStatus = status;
     }
 
     public MergedPeak(RawDataFile dataFile) {
-        this(dataFile, -1);
+        this(dataFile, -1, FeatureStatus.UNKNOWN);
     }
 
+    public MergedPeak(RawDataFile dataFile, FeatureStatus status) {
+        this(dataFile, -1, status);
+    }
+
+    
     /**
      * This method adds a MzPeak to this MergedPeak.
      * 
@@ -147,8 +165,12 @@ public class MergedPeak implements Feature {
 
     public @Nonnull
     FeatureStatus getFeatureStatus() {
-        return FeatureStatus.DETECTED;
+        return peakStatus;
     }
+//    public void setFeatureStatus(FeatureStatus status) {
+//        this.peakStatus = status;
+//    }
+
 
     public double getRT() {
         return rt;
@@ -317,5 +339,5 @@ public class MergedPeak implements Feature {
     public void setAsymmetryFactor(Double af) {
         this.af = af;
     }
-
+    
 }

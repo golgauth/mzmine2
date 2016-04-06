@@ -42,6 +42,7 @@ import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Feature.FeatureStatus;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
@@ -259,6 +260,9 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	            text = value.toString();
 	            if (text.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
                         bgColor = new Color(230, 230, 230); // Light light gray
+                        newComp.setBackground(bgColor);
+	            } else if (text.contains("ESTIMATED")) {
+                        bgColor = new Color(255,255,153); // Light light yellow
                         newComp.setBackground(bgColor);
 	            }
 	        }

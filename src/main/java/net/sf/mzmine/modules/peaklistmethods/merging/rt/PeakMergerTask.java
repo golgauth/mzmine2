@@ -14,6 +14,7 @@ import javax.annotation.Nonnull;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.Feature.FeatureStatus;
 import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakList.PeakListAppliedMethod;
@@ -267,7 +268,7 @@ class PeakMergerTask extends AbstractTask {
 
             // Apex of the most representative (highest) peak of the group.
             int originScanNumber = oldPeak.getRepresentativeScanNumber();
-            MergedPeak newPeak = new MergedPeak(this.workingDataFile);
+            MergedPeak newPeak = new MergedPeak(this.workingDataFile, FeatureStatus.DETECTED);
             ////int totalScanNumber = this.workingDataFile.getNumOfScans();
             // No MZ requirement (take the full dataFile MZ Range)
             Range<Double> mzRange = this.workingDataFile.getDataMZRange(1);

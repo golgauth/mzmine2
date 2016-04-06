@@ -78,7 +78,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 
     }
     
-    RowVsRowScoreGC(PeakList peakList, Hashtable<PeakList, double[]> rtAdjustementMapping,
+    RowVsRowScoreGC(RawDataFile rawDF, Hashtable<RawDataFile, double[]> rtAdjustementMapping,
             PeakListRow peakListRow, PeakListRow alignedRow,
             double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,
             double idWeight,
@@ -114,14 +114,16 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 
             if (recalibrateRT) {
                 
-                double b_offset = rtAdjustementMapping.get(peakList)[0];
-                double a_scale = rtAdjustementMapping.get(peakList)[1];
+                double b_offset = rtAdjustementMapping.get(rawDF)[0];
+                double a_scale = rtAdjustementMapping.get(rawDF)[1];
                 //**double rt1 = rtAdjustementMapping.get(peakList)[2];
                 //**double rt2 = rtAdjustementMapping.get(peakList)[3];
                 //adjustedRT = (peakListRow.getAverageRT() + offset) * scale;
                 //**adjustedRT = ((peakListRow.getAverageRT() - rt1) * scale) + rt1 + offset;
-                double delta_rt = a_scale * peakListRow.getAverageRT() + b_offset;
-                adjustedRT = peakListRow.getAverageRT() + delta_rt;
+//                double delta_rt = a_scale * peakListRow.getAverageRT() + b_offset;
+//                adjustedRT = peakListRow.getAverageRT() + delta_rt;
+                adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
+
 
                 
                 // Compare what is comparable: "alignedRow.getAverageRT()" returns

@@ -70,7 +70,7 @@ import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowIdentity;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportParameters;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportTask;
@@ -935,7 +935,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         //-
                         String msg = "";
                         for (PeakIdentity id : identities) {
-                            double a_score = Double.valueOf(id.getPropertyValue(AlignedRowIdentity.PROPERTY_ID_SCORE));
+                            double a_score = Double.valueOf(id.getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE));
                             msg += format.format(a_score) + " : \t" + id.getName() + "\n";
                         }
                         
