@@ -301,7 +301,13 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                 }
                                 //
                                 mainIdentities[j-1] = mainIdentity;                                  
+                            
+                            } else {
+                                // Case row identity is "null" (i.e. != "Unknown")
+                                objects.add(rtFormat.format(peak.getRT()) + 
+                                        " / " + areaFormat.format(peak.getArea()));
                             }
+                            
                             arrNbDetected[j-1] += 1;
                         } else {
                             objects.add(JoinAlignerGcModule.MISSING_PEAK_VAL);
@@ -381,7 +387,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                     }
                 } else {
                     //strIdentities2 = mainIdentity.getName() + " (1)";
-                    strIdentities2 = mainIdentity.getName() + " (" + mainIdentity.getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE) + ")";
+                    String strScore = mainIdentity.getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE);
+                    strIdentities2 = mainIdentity.getName() + ((strScore != null) ? " (" + strScore + ")" : "");
                 }
                 // Set most frequent identity
                 super.setValueAt(mainIdentity, nbHeaderRows-3, i+1);
