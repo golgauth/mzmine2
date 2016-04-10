@@ -261,7 +261,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	            if (text.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
                         bgColor = new Color(230, 230, 230); // Light light gray
                         newComp.setBackground(bgColor);
-	            } else if (text.contains("ESTIMATED")) {
+	            } else if (text.contains("ESTIMATED") && !isSelected) {
                         bgColor = new Color(255,255,153); // Light light yellow
                         newComp.setBackground(bgColor);
 	            }

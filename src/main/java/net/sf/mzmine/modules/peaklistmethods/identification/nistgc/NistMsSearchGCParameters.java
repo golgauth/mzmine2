@@ -54,7 +54,7 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
      */
     public static final DirectoryParameter NIST_MS_SEARCH_DIR = new DirectoryParameter(
 	    "NIST MS Search directory",
-	    "Full path of the directory containing the NIST MS Search executable (nistms$.exe)");
+	    "Full path of the directory containing the NIST MS Search executable (nistms$.exe). Leave blank to try using default location.");
 
     /**
      * Ionization method.
@@ -151,8 +151,17 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
      * @return the path.
      */
     public File getNistMsSearchExecutable() {
-
-	final File dir = getParameter(NIST_MS_SEARCH_DIR).getValue();
+        
+        // GLG HACK:
+        File dir = getParameter(NIST_MS_SEARCH_DIR).getValue();
+        if (dir == null || !dir.exists()) {
+            // Try using the default windaube one
+            File dfltDir = new File("C:\\Program Files (x86)\\NISTMS\\MSSEARCH");
+            if (dfltDir.exists())
+                dir = dfltDir;
+        }
+        
+        //File dir = getParameter(NIST_MS_SEARCH_DIR).getValue();
 	return dir == null ? null : new File(dir, NIST_MS_SEARCH_EXE);
     }
 

@@ -155,12 +155,6 @@ class PeakFinderGCTask extends AbstractTask {
 		    return;
 		}
 		
-		
-		
-		//if (!dataFile.getName().contains("AC_71")) continue;
-		
-		
-
 		Vector<GapGC> gaps = new Vector<GapGC>();
 	        
 		// Fill each row of this raw data file column, create new empty gaps if necessary
@@ -216,35 +210,49 @@ class PeakFinderGCTask extends AbstractTask {
                             if (strScales != null)
                                 a_scale = Double.valueOf(strScales.split(AlignedRowProps.PROP_SEP, -1)[rdf_idx]);
                             
-                            // Reverse adjust
-                            double searchWindowCenterRT = (rtRange.lowerEndpoint() + rtRange.upperEndpoint()) / 2.0;
-                            double searchWindowHalfWidthRT = (rtRange.upperEndpoint() - rtRange.lowerEndpoint()) / 2.0;
-                            double adjustedSrcRT = JoinAlignerGCTask.getReverseAdjustedRT(searchWindowCenterRT, b_offset, a_scale);
-
-                            // Update adjusted RT info
-                            String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
-                            String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
-                            arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);
-                            strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
-                            ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                            // Case offsets & scales can be recovered from previous "JoinAlignerGC":
+                            // use them as-is.
+                            if (strOffsets != null && strScales != null) {
+                                
+                                // Reverse adjust
+                                double searchWindowCenterRT = (rtRange.lowerEndpoint() + rtRange.upperEndpoint()) / 2.0;
+                                double searchWindowHalfWidthRT = (rtRange.upperEndpoint() - rtRange.lowerEndpoint()) / 2.0;
+                                double adjustedSrcRT = JoinAlignerGCTask.getReverseAdjustedRT(searchWindowCenterRT, b_offset, a_scale);
+    
+                                // Update adjusted RT info
+                                String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
+                                String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);
+                                strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
+                                ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                                
+                                ////**rtRange = rtTolerance.getToleranceRange(adjustedSrcRT);
+                                rtRange = Range.closed(adjustedSrcRT - searchWindowHalfWidthRT, adjustedSrcRT + searchWindowHalfWidthRT);
+                                
+                                System.out.println(">2 Run deconv in range: " + rtRange + " - recomputed with " + b_offset + "/" + a_scale);
                             
-                            ////**rtRange = rtTolerance.getToleranceRange(adjustedSrcRT);
-                            rtRange = Range.closed(adjustedSrcRT - searchWindowHalfWidthRT, adjustedSrcRT + searchWindowHalfWidthRT);
-                            
-                            System.out.println(">2 Run deconv in range: " + rtRange + " - recomputed with " + b_offset + "/" + a_scale);
+                            } 
+                            // Otherwise apply RT correction using regular regression (See regular MZmine "PeakFinderTask")
+                            else {
+                                
+                                // TODO: !!!
+                            }
                         
-                        } else {
+                        } 
+                        // Adjust nothing!
+                        else {
                             
-                            // Reset adjusted RT info to nothing!
+                            // Cleanup: Reset adjusted RT info to nothing! 
+                            // In case last use of "PeakFinderGC" was done with option "rtCorrection=true"
                             String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
-                            String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
-                            arrAdjustedRTs[rdf_idx] = "";
-                            strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
-                            ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                            if (strAdjustedRTs != null) {
+                                String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                arrAdjustedRTs[rdf_idx] = "";
+                                strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
+                                ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                            }
                             
                         }
-                        
-                        
                         
                         
                         // TODO: Compute rtRange for peak length in some smart way: ".getRawDataPointsRTRange()"...
@@ -267,42 +275,8 @@ class PeakFinderGCTask extends AbstractTask {
 		    processedScans += dataFile.getNumOfScans();
 		    continue;
 		}
-
-		// Get all scans of this data file
-		int scanNumbers[] = dataFile.getScanNumbers(1);
-
-		System.out.println(">>>>>>>>>>>>>>>>>>>>> RDF : " + dataFile.getName());
 		
-//		// Process each scan
-//		for (int scanNumber : scanNumbers) {
-//
-//		    // Canceled?
-//		    if (isCanceled()) {
-//			return;
-//		    }
-//
-//		    // Get the scan
-//		    Scan scan = dataFile.getScan(scanNumber);
-//
-//		    // Feed this scan to all gaps
-////		    for (GapGC gap : gaps) {
-////			gap.offerNextScan(scan);
-////		    }
-//		    GapGC gap = gaps.get(0);
-//		    gap.offerNextScan(scan);
-//
-//		    processedScans++;
-//		}
-//		
-//		
-//
-//		// Finalize gaps
-////		for (GapGC gap : gaps) {
-////		    gap.noMoreOffers();
-////		}
-//                GapGC gap = gaps.get(0);
-//                gap.noMoreOffers();
-		
+		// Do fill the gap with proper peak
 		for (GapGC gap : gaps) {
 		    gap.fillTheGap();
 		}
