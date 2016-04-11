@@ -65,6 +65,7 @@ class PeakFinderGCTask extends AbstractTask {
     private double rtColumnMargin;
     private double minChemSimScore;
     private boolean rtCorrection;
+    private boolean useRegression;
     private ParameterSet parameters;
     private int processedScans, totalScans;
     private boolean MASTERLIST = true, removeOriginal;
@@ -91,6 +92,8 @@ class PeakFinderGCTask extends AbstractTask {
 	              .getValue();
 	rtCorrection = parameters.getParameter(
 		PeakFinderGCParameters.RTCorrection).getValue();
+	useRegression = parameters.getParameter(
+                PeakFinderGCParameters.useRegression).getValue();
 	removeOriginal = parameters.getParameter(
 		PeakFinderGCParameters.autoRemove).getValue();
     }
@@ -143,105 +146,147 @@ class PeakFinderGCTask extends AbstractTask {
 //
 //	} else {
         
+
+
+	// 4 cases:
+        //             1/ No RT correction
+        //             2/ RT correction & No Regression
+        //                     2A/ "offset/scale" info available from previous "JoinAlignerGC" task
+        //                     2B/ "offset/scale" info not available => Switch to regression
+        //             3/ RT correction & Regression
+        
+	
         // Build reference RDFs index
         RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
         Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
 
-	    // Process all raw data files
-	    for (RawDataFile dataFile : peakList.getRawDataFiles()) {
-
-		// Canceled?
-		if (isCanceled()) {
-		    return;
-		}
-		
-		Vector<GapGC> gaps = new Vector<GapGC>();
-	        
-		// Fill each row of this raw data file column, create new empty gaps if necessary
-		for (int row = 0; row < peakListRows.length/*peakList.getNumberOfRows()*/; row++) {
-		    PeakListRow sourceRow = peakListRows[row]; ////**peakList.getRow(row);
-		    PeakListRow newRow = processedPeakList.getRow(row);
-
-		    Feature sourcePeak = sourceRow.getPeak(dataFile);
-
-		    if (sourcePeak == null) {
-
-			// Create a new gap
-
-			Range<Double> mzRange = mzTolerance
-				.getToleranceRange(sourceRow.getAverageMZ());
-//			Range<Double> rtRange = rtTolerance
-//				.getToleranceRange(sourceRow.getAverageRT());
-			
-			// Find column bounds automatically (from adjacent columns bounds)
-			double rowLower = Double.MAX_VALUE, rowUpper = Double.MIN_VALUE;
-			for (RawDataFile df : peakList.getRawDataFiles()) {
-			    Feature p = sourceRow.getPeak(df);
-			    if (p != null) {
+        // Cases "No RT correction" or "RT correction using existing offset/scale"
+        boolean switchCorrectionMode = (useRegression);
+        if (!switchCorrectionMode) {
+            // Process all raw data files
+            for (RawDataFile dataFile : peakList.getRawDataFiles()) {
+    
+                // Canceled?
+                if (isCanceled()) {
+                    return;
+                }
+                
+                // Interrupt if "RT correction using existing offset/scale" ain't possible
+                if (switchCorrectionMode) { break; }
+      
+                
+                Vector<GapGC> gaps = new Vector<GapGC>();
+    
+                // Fill each row of this raw data file column, create new empty gaps if necessary
+                for (int row = 0; row < peakListRows.length/*peakList.getNumberOfRows()*/; row++) {
+                    
+                    // Interrupt if "RT correction using existing offset/scale" ain't possible
+                    if (switchCorrectionMode) { break; }
+                    
+                    PeakListRow sourceRow = peakListRows[row]; ////**peakList.getRow(row);
+                    PeakListRow newRow = processedPeakList.getRow(row);
+    
+                    Feature sourcePeak = sourceRow.getPeak(dataFile);
+    
+                    if (sourcePeak == null) {
+    
+                        // Create a new gap
+    
+                        Range<Double> mzRange = mzTolerance
+                                .getToleranceRange(sourceRow.getAverageMZ());
+                        //Range<Double> rtRange = rtTolerance
+                        //	.getToleranceRange(sourceRow.getAverageRT());
+    
+                        // Find column bounds automatically (from adjacent columns bounds)
+                        double rowLower = Double.MAX_VALUE, rowUpper = Double.MIN_VALUE;
+                        for (RawDataFile df : peakList.getRawDataFiles()) {
+                            Feature p = sourceRow.getPeak(df);
+                            if (p != null) {
                                 if (p.getRawDataPointsRTRange().lowerEndpoint() < rowLower)
                                     rowLower = p.getRawDataPointsRTRange().lowerEndpoint();
                                 if (p.getRawDataPointsRTRange().upperEndpoint() > rowUpper)
                                     rowUpper = p.getRawDataPointsRTRange().upperEndpoint();
-			    }
-			}
-			//-
-			double lower = ((row > 0) ? 
-			        (sourceRow.getAverageRT() + peakListRows[row-1]/*peakList.getRow(row-1)*/.getAverageRT()) / 2.0 : 
-			            rowLower);
-			double upper = ((row < peakListRows.length/*peakList.getNumberOfRows()*/-1) ? 
-			        (sourceRow.getAverageRT() + peakListRows[row+1]/*peakList.getRow(row+1)*/.getAverageRT()) / 2.0 : 
-			            rowUpper);
-			Range<Double> rtRange = Range.closed(lower - rtColumnMargin, upper + rtColumnMargin);
-
-			
-			
-                        // Adjust rtRange search window if requested
-		        System.out.println("> Run deconvolution in range: " + rtRange);
-		        int rdf_idx = Arrays.asList(rdf_sorted).indexOf(dataFile);
-                        if (rtCorrection) {
-                            
-                            //String[] arrOffsets = null, arrScales = null;
-                            String strOffsets = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_OFFSETS);
-                            String strScales = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_SCALES);
-                            
-                            double b_offset = 0.0, a_scale = 0.0;
-                            if (strOffsets != null)
-                                b_offset = Double.valueOf(strOffsets.split(AlignedRowProps.PROP_SEP, -1)[rdf_idx]);
-                            if (strScales != null)
-                                a_scale = Double.valueOf(strScales.split(AlignedRowProps.PROP_SEP, -1)[rdf_idx]);
-                            
-                            // Case offsets & scales can be recovered from previous "JoinAlignerGC":
-                            // use them as-is.
-                            if (strOffsets != null && strScales != null) {
-                                
-                                // Reverse adjust
-                                double searchWindowCenterRT = (rtRange.lowerEndpoint() + rtRange.upperEndpoint()) / 2.0;
-                                double searchWindowHalfWidthRT = (rtRange.upperEndpoint() - rtRange.lowerEndpoint()) / 2.0;
-                                double adjustedSrcRT = JoinAlignerGCTask.getReverseAdjustedRT(searchWindowCenterRT, b_offset, a_scale);
-    
-                                // Update adjusted RT info
-                                String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
-                                String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
-                                arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);
-                                strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
-                                ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
-                                
-                                ////**rtRange = rtTolerance.getToleranceRange(adjustedSrcRT);
-                                rtRange = Range.closed(adjustedSrcRT - searchWindowHalfWidthRT, adjustedSrcRT + searchWindowHalfWidthRT);
-                                
-                                System.out.println(">2 Run deconv in range: " + rtRange + " - recomputed with " + b_offset + "/" + a_scale);
-                            
-                            } 
-                            // Otherwise apply RT correction using regular regression (See regular MZmine "PeakFinderTask")
-                            else {
-                                
-                                // TODO: !!!
                             }
-                        
+                        }
+                        //-
+                        double lower = ((row > 0) ? 
+                                (sourceRow.getAverageRT() + peakListRows[row-1]/*peakList.getRow(row-1)*/.getAverageRT()) / 2.0 : 
+                                    rowLower);
+                        double upper = ((row < peakListRows.length/*peakList.getNumberOfRows()*/-1) ? 
+                                (sourceRow.getAverageRT() + peakListRows[row+1]/*peakList.getRow(row+1)*/.getAverageRT()) / 2.0 : 
+                                    rowUpper);
+                        Range<Double> rtRange = Range.closed(lower - rtColumnMargin, upper + rtColumnMargin);
+    
+    
+    
+                        // Adjust rtRange search window if requested
+                        System.out.println("> Run deconvolution in range: " + rtRange);
+                        int rdf_idx = Arrays.asList(rdf_sorted).indexOf(dataFile);
+                        if (rtCorrection) {
+    
+                                String strOffsets = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_OFFSETS);
+                                String strScales = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_SCALES);
+        
+                                double b_offset = 0.0, a_scale = 0.0;
+                                if (strOffsets != null)
+                                    b_offset = Double.valueOf(strOffsets.split(AlignedRowProps.PROP_SEP, -1)[rdf_idx]);
+                                if (strScales != null)
+                                    a_scale = Double.valueOf(strScales.split(AlignedRowProps.PROP_SEP, -1)[rdf_idx]);
+        
+                                // 2A)...
+                                // Case offsets & scales can be recovered from previous "JoinAlignerGC":
+                                // use them as-is.
+                                if (strOffsets != null && strScales != null) {
+        
+                                    //logger.info("RT correction: Found 'offset/scale' info from previous 'Join Aligner GC' task!");
+                                    // Reverse adjust
+                                    double searchWindowCenterRT = (rtRange.lowerEndpoint() + rtRange.upperEndpoint()) / 2.0;
+                                    double searchWindowHalfWidthRT = (rtRange.upperEndpoint() - rtRange.lowerEndpoint()) / 2.0;
+                                    double adjustedSrcRT = JoinAlignerGCTask.getReverseAdjustedRT(searchWindowCenterRT, b_offset, a_scale);
+                                    
+                                    // Update adjusted RT info
+                                    String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
+                                    String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                    arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);//String.valueOf(searchWindowCenterRT);//
+                                    strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
+                                    ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+                                    
+                                    // Adjust search range!
+                                    ////**rtRange = rtTolerance.getToleranceRange(adjustedSrcRT);
+                                    rtRange = Range.closed(adjustedSrcRT - searchWindowHalfWidthRT, adjustedSrcRT + searchWindowHalfWidthRT);
+        
+                                    System.out.println(">2 Run deconv in range: " + rtRange + " - recomputed with " + b_offset + "/" + a_scale);
+        
+                                }
+                                // 2B)...
+                                // If offset/scale info couldn't be found, switch RT correction mode to "regression approach"
+                                else {
+                                    logger.info("RT correction: Couldn't find 'offset/scale' info from previous 'Join Aligner GC' task! \n\t" + 
+                                            "Trying to use the 'Regression approach' instead...");
+                                    switchCorrectionMode = true;
+                                }
+                                
+    //                        // Otherwise apply RT correction using regular regression (See regular MZmine "PeakFinderTask")
+    //                        else {
+    //
+    //                            // Fill the gaps of a random sample using all the other samples and
+    //                            // take it as master list
+    //                            // to fill the gaps of the other samples
+    //                            //masterSample = (int) Math.floor(Math.random() * peakList.getNumberOfRawDataFiles());
+    //                            fillList(MASTERLIST);
+    //
+    //                            // Process all raw data files
+    //                            fillList(!MASTERLIST);
+    //
+    //                            // TODO: !!!
+    //
+    //                        }
+    
                         } 
+                        // 1)...
                         // Adjust nothing!
                         else {
-                            
+    
                             // Cleanup: Reset adjusted RT info to nothing! 
                             // In case last use of "PeakFinderGC" was done with option "rtCorrection=true"
                             String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
@@ -251,37 +296,54 @@ class PeakFinderGCTask extends AbstractTask {
                                 strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
                                 ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
                             }
-                            
+    
                         }
-                        
-                        
+    
+    
                         // TODO: Compute rtRange for peak length in some smart way: ".getRawDataPointsRTRange()"...
                         //        For now, just keep it as is
                         Range<Double> rtDurationRange =  parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).getValue();                        
                         parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).setValue(rtDurationRange);
-			GapGC newGap = new GapGC(parameters, peakList, row, newRow, dataFile, mzRange,
-				rtRange, intTolerance, minChemSimScore);
-
-			gaps.add(newGap);
-
-		    } else {
-			newRow.addPeak(dataFile, sourcePeak);
-		    }
-
-		}
-
-		// Stop processing this file if there are no gaps
-		if (gaps.size() == 0) {
-		    processedScans += dataFile.getNumOfScans();
-		    continue;
-		}
-		
-		// Do fill the gap with proper peak
-		for (GapGC gap : gaps) {
-		    gap.fillTheGap();
-		}
-
-	    }
+                        GapGC newGap = new GapGC(parameters, peakList, row, newRow, dataFile, mzRange,
+                                rtRange, intTolerance, minChemSimScore);
+    
+                        gaps.add(newGap);
+    
+                    } else {
+                        newRow.addPeak(dataFile, sourcePeak);
+                    }
+    
+                }
+                
+    
+                // Stop processing this file if there are no gaps
+                if (gaps.size() == 0) {
+                    processedScans += dataFile.getNumOfScans();
+                    continue;
+                }
+    
+                // Do fill the gap with proper peak
+                for (GapGC gap : gaps) {
+                    gap.fillTheGap();
+                }
+            }
+        }
+        
+        // 3) and 2B)
+        if (switchCorrectionMode) {
+            
+            //totalScans *= 2;
+            
+            // Fill the gaps of a random sample using all the other samples and
+            // take it as master list to fill the gaps of the other samples
+            masterSample = (int) Math.floor(Math.random() * peakList.getNumberOfRawDataFiles());
+            fillTheGapsInTheLists(MASTERLIST, peakListRows);
+    
+            // Process all raw data files
+            fillTheGapsInTheLists(!MASTERLIST, peakListRows);
+        }
+        
+        
 //	}
 
 	// Append processed peak list to the project
@@ -304,6 +366,153 @@ class PeakFinderGCTask extends AbstractTask {
 
     }
 
+    
+    public void fillTheGapsInTheLists(boolean masterList, PeakListRow[] peakListRows) {
+        
+        // Build reference RDFs index
+        RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
+        Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
+    
+        // Process all raw data files
+        for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
+        //for (RawDataFile dataFile : peakList.getRawDataFiles()) {
+            if (i != masterSample) {
+        
+                RawDataFile datafile1;
+                RawDataFile datafile2;
+
+                if (masterList) {
+                    datafile1 = peakList.getRawDataFile(masterSample);
+                    datafile2 = peakList.getRawDataFile(i);
+                } else {
+                    datafile1 = peakList.getRawDataFile(i);
+                    datafile2 = peakList.getRawDataFile(masterSample);
+                }
+                RegressionInfo info = new RegressionInfo();
+
+                for (PeakListRow row : peakList.getRows()) {
+                    Feature peaki = row.getPeak(datafile1);
+                    Feature peake = row.getPeak(datafile2);
+                    if (peaki != null && peake != null) {
+                        info.addData(peake.getRT(), peaki.getRT());
+                    }
+                }
+
+                info.setFunction();
+
+                // Canceled?
+                if (isCanceled()) {
+                    return;
+                }
+        
+                Vector<GapGC> gaps = new Vector<GapGC>();
+        
+                // Fill each row of this raw data file column, create new empty gaps if necessary
+                for (int row = 0; row < peakListRows.length/*peakList.getNumberOfRows()*/; row++) {
+                    PeakListRow sourceRow = peakListRows[row]; ////**peakList.getRow(row);
+                    PeakListRow newRow = processedPeakList.getRow(row);
+        
+                    Feature sourcePeak = sourceRow.getPeak(datafile1);
+        
+                    if (sourcePeak == null) {
+        
+                        // Create a new gap
+        
+                        double mz = sourceRow.getAverageMZ();
+                        double rt2 = -1;
+                        if (!masterList) {
+                            if (processedPeakList.getRow(row)
+                                    .getPeak(datafile2) != null) {
+                                rt2 = processedPeakList.getRow(row)
+                                        .getPeak(datafile2).getRT();
+                            }
+                        } else {
+                            if (peakList.getRow(row).getPeak(datafile2) != null) {
+                                rt2 = peakList.getRow(row).getPeak(datafile2)
+                                        .getRT();
+                            }
+                        }
+
+                        if (rt2 > -1) {
+
+                            double rt = info.predict(rt2);
+
+                            if (rt != -1) {
+
+                                Range<Double> mzRange = mzTolerance
+                                        .getToleranceRange(mz);
+//                                Range<Double> rtRange = rtTolerance
+//                                        .getToleranceRange(rt);
+
+                                
+                                // Find column bounds automatically (from adjacent columns bounds)
+                                double rowLower = Double.MAX_VALUE, rowUpper = Double.MIN_VALUE;
+                                for (RawDataFile df : peakList.getRawDataFiles()) {
+                                    Feature p = sourceRow.getPeak(df);
+                                    if (p != null) {
+                                        if (p.getRawDataPointsRTRange().lowerEndpoint() < rowLower)
+                                            rowLower = p.getRawDataPointsRTRange().lowerEndpoint();
+                                        if (p.getRawDataPointsRTRange().upperEndpoint() > rowUpper)
+                                            rowUpper = p.getRawDataPointsRTRange().upperEndpoint();
+                                    }
+                                }
+                                //-
+                                double lower = ((row > 0) ? 
+                                        (sourceRow.getAverageRT() + peakListRows[row-1]/*peakList.getRow(row-1)*/.getAverageRT()) / 2.0 : 
+                                            rowLower);
+                                double upper = ((row < peakListRows.length/*peakList.getNumberOfRows()*/-1) ? 
+                                        (sourceRow.getAverageRT() + peakListRows[row+1]/*peakList.getRow(row+1)*/.getAverageRT()) / 2.0 : 
+                                            rowUpper);
+                                Range<Double> rtRange = Range.closed(lower - rtColumnMargin, upper + rtColumnMargin);
+
+                                double searchWindowCenterRT = (rtRange.lowerEndpoint() + rtRange.upperEndpoint()) / 2.0;
+                                double searchWindowHalfWidthRT = (rtRange.upperEndpoint() - rtRange.lowerEndpoint()) / 2.0;
+                                double adjustedSrcRT = rt;
+                                
+                                // Update adjusted RT info
+                                int rdf_idx = Arrays.asList(rdf_sorted).indexOf(datafile1);
+                                String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
+                                String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);//String.valueOf(searchWindowCenterRT);//
+                                strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
+                                ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
+
+                                // Adjust search range!
+                                rtRange = Range.closed(adjustedSrcRT - searchWindowHalfWidthRT, adjustedSrcRT + searchWindowHalfWidthRT);
+                                
+                                // TODO: Compute rtRange for peak length in some smart way: ".getRawDataPointsRTRange()"...
+                                //        For now, just keep it as is
+                                Range<Double> rtDurationRange =  parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).getValue();                        
+                                parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).setValue(rtDurationRange);
+                                GapGC newGap = new GapGC(parameters, peakList, row, newRow, datafile1, mzRange,
+                                        rtRange, intTolerance, minChemSimScore);
+                
+                                gaps.add(newGap);
+                            }
+                        }
+        
+        
+                    } else {
+                        newRow.addPeak(datafile1, sourcePeak);
+                    }
+        
+                }
+        
+                // Stop processing this file if there are no gaps
+                if (gaps.size() == 0) {
+                    processedScans += datafile1.getNumOfScans();
+                    continue;
+                }
+        
+                // Do fill the gap with proper peak
+                for (GapGC gap : gaps) {
+                    gap.fillTheGap();
+                }
+            }
+        }
+    }
+    
+    
 //    public void fillList(boolean masterList) {
 //	for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
 //	    if (i != masterSample) {

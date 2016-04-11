@@ -70,6 +70,11 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
             "If checked, correction of the retention time will be applied to avoid the"
                 +"\nproblems caused by the deviation of the retention time between the samples.");
     
+    public static final BooleanParameter useRegression = new BooleanParameter(
+            "Use regression",
+            "Ignored if \"RT correction\" isn't checked. If checked, RT correction is performed using a polynomial regression" +
+            "approach among already detected peaks rather than the \"offset/scale\" values inherited from previous \"Join Aligner GC\".");
+    
     
     //-------- Begin: Deconvolution params
     public static final PercentParameter CHROMATOGRAPHIC_THRESHOLD_LEVEL = new PercentParameter(
@@ -122,7 +127,7 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
     public PeakFinderGCParameters() {
 	super(new Parameter[] { peakLists, suffix, intTolerance, MZTolerance,
 		/*RTTolerance,*/RTColumnTolerance, minSimScore,  
-		RTCorrection,
+		RTCorrection, useRegression,
 		SEARCH_RT_RANGE, PEAK_DURATION, 
 		autoRemove });
     }

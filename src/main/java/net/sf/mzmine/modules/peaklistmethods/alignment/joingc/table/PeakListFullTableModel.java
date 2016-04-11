@@ -281,11 +281,12 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                         strScore = " (" + rtFormat.format(Double.valueOf(score)) + ")";
                                     
                                     // Handle gap filled peaks
-                                    if (peak.getFeatureStatus() == FeatureStatus.ESTIMATED
+                                    if (peak.getFeatureStatus() == FeatureStatus.ESTIMATED 
                                             || Strings.isNullOrEmpty(score)) {
-                                        peakAjustedRT = "ESTIMATED";
                                         if (strAdjustedRTs != null && !Strings.isNullOrEmpty(arrAdjustedRTs[rdf_idx]))
-                                                peakAjustedRT += peakAjustedRT;
+                                            peakAjustedRT = "ESTIMATED" + "/" + peakAjustedRT;
+                                        else
+                                            peakAjustedRT = "ESTIMATED";
                                         //peakAjustedRT = "ESTIMATED" + ((Strings.isNullOrEmpty(arrIdentities[rdf_idx])) ? "" : "/" + peakAjustedRT);
                                         peakIdentity = "NONE";
                                     }
