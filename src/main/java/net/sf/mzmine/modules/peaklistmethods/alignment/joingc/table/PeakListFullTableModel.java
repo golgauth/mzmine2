@@ -292,7 +292,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                     }
                                     
                                     objects.add(rtFormat.format(peak.getRT()) + 
-                                                ((strAdjustedRTs != null) ? " [" + peakAjustedRT + "]" : "") + 
+                                                (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" : "") + 
                                                 " / " + areaFormat.format(peak.getArea()) + 
                                                 " / " + peakIdentity
                                                 + strScore);

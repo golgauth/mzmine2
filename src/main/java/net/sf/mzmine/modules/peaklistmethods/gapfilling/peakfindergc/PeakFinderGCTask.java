@@ -50,6 +50,7 @@ import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Range;
 
 class PeakFinderGCTask extends AbstractTask {
@@ -471,8 +472,16 @@ class PeakFinderGCTask extends AbstractTask {
                                 
                                 // Update adjusted RT info
                                 int rdf_idx = Arrays.asList(rdf_sorted).indexOf(datafile1);
+                                
                                 String strAdjustedRTs = sourceRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_RTS);
-                                String[] arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                // If "corrected RTs" weren't inherited from previous "JoinAlignerGCTask", then recreate one
+                                String[] arrAdjustedRTs;
+                                if (Strings.isNullOrEmpty(strAdjustedRTs)) {
+                                    arrAdjustedRTs = new String[peakList.getNumberOfRawDataFiles()];
+                                    Arrays.fill(arrAdjustedRTs, "");
+                               } else {
+                                    arrAdjustedRTs = strAdjustedRTs.split(AlignedRowProps.PROP_SEP, -1);
+                                }
                                 arrAdjustedRTs[rdf_idx] = String.valueOf(adjustedSrcRT);//String.valueOf(searchWindowCenterRT);//
                                 strAdjustedRTs = AlignedRowProps.implode(AlignedRowProps.PROP_SEP, false, arrAdjustedRTs);
                                 ((SimplePeakIdentity) sourceRow.getPreferredPeakIdentity()).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);

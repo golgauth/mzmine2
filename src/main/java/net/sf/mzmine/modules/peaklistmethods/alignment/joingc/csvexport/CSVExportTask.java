@@ -369,11 +369,11 @@ public class CSVExportTask extends AbstractTask {
                                         objects.add(rtFormat.format(
                                                 peak.getRT())
                                                 + SEP_STR_CSV
-                                                + ((strAdjustedRTs != null) ? " [" + peakAjustedRT + "]" + SEP_STR_CSV : "")
+                                                + (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" + SEP_STR_CSV : "")
                                                 + areaFormat.format(peak.getArea())
                                                 + SEP_STR_CSV + peakIdentity
                                                 + strScore);
-
+                                        
                                     }
                                     // Handle regular single rdf peak list
                                     else {
