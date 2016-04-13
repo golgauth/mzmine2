@@ -64,10 +64,10 @@ class CSVExportTask extends AbstractTask {
                 CSVExportParameters.exportIdentityItems).getValue();
         dataFileElements = parameters.getParameter(
                 CSVExportParameters.exportDataFileItems).getValue();
-        exportAllIDs = parameters.getParameter(
-                CSVExportParameters.exportAllIDs).getValue();
-        idSeparator = parameters.getParameter(
-                CSVExportParameters.idSeparator).getValue();
+        exportAllIDs = parameters
+                .getParameter(CSVExportParameters.exportAllIDs).getValue();
+        idSeparator = parameters.getParameter(CSVExportParameters.idSeparator)
+                .getValue();
     }
 
     public double getFinishedPercentage() {
@@ -78,8 +78,8 @@ class CSVExportTask extends AbstractTask {
     }
 
     public String getTaskDescription() {
-        return "Exporting peak list(s) " 
-                + Arrays.toString(peakLists) + " to CSV file(s)";
+        return "Exporting peak list(s) " + Arrays.toString(peakLists)
+                + " to CSV file(s)";
     }
 
     public void run() {
@@ -90,21 +90,22 @@ class CSVExportTask extends AbstractTask {
         boolean substitute = fileName.getPath().contains(plNamePattern);
 
         // Total number of rows
-        for (PeakList peakList: peakLists) {
+        for (PeakList peakList : peakLists) {
             totalRows += peakList.getNumberOfRows();
         }
 
         // Process peak lists
-        for (PeakList peakList: peakLists) {
+        for (PeakList peakList : peakLists) {
 
             // Filename
             File curFile = fileName;
             if (substitute) {
+                // Cleanup from illegal filename characters
+                String cleanPlName = peakList.getName().replaceAll(
+                        "[^a-zA-Z0-9.-]", "_");
                 // Substitute
                 String newFilename = fileName.getPath().replaceAll(
-                        Pattern.quote(plNamePattern), peakList.getName());
-                // Cleanup from illegal filename characters
-                newFilename = newFilename.replaceAll("[^a-zA-Z0-9.-]", "_");
+                        Pattern.quote(plNamePattern), cleanPlName);
                 curFile = new File(newFilename);
             }
 
@@ -114,7 +115,7 @@ class CSVExportTask extends AbstractTask {
                 writer = new FileWriter(curFile);
             } catch (Exception e) {
                 setStatus(TaskStatus.ERROR);
-                setErrorMessage("Could not open file " + curFile 
+                setErrorMessage("Could not open file " + curFile
                         + " for writing.");
                 return;
             }
@@ -134,8 +135,8 @@ class CSVExportTask extends AbstractTask {
                 setErrorMessage("Could not close file " + curFile);
                 return;
             }
-            
-            // If peak list substitution pattern wasn't found, 
+
+            // If peak list substitution pattern wasn't found,
             // treat one peak list only
             if (!substitute)
                 break;
@@ -146,7 +147,7 @@ class CSVExportTask extends AbstractTask {
 
     }
 
-    private void exportPeakList(PeakList peakList, FileWriter writer, 
+    private void exportPeakList(PeakList peakList, FileWriter writer,
             File fileName) {
 
         RawDataFile rawDataFiles[] = peakList.getRawDataFiles();
@@ -176,7 +177,7 @@ class CSVExportTask extends AbstractTask {
         length = dataFileElements.length;
         for (int df = 0; df < peakList.getNumberOfRawDataFiles(); df++) {
             for (int i = 0; i < length; i++) {
-        	name = rawDataFiles[df].getName();
+                name = rawDataFiles[df].getName();
                 name = name + " " + dataFileElements[i].toString();
                 name = escapeStringForCSV(name);
                 line.append(name + fieldSeparator);
@@ -234,39 +235,39 @@ class CSVExportTask extends AbstractTask {
                 }
             }
 
-	    // Identity elements
-	    length = identityElements.length;
-	    PeakIdentity peakIdentity = peakListRow.getPreferredPeakIdentity();
-	    PeakIdentity[] peakIdentities = peakListRow.getPeakIdentities();
+            // Identity elements
+            length = identityElements.length;
+            PeakIdentity peakIdentity = peakListRow.getPreferredPeakIdentity();
+            PeakIdentity[] peakIdentities = peakListRow.getPeakIdentities();
 
-	    if (exportAllIDs && peakIdentities.length > 1) {
-		// Export all identification results
-		for (int i = 0; i < length; i++) {
-		    String propertyValue = "";
-		    for (int x = 0; x < peakIdentities.length; x++) {
-			if (x == 0) {
-			    propertyValue = escapeStringForCSV(peakIdentities[x]
-				    .getPropertyValue(identityElements[i]));
-			} else {
-			    propertyValue = propertyValue
-				    + idSeparator
-				    + escapeStringForCSV(peakIdentities[x]
-					    .getPropertyValue(identityElements[i]));
-			}
-		    }
-		    line.append(propertyValue + fieldSeparator);
-		}
-	    } else if (peakIdentity != null) {
-		for (int i = 0; i < length; i++) {
-		    String propertyValue = escapeStringForCSV(peakIdentity
-			    .getPropertyValue(identityElements[i]));
-		    line.append(propertyValue + fieldSeparator);
-		}
-	    } else {
-		for (int i = 0; i < length; i++) {
-		    line.append(fieldSeparator);
-		}
-	    }
+            if (exportAllIDs && peakIdentities.length > 1) {
+                // Export all identification results
+                for (int i = 0; i < length; i++) {
+                    String propertyValue = "";
+                    for (int x = 0; x < peakIdentities.length; x++) {
+                        if (x == 0) {
+                            propertyValue = escapeStringForCSV(peakIdentities[x]
+                                    .getPropertyValue(identityElements[i]));
+                        } else {
+                            propertyValue = propertyValue
+                                    + idSeparator
+                                    + escapeStringForCSV(peakIdentities[x]
+                                            .getPropertyValue(identityElements[i]));
+                        }
+                    }
+                    line.append(propertyValue + fieldSeparator);
+                }
+            } else if (peakIdentity != null) {
+                for (int i = 0; i < length; i++) {
+                    String propertyValue = escapeStringForCSV(peakIdentity
+                            .getPropertyValue(identityElements[i]));
+                    line.append(propertyValue + fieldSeparator);
+                }
+            } else {
+                for (int i = 0; i < length; i++) {
+                    line.append(fieldSeparator);
+                }
+            }
 
             // Data file elements
             length = dataFileElements.length;
