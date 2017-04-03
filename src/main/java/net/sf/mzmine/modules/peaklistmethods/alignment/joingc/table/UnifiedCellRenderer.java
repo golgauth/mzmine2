@@ -21,15 +21,18 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.logging.Logger;
 
 import javax.swing.JComponent;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.table.TableCellRenderer;
@@ -194,6 +197,7 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 
 	        newComp.setToolTipText(xic.getToolTipText());
 
+//	        newComp = (JComponent) new PeakShapeCellRenderer(peakList, parameters).getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 	    }
 
 	    if (value instanceof PeakListRow) {
@@ -219,29 +223,39 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	else {
 
 	    if (value != null) {
-	        
-	        // PeakStatusCellRenderer
-	        if (value instanceof FeatureStatus) {
-	            FeatureStatus status = (FeatureStatus) value;
+                
+                // PeakStatusCellRenderer
+                if (value instanceof FeatureStatus) {
+                    FeatureStatus status = (FeatureStatus) value;
 
-	            switch (status) {
-	            case DETECTED:
-	                newComp.add(greenCircle);
-	                break;
-	            case ESTIMATED:
-	                newComp.add(yellowCircle);
-	                break;
-	            case MANUAL:
-	                newComp.add(orangeCircle);
-	                break;
-	            default:
-	                newComp.add(redCircle);
-	                break;
-	            }
+                    switch (status) {
+                    case DETECTED:
+                        newComp.add(greenCircle);
+                        break;
+                    case ESTIMATED:
+                        newComp.add(yellowCircle);
+                        break;
+                    case MANUAL:
+                        newComp.add(orangeCircle);
+                        break;
+                    default:
+                        newComp.add(redCircle);
+                        break;
+                    }
 
-	            newComp.setToolTipText(status.toString());
+                    newComp.setToolTipText(status.toString());
 
-	        }
+                    newComp.add(new PeakStatusCellRenderer().getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column));
+                }
+                
+                // PeakShapeCellRenderer
+                if (value instanceof PeakListRow || value instanceof Feature) {
+                    Feature peak = (Feature) value;
+
+                    newComp.setToolTipText(peak.toString());
+
+                    newComp.add(new PeakShapeCellRenderer(peakList, parameters).getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column));
+                }
 
 	        // FormattedCellRenderer
 	        String text;
@@ -267,14 +281,19 @@ public class UnifiedCellRenderer implements TableCellRenderer {
 	            }
 	        }
 
-	        JLabel newLabel = new JLabel(text, JLabel.CENTER);
+	        
+	        if (!(value instanceof PeakListRow || value instanceof Feature || value instanceof FeatureStatus)) {
 
-	        //	        if (font != null)
-	        //	            newLabel.setFont(font);
-	        //	        else if (table.getFont() != null)
-	        //	            newLabel.setFont(table.getFont());
+	            JLabel newLabel = new JLabel(text, JLabel.CENTER);
 
-	        newComp.add(newLabel);
+	            //	        if (font != null)
+	            //	            newLabel.setFont(font);
+	            //	        else if (table.getFont() != null)
+	            //	            newLabel.setFont(table.getFont());
+
+	            newComp.add(newLabel);
+	        }
+	        
 	    } else {
                 newComp.add(redCircle);
             }

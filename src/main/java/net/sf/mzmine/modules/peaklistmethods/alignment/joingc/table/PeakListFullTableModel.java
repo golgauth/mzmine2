@@ -149,16 +149,23 @@ public class PeakListFullTableModel extends DefaultTableModel implements
 
         PeakListRow peakListRow = peakListRows[col-1]; //peakList.getRow(col-1);
         
+        // Identity
         if (value instanceof PeakIdentity) {
             peakListRow.setPreferredPeakIdentity((PeakIdentity) value);
             super.setValueAt(value, row, col);
 //            // Indicate the change has happened:
 //            fireTableDataChanged();
         }
+        // Comment
+        if (value instanceof String && row == PeakListTable.COMMENT_ROW) {
+            peakListRow.setComment((String) value);
+            super.setValueAt(value, row, col);
+        }
     }
     public boolean isCellEditable(int row, int col) {
 
-        return (row == 1 && col > 0);
+        // Identity or comment
+        return ((row == 1 || row == PeakListTable.COMMENT_ROW) && col > 0);
 
     }
 
@@ -216,8 +223,13 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         objects.add("Identities info");
                         break;
                     case 3:
-                        //objects.add("Peak Shape");
+                        objects.add("Peak shape");
+                        break;
+                    case 4:
                         objects.add("Peaks detected");
+                        break;
+                    case PeakListTable.COMMENT_ROW:
+                        objects.add("Comment");
                         break;
                     default:
                         //objects.add(a_pl_row.getPeaks()[i-nbHeaderRows].getDataFile().getName());
@@ -241,6 +253,14 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         objects.add("");
                         break;
                     case 3:
+                        // Do nothing, update bellow
+                        objects.add("");
+                        break;
+                    case 4:
+                        // Do nothing, update bellow
+                        objects.add("");
+                        break;
+                    case PeakListTable.COMMENT_ROW:
                         // Do nothing, update bellow
                         objects.add("");
                         break;
@@ -325,7 +345,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
         
         // Update number of detected peaks
         for (int i=0; i < peakList.getNumberOfRows(); ++i) {
-            super.setValueAt(arrNbDetected[i], nbHeaderRows-1, i+1);
+            super.setValueAt(arrNbDetected[i], nbHeaderRows-2, i+1);
         }
         // Update main identity + identities info
         for (int i=0; i < peakList.getNumberOfRows(); ++i) {
@@ -394,10 +414,17 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                     strIdentities2 = mainIdentity.getName() + ((strScore != null) ? " (" + strScore + ")" : "");
                 }
                 // Set most frequent identity
-                super.setValueAt(mainIdentity, nbHeaderRows-3, i+1);
+                super.setValueAt(mainIdentity, nbHeaderRows-5, i+1);
             }
-            super.setValueAt(strIdentities2, nbHeaderRows-2, i+1);
+            super.setValueAt(strIdentities2, nbHeaderRows-4, i+1);
         }
+        for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+            super.setValueAt(peakList.getRow(i), nbHeaderRows-3, i+1);
+        }
+        for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+            super.setValueAt(peakList.getRow(i).getComment(), nbHeaderRows-1, i+1);
+        }
+
 
     }
 

@@ -124,7 +124,8 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
     
     NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
     
-    public static final int NB_HEADER_ROWS = 4;
+    public static final int NB_HEADER_ROWS = 6;//4;
+    public static final int COMMENT_ROW = 5;
         
     static final boolean AVERAGE_AT_AVG_RT = false;
     private static final double SMALL_PEAKS_THRESHOLD = 0.75;
