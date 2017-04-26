@@ -90,6 +90,9 @@ class PeakMergerTask extends AbstractTask {
     
     private ArrayList<PeakListRow> mergedPeakListRows;
 
+    
+    final private static boolean ON_THE_FLY_MERGING = false;
+    
     /**
      * @param rawDataFile
      * @param parameters
@@ -162,6 +165,9 @@ class PeakMergerTask extends AbstractTask {
         // TODO: Which kind of sorting shall be applied here? By height??? Nothing???
         //       => For now, nothing is done...
         List<Feature> sortedPeaks = Arrays.asList(peakList.getPeaks(this.dataFile));
+        // Sort by RT (Ascending)
+        Collections.sort(sortedPeaks, new PeakSorter(SortingProperty.RT, SortingDirection.Ascending));
+
         
         this.ancestorDataFile = DataFileUtils.getAncestorDataFile(this.project, this.dataFile, true);
         this.workingDataFile = this.getWorkingDataFile(/*sortedPeaks*/);
@@ -169,7 +175,9 @@ class PeakMergerTask extends AbstractTask {
         
         //--------------------     <BAD SHAPED>     --------------------//
         // Store all "bad shaped" (bs) peaks.
-        PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.5, 0.0, FilterShapeModel/*.Triangle*/.None);
+        //PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.5, 0.0, FilterShapeModel/*.Triangle*/.None);
+        PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.1, 0.0, FilterShapeModel.Triangle);
+        logger.info(">>>>>>>>>>>>>>>> Found bad shaped (non-triangular) peaks: " + badShapedPeaksList.getNumberOfRows());
         List<Feature> badShapedPeaks = Arrays.asList(badShapedPeaksList.getPeaks(this.dataFile));
         // Note: Shall we sort in some way the badShapedPeaks array?
         
@@ -211,168 +219,658 @@ class PeakMergerTask extends AbstractTask {
         totalPeaks = sortedPeaks.size();
         int nb_empty_peaks = 0;
 
-        // <a/> Merging peaks
-        for (int ind = 0; ind < totalPeaks; ind++) {
 
-            // Task canceled by user
-            if (isCanceled())
-                return;
-
-            Feature aPeak = sortedPeaks.get(ind);
-
-            // Delete (and skip) if peak is a Bad Shaped one
-            if (badShapedPeaks.contains(aPeak)) {
-                sortedPeaks.set(sortedPeaks.indexOf(aPeak), null);
-                aPeak = null;
-            }
-            // Skip if peak was already deleted (BS or treated)
-            if (aPeak == null) {
-                processedPeaks++;
-                continue;
-            }
-           
-
-            // Build RT group
-            ArrayList<Feature> groupedPeaks = this.getPeaksGroupByRT(aPeak, sortedPeaks);
-            // Sort by intensity (descending)
-            Collections.sort(groupedPeaks, new PeakSorter(SortingProperty.Height, SortingDirection.Descending));
-
-            // TODO: debug stuffs here !!!!
-
-            Feature oldPeak = groupedPeaks.get(0);
-            // Get scan numbers of interest
-            //                      List<Integer> scan_nums = Arrays.asList(ArrayUtils.toObject(oldPeak.getScanNumbers()));
-            // Do not get scan nums from highest peak, but from the whole group (largest RT range)
-            // TODO: use "getPeaksGroupByRT()" with an RTrange as parameter passed in reference, instead of looping again:
-            //       (since group's scans bounds are already determined in that function).
-            int minScanNumber = Integer.MAX_VALUE;
-            int maxScanNumber = Integer.MIN_VALUE;
-            double futureMz = groupedPeaks.get(0).getMZ();
-//            double height = -1.0d;
-            for (int i = 0; i < groupedPeaks.size(); i++) {
-                int[] scanNums = groupedPeaks.get(i).getScanNumbers();
-                if (scanNums[0] < minScanNumber) {
-                    minScanNumber = scanNums[0];
+        
+        if (ON_THE_FLY_MERGING) {
+            // <a/> Merging peaks
+            for (int ind = 0; ind < totalPeaks; ind++) {
+    
+                // Task canceled by user
+                if (isCanceled())
+                    return;
+    
+                Feature aPeak = sortedPeaks.get(ind);
+    
+                // Delete (and skip) if peak is a Bad Shaped one
+                if (badShapedPeaks.contains(aPeak)) {
+                    sortedPeaks.set(sortedPeaks.indexOf(aPeak), null);
+                    aPeak = null;
                 }
-                if (scanNums[scanNums.length - 1] > maxScanNumber) {
-                    maxScanNumber = scanNums[scanNums.length - 1];
+                // Skip if peak was already deleted (BS or treated)
+                if (aPeak == null) {
+                    processedPeaks++;
+                    continue;
                 }
-//                // Use the opportunity to define the mz of the future merged peak
-//                // from the highest peak of the group to be merged.
-//                if (groupedPeaks.get(i).getHeight() > height)
-//                {
-//                    futureMz = groupedPeaks.get(i).getMZ();
-//                    height = groupedPeaks.get(i).getHeight();
-//                }
-            }
-
-            // Apex of the most representative (highest) peak of the group.
-            int originScanNumber = oldPeak.getRepresentativeScanNumber();
-            MergedPeak newPeak = new MergedPeak(this.workingDataFile, FeatureStatus.DETECTED);
-            ////int totalScanNumber = this.workingDataFile.getNumOfScans();
-            // No MZ requirement (take the full dataFile MZ Range)
-            Range<Double> mzRange = this.workingDataFile.getDataMZRange(1);
-            Scan scan;
-            DataPoint dataPoint;
-
-            // Look for dataPoint related to this main peak to the left
-            int scanNumber = originScanNumber;
-            scanNumber--;
-            while (scanNumber >= minScanNumber) {
+               
+    
+                // Build RT group
+                ArrayList<Feature> groupedPeaks = this.getPeaksGroupByRT(aPeak, sortedPeaks);
+                // Sort by intensity (descending)
+                Collections.sort(groupedPeaks, new PeakSorter(SortingProperty.Height, SortingDirection.Descending));
+    
+                // TODO: debug stuffs here !!!!
+    
+                Feature oldPeak = groupedPeaks.get(0);
+                // Get scan numbers of interest
+                //                      List<Integer> scan_nums = Arrays.asList(ArrayUtils.toObject(oldPeak.getScanNumbers()));
+                // Do not get scan nums from highest peak, but from the whole group (largest RT range)
+                // TODO: use "getPeaksGroupByRT()" with an RTrange as parameter passed in reference, instead of looping again:
+                //       (since group's scans bounds are already determined in that function).
+                int minScanNumber = Integer.MAX_VALUE;
+                int maxScanNumber = Integer.MIN_VALUE;
+                double futureMz = groupedPeaks.get(0).getMZ();
+                // Maximized bounds (min/max scan numbers)
                 
-                scan = this.workingDataFile.getScan(scanNumber);
-
-                if (scan == null) {
-                    scanNumber--;
-                    continue;
+    //            double height = -1.0d;
+                for (int i = 0; i < groupedPeaks.size(); i++) {
+                    int[] scanNums = groupedPeaks.get(i).getScanNumbers();
+                    if (scanNums[0] < minScanNumber) {
+                        minScanNumber = scanNums[0];
+                    }
+                    if (scanNums[scanNums.length - 1] > maxScanNumber) {
+                        maxScanNumber = scanNums[scanNums.length - 1];
+                    }
+    //                // Use the opportunity to define the mz of the future merged peak
+    //                // from the highest peak of the group to be merged.
+    //                if (groupedPeaks.get(i).getHeight() > height)
+    //                {
+    //                    futureMz = groupedPeaks.get(i).getMZ();
+    //                    height = groupedPeaks.get(i).getHeight();
+    //                }
                 }
-
-                if (scan.getMSLevel() != 1) {
-                    scanNumber--;
-                    continue;
-                }
-
-                // Switch accordingly to option "Only DETECTED peaks"
-                dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
-
-                if (dataPoint != null) {
-                    newPeak.addMzPeak(scanNumber, dataPoint);
-                }
-
+                
+    //            int[] scanNums = groupedPeaks.get(0).getScanNumbers();
+    //            minScanNumber = scanNums[0];
+    //            maxScanNumber = scanNums[scanNums.length - 1];
+                
+                
+    //            // Averaged bounds (min/max scan numbers)
+    //            // Do not get scan nums from highest peak, but from the whole group (averaged RT range)
+    //            minScanNumber = 0;
+    //            maxScanNumber = 0;
+    //            for (int i = 0; i < groupedPeaks.size(); i++) {
+    //                
+    //                int[] scanNums = groupedPeaks.get(i).getScanNumbers();
+    //                
+    //                //if (scanNums[0] < minScanNumber) {
+    //                    minScanNumber += scanNums[0];
+    //                //}
+    //                
+    //                //if (scanNums[scanNums.length - 1] > maxScanNumber) {
+    //                    maxScanNumber += scanNums[scanNums.length - 1];
+    //                //}
+    //            }
+    //            minScanNumber = (int) Math.round(minScanNumber / (double) groupedPeaks.size());
+    //            maxScanNumber = (int) Math.round(maxScanNumber / (double) groupedPeaks.size());
+                
+    
+                // Apex of the most representative (highest) peak of the group.
+                int originScanNumber = oldPeak.getRepresentativeScanNumber();
+                MergedPeak newPeak = new MergedPeak(this.workingDataFile, FeatureStatus.DETECTED);
+                ////int totalScanNumber = this.workingDataFile.getNumOfScans();
+                // No MZ requirement (take the full dataFile MZ Range)
+                Range<Double> mzRange = this.workingDataFile.getDataMZRange(1);
+                Scan scan;
+                DataPoint dataPoint;
+    
+                // Look for dataPoint related to this main peak to the left
+                int scanNumber = originScanNumber;
                 scanNumber--;
-            }
-
-            // Add original DataPoint
-            scanNumber = originScanNumber;
-            scan = this.workingDataFile.getScan(originScanNumber);
-            dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
-            if (dataPoint == null && this.useOnlyDetectedPeaks) {
-                this.useOnlyDetectedPeaks = false;
-                dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
-                this.useOnlyDetectedPeaks = true;
-
-                logger.log(
-                        Level.WARNING,
-                        "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
-                                + scanNumber
-                                + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
-            }
-            //
-            if (dataPoint != null) {
-                newPeak.addMzPeak(scanNumber, dataPoint);
-            }
-
-            // Look to the right
-            scanNumber++;
-            while (scanNumber <= maxScanNumber) {
-                
-                scan = this.workingDataFile.getScan(scanNumber);
-
-                if (scan == null) {
-                    scanNumber++;
-                    continue;
+                while (scanNumber >= minScanNumber) {
+                    
+                    scan = this.workingDataFile.getScan(scanNumber);
+    
+                    if (scan == null) {
+                        scanNumber--;
+                        continue;
+                    }
+    
+                    if (scan.getMSLevel() != 1) {
+                        scanNumber--;
+                        continue;
+                    }
+    
+                    // Switch accordingly to option "Only DETECTED peaks"
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+    
+                    if (dataPoint != null) {
+                        newPeak.addMzPeak(scanNumber, dataPoint);
+                    }
+    
+                    scanNumber--;
                 }
-
-                if (scan.getMSLevel() != 1) {
-                    scanNumber++;
-                    continue;
-                }
-
+    
+                // Add original DataPoint
+                scanNumber = originScanNumber;
+                scan = this.workingDataFile.getScan(originScanNumber);
                 dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
-
+                if (dataPoint == null && this.useOnlyDetectedPeaks) {
+                    this.useOnlyDetectedPeaks = false;
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+                    this.useOnlyDetectedPeaks = true;
+    
+                    logger.log(
+                            Level.WARNING,
+                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
+                                    + scanNumber
+                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
+                }
+                //
                 if (dataPoint != null) {
                     newPeak.addMzPeak(scanNumber, dataPoint);
                 }
-
+    
+                // Look to the right
                 scanNumber++;
+                while (scanNumber <= maxScanNumber) {
+                    
+                    scan = this.workingDataFile.getScan(scanNumber);
+    
+                    if (scan == null) {
+                        scanNumber++;
+                        continue;
+                    }
+    
+                    if (scan.getMSLevel() != 1) {
+                        scanNumber++;
+                        continue;
+                    }
+    
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+    
+                    if (dataPoint != null) {
+                        newPeak.addMzPeak(scanNumber, dataPoint);
+                    }
+    
+                    scanNumber++;
+                }
+    
+                // Finishing the merged peak
+                newPeak.finishMergedPeak();
+    
+                // Get peak list row to be updated
+                PeakListRow oldRow = peakList.getPeakRow(oldPeak);
+    
+                // TODO: Might be VIOLENT (quick and dirty => to be verified)
+                if (newPeak.getScanNumbers().length == 0) {
+                    ++nb_empty_peaks;
+                    // #continue;
+                    logger.log(Level.WARNING, "0 scans peak found !");
+                    break;
+                }
+    
+                // Add new merged peak to "mergedPeakList", keeping the original ID.
+                //this.updateMergedPeakList(oldRow, newPeak);
+                updateMergedPeakListRow(oldRow, newPeak);
+    
+                // Clear already treated peaks
+                for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
+                    sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
+                }
+    
+                // Update completion rate
+                processedPeaks++;
+    
             }
-
-            // Finishing the merged peak
-            newPeak.finishMergedPeak();
-
-            // Get peak list row to be updated
-            PeakListRow oldRow = peakList.getPeakRow(oldPeak);
-
-            // TODO: Might be VIOLENT (quick and dirty => to be verified)
-            if (newPeak.getScanNumbers().length == 0) {
-                ++nb_empty_peaks;
-                // #continue;
-                logger.log(Level.WARNING, "0 scans peak found !");
-                break;
+        } 
+        else {
+            
+            // Build groups nicely, aka iteratively
+            // 1/ Group peaks with exact same apex
+            List<List<Feature>> baseGroups = new ArrayList<List<Feature>>();
+            List<Integer> apexScans = new ArrayList<Integer>();
+            for (int ind = 0; ind < totalPeaks; ind++) {
+                
+                Feature aPeak = sortedPeaks.get(ind);
+                
+                // Delete (and skip) if peak is a Bad Shaped one
+                if (badShapedPeaks.contains(aPeak)) {
+                    processedPeaks++;
+                    continue;
+                }
+                
+                // Search groups for identical apex
+                int apexScan = aPeak.getRepresentativeScanNumber();
+                boolean found_group = false;
+                
+                for (int g_i=0; g_i < baseGroups.size(); g_i++) {
+                    
+                    for (int p_i=0; p_i < baseGroups.get(g_i).size(); p_i++) {
+                        
+                        // Found proper group (exact same apexRT, aka exact same apex scan number!)
+                        if (baseGroups.get(g_i).get(p_i).getRepresentativeScanNumber() == apexScan) {
+                            
+                            baseGroups.get(g_i).add(aPeak);
+                            found_group = true;
+                            break;
+                        }
+                    }
+                    if (found_group)
+                        break;
+                }
+                // If not found, create a new group, then add isolated peak
+                if (!found_group) {
+                    baseGroups.add(new ArrayList<Feature>());
+                    baseGroups.get(baseGroups.size() - 1).add(aPeak);
+                    apexScans.add(apexScan);
+                }
             }
-
-            // Add new merged peak to "mergedPeakList", keeping the original ID.
-            //this.updateMergedPeakList(oldRow, newPeak);
-            updateMergedPeakListRow(oldRow, newPeak);
-
-            // Clear already treated peaks
-            for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
-                sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
+            
+            logger.info("Found '" + baseGroups.size() + "'");
+            int nb_skipped_groups = 0;
+            for (int g_i=0; g_i < baseGroups.size(); g_i++) {
+                
+                if (baseGroups.get(g_i).size() > 1) {
+                    double curGroupApexRT = this.workingDataFile.getScan(apexScans.get(g_i)).getRetentionTime();
+                    logger.info("\t> Group of size '" + baseGroups.get(g_i).size() + "' | apex RT = '" + curGroupApexRT + "'");
+                } else {
+                    nb_skipped_groups++;
+                }
             }
+            logger.info("Confirmed groups: " + (baseGroups.size() - nb_skipped_groups) + " / " + baseGroups.size());
+            
+            
+            
+            // 
+            // 2/ Start scan by scan groups grouping
+            double scanWidth = this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[1]).getRetentionTime() 
+                    - this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[0]).getRetentionTime();
+            logger.info("\n\n>>> RT scan width: " + scanWidth);
+            int max_step = (int) ((rtTolerance.getTolerance() / scanWidth));// / 2);
+            logger.info("\n\n>>> Window width: " + rtTolerance.getTolerance() + " ('" + (int) (rtTolerance.getTolerance() / scanWidth) + "' scans)");
+            //-
+            int sc_step = 1;
+            boolean changes_occurred = false;
+            
+            List<List<Feature>> mergedGroups = new ArrayList<List<Feature>>();
+            
+            
+            // 
+            while (sc_step <= max_step) {//1) {//
+                
+                for (int g_i=0; g_i < baseGroups.size(); g_i++) {
+                //for (int g_i = baseGroups.size()-1; g_i >= 0; --g_i) {
+                    
+                    List<Feature> curGroup = baseGroups.get(g_i);
+                    
+                    // Skip already merged group
+                    if (mergedGroups.contains(curGroup)) {
+                        //////logger.info("> Skipped Treated Group '@" + g_i + "'");//: " + cur_grp_str);
+                        continue;
+                    }
+                    
+                    //logger.info("!!!!!!! > treating GRP: " + curGroup);
+                    String cur_grp_str = "<";
+                    for (int j=0; j < curGroup.size(); j++) {
+                        cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
+                    }
+                    cur_grp_str += ">";
+                    logger.info("######### > CURRENT Group '@" + g_i + "': " + cur_grp_str);
+                    
+                    
+                    int curGroupApexScanNumber = apexScans.get(g_i);
+                    double curGroupApexRT = this.workingDataFile.getScan(curGroupApexScanNumber).getRetentionTime();
+                    double curGroupApexIntensity = this.workingDataFile.getScan(curGroupApexScanNumber).getTIC();
+                    
+                    // Find candidates in other groups
+                    for (int cg_i=0; cg_i < baseGroups.size(); cg_i++) {
+                    //for (int cg_i = baseGroups.size()-1; cg_i >= 0; --cg_i) {
+                        
+                        // Skip current group 
+                        if (cg_i == g_i) { continue; }
+                        
+                        List<Feature> candidateGroup = baseGroups.get(cg_i);
+                        
+                        // Skip already merged group
+                        if (mergedGroups.contains(candidateGroup)) {
+//                            
+//                            cur_grp_str = "<";
+//                            for (int j=0; j < candidateGroup.size(); j++) {
+//                                cur_grp_str += "[" + candidateGroup.get(j).getMZ() + "-" + candidateGroup.get(j).getRT() + "], ";
+//                            }
+//                            cur_grp_str += ">";
+                            //////logger.info("> Skipped Treated Group '@" + cg_i + "'");//: " + cur_grp_str);
+                            continue;
+//                            break;
+                        }
+                        
+                        
+                        int candidateGroupApexScanNumber = apexScans.get(cg_i);
+                        double candidateGroupApexRT = this.workingDataFile.getScan(candidateGroupApexScanNumber).getRetentionTime();
+                        
+                        // If group apex is out of reach because out of RT tolerance window, skip it...
+                        if (!rtTolerance.checkWithinTolerance(curGroupApexRT, candidateGroupApexRT))
+                            continue;
+                        
+                        // If group apex is close enough from current group (considering scan by scan stepping)
+                        // integrate it...
+                        int sc_num_plus = candidateGroupApexScanNumber + sc_step;
+                        int sc_num_minus = candidateGroupApexScanNumber - sc_step;
+                        //
+                        if (this.workingDataFile.getScan(sc_num_plus) != null && this.workingDataFile.getScan(sc_num_minus) != null) {
+                        
+                            double rt = this.workingDataFile.getScan(candidateGroupApexScanNumber).getRetentionTime();
+                            
+                            double rt_plus_1 = this.workingDataFile.getScan(sc_num_plus).getRetentionTime();
+                            double rt_minus_1 = this.workingDataFile.getScan(sc_num_minus).getRetentionTime();
+                            //
+                            if (Math.abs(curGroupApexRT - rt_minus_1) < doublePrecision || Math.abs(curGroupApexRT - rt_plus_1) < doublePrecision)
+                            {
+//                                logger.info("\n\n>>> Step: " + sc_step + " | " + 
+//                                        (Math.abs(curGroupApexRT - rt_minus_1) < doublePrecision) + ", " +
+//                                        (Math.abs(curGroupApexRT - rt_plus_1) < doublePrecision));
+//                                //logger.info("Merging groups: " + curGroupApexRT + " / " + rt + " [" + rt_minus_1 + " , " + rt_plus_1 + "]");
+                                
+                                cur_grp_str = "<";
+                                for (int j=0; j < curGroup.size(); j++) {
+                                    cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
+                                }
+                                cur_grp_str += ">";
+                                //-
+                                String candidate_grp_str = "<";
+                                for (int j=0; j < candidateGroup.size(); j++) {
+                                    candidate_grp_str += "[" + candidateGroup.get(j).getMZ() + "-" + candidateGroup.get(j).getRT() + "], ";
+                                }
+                                candidate_grp_str += ">";
+                                //-
+                                logger.info("> Merging Groups ('@" + baseGroups.indexOf(curGroup) + "' -> '@" + cg_i + "'): " + 
+                                        "\n\t* \t" + cur_grp_str +
+                                        "\n\t* \t" + candidate_grp_str);
+                                                              
+                                
+                                // Merge group into current
+                                curGroup.addAll(candidateGroup);
+                                // Clear candidate group once merged
+                                /*
+//                                logger.info("> 1/ contained GRP: " + baseGroups.contains(candidateGroup));
+                                boolean removed = baseGroups.remove(candidateGroup);
+//                                if (removed) {
+//                                    logger.info("> removed GRP: " + candidateGroup);
+//                                    logger.info("> 2/ contained GRP: " + baseGroups.contains(candidateGroup));
+//                                }
+                                apexScans.remove((Integer) cg_i);
+                                // !!!!!!!!
+                                //g_i--;
+                                //cg_i--;
+                                // !!!!!!!!
+                                */
+                                mergedGroups.add(candidateGroup);
+                                logger.info("> Tagged Group ('@" + baseGroups.indexOf(candidateGroup) + "') as Merged.");
+                                
+                                cur_grp_str = "<";
+                                for (int j=0; j < curGroup.size(); j++) {
+                                    cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
+                                }
+                                cur_grp_str += ">";
+                                logger.info("> Merged Resulting Group '@" + baseGroups.indexOf(curGroup) + "': " + cur_grp_str);
+                                
+                                
+                                
+//                                // Groups merged => Apex changed !!!
+//                                // So: Update apex scan index
+//                                int newApexScanNumber = curGroupApexScanNumber;
+//                                for (Feature peak: curGroup) {
+//                                    for (int s_i=0; s_i < peak.getScanNumbers().length; s_i++) {
+//                                        
+//                                        if ( this.workingDataFile.getScan(peak.getScanNumbers()[s_i]).getTIC() > curGroupApexIntensity ) {
+//                                            newApexScanNumber = peak.getScanNumbers()[s_i];
+//                                        }
+//                                    }
+//                                }
+//                                apexScans.set(g_i, newApexScanNumber);
+//    //                            // MUST reinitialize stepping if any group apex changed!
+//    //                            sc_step = 1;
+//    //                            // + Restart process from beginning
+//    //                            g_i = 0;
+//    //                            
+//                                changes_occurred = true;                            
+                            }
+                        }
+                    }
+//                    if (!changes_occurred) {
+//                        sc_step++;
+//                    }
+                }
+                
+                
+                // Update apex for all groups!
+                for (int g_i=0; g_i < baseGroups.size(); g_i++) {
+                    
+                    List<Feature> curGroup = baseGroups.get(g_i);
+                    
+                    int curGroupApexScanNumber = apexScans.get(g_i);
+                    double curGroupApexIntensity = this.workingDataFile.getScan(curGroupApexScanNumber).getTIC();
 
-            // Update completion rate
-            processedPeaks++;
+                    
+                    // Update apex scan index
+                    int newApexScanNumber = curGroupApexScanNumber;
+                    Feature bestPeak = null;
+                    for (Feature peak: curGroup) {
+                        /*
+                        for (int s_i=0; s_i < peak.getScanNumbers().length; s_i++) {
+                            
+                            if ( this.workingDataFile.getScan(peak.getScanNumbers()[s_i]).getTIC() > curGroupApexIntensity ) {
+                                newApexScanNumber = peak.getScanNumbers()[s_i];
+                            }
+                        }
+                        */
+                        if (bestPeak == null || peak.getHeight() > bestPeak.getHeight())
+                            bestPeak = peak;
+                    }
+                    //
+                    /*
+                    if (newApexScanNumber != curGroupApexScanNumber) {
+                        
+                        apexScans.set(g_i, newApexScanNumber);
+//                        // MUST reinitialize stepping if any group apex changed!
+//                        sc_step = 1;
+//                        // + Restart process from beginning
+//                        g_i = 0;
+                        
+                        //////logger.info("> Changes Detected For Group '@" + g_i + 
+                         //////       "' (Apex adjusted from '" + curGroupApexScanNumber + "' to '" + newApexScanNumber + "')");
+                        
+                    } 
+//                    else {
+//                        
+//                        // Keep stepping if no apex changed.
+//                        sc_step++;
+//                    }
+                     */
+                    if (bestPeak != null) {
+                        newApexScanNumber = bestPeak.getRepresentativeScanNumber();
+                        apexScans.set(g_i, newApexScanNumber);
+                        
+                        if (newApexScanNumber != curGroupApexScanNumber)
+                            changes_occurred = true;
+                    }
+                    
+                
+                }
+                
+                
+                if (!changes_occurred) {
+                    sc_step++;
+                } else {
+                    sc_step = 1;
+                    changes_occurred = false;
+                }
 
+            }
+            
+            
+            
+            // <a/> Merging peaks inside each group
+//            for (int ind = 0; ind < totalPeaks; ind++) {
+            for (int ind = 0; ind < baseGroups.size(); ind++) {
+                
+                // Task canceled by user
+                if (isCanceled())
+                    return;
+                
+                List<Feature> curGroup = baseGroups.get(ind);
+    
+//                Feature aPeak = sortedPeaks.get(ind);
+    
+//                // Delete (and skip) if peak is a Bad Shaped one
+//                if (badShapedPeaks.contains(aPeak)) {
+//                    sortedPeaks.set(sortedPeaks.indexOf(aPeak), null);
+//                    aPeak = null;
+//                }
+//                // Skip if peak was already deleted (BS or treated)
+//                if (aPeak == null) {
+//                    processedPeaks++;
+//                    continue;
+//                }
+                processedPeaks += curGroup.size();
+                
+                
+                // !!!!!!!!!!!!!!!!!!!!
+                if (curGroup.size() <= 1) { continue; }
+                // !!!!!!!!!!!!!!!!!!!!
+                
+                // Skip already merged group
+                if (mergedGroups.contains(curGroup)) { continue; }
+                
+    
+                // Build RT group
+                ///////////////ArrayList<Feature> groupedPeaks = this.getPeaksGroupByRT(aPeak, sortedPeaks);
+                ArrayList<Feature> groupedPeaks = (ArrayList<Feature>) curGroup;
+                // Sort by intensity (descending)
+                Collections.sort(groupedPeaks, new PeakSorter(SortingProperty.Height, SortingDirection.Descending));
+    
+                // TODO: debug stuffs here !!!!
+    
+                Feature oldPeak = groupedPeaks.get(0);
+                // Get scan numbers of interest
+                //                      List<Integer> scan_nums = Arrays.asList(ArrayUtils.toObject(oldPeak.getScanNumbers()));
+                // Do not get scan nums from highest peak, but from the whole group (largest RT range)
+                // TODO: use "getPeaksGroupByRT()" with an RTrange as parameter passed in reference, instead of looping again:
+                //       (since group's scans bounds are already determined in that function).
+                int minScanNumber = Integer.MAX_VALUE;
+                int maxScanNumber = Integer.MIN_VALUE;
+                double futureMz = groupedPeaks.get(0).getMZ();
+                // Maximized bounds (min/max scan numbers)
+                
+    //            double height = -1.0d;
+                for (int i = 0; i < groupedPeaks.size(); i++) {
+                    int[] scanNums = groupedPeaks.get(i).getScanNumbers();
+                    if (scanNums[0] < minScanNumber) {
+                        minScanNumber = scanNums[0];
+                    }
+                    if (scanNums[scanNums.length - 1] > maxScanNumber) {
+                        maxScanNumber = scanNums[scanNums.length - 1];
+                    }
+                }
+    
+                // Apex of the most representative (highest) peak of the group.
+                int originScanNumber = oldPeak.getRepresentativeScanNumber();
+                MergedPeak newPeak = new MergedPeak(this.workingDataFile, FeatureStatus.DETECTED);
+                ////int totalScanNumber = this.workingDataFile.getNumOfScans();
+                // No MZ requirement (take the full dataFile MZ Range)
+                Range<Double> mzRange = this.workingDataFile.getDataMZRange(1);
+                Scan scan;
+                DataPoint dataPoint;
+    
+                // Look for dataPoint related to this main peak to the left
+                int scanNumber = originScanNumber;
+                scanNumber--;
+                while (scanNumber >= minScanNumber) {
+                    
+                    scan = this.workingDataFile.getScan(scanNumber);
+    
+                    if (scan == null) {
+                        scanNumber--;
+                        continue;
+                    }
+    
+                    if (scan.getMSLevel() != 1) {
+                        scanNumber--;
+                        continue;
+                    }
+    
+                    // Switch accordingly to option "Only DETECTED peaks"
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+    
+                    if (dataPoint != null) {
+                        newPeak.addMzPeak(scanNumber, dataPoint);
+                    }
+    
+                    scanNumber--;
+                }
+    
+                // Add original DataPoint
+                scanNumber = originScanNumber;
+                scan = this.workingDataFile.getScan(originScanNumber);
+                dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+                if (dataPoint == null && this.useOnlyDetectedPeaks) {
+                    this.useOnlyDetectedPeaks = false;
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+                    this.useOnlyDetectedPeaks = true;
+    
+                    logger.log(
+                            Level.WARNING,
+                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
+                                    + scanNumber
+                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
+                }
+                //
+                if (dataPoint != null) {
+                    newPeak.addMzPeak(scanNumber, dataPoint);
+                }
+    
+                // Look to the right
+                scanNumber++;
+                while (scanNumber <= maxScanNumber) {
+                    
+                    scan = this.workingDataFile.getScan(scanNumber);
+    
+                    if (scan == null) {
+                        scanNumber++;
+                        continue;
+                    }
+    
+                    if (scan.getMSLevel() != 1) {
+                        scanNumber++;
+                        continue;
+                    }
+    
+                    dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
+    
+                    if (dataPoint != null) {
+                        newPeak.addMzPeak(scanNumber, dataPoint);
+                    }
+    
+                    scanNumber++;
+                }
+    
+                // Finishing the merged peak
+                newPeak.finishMergedPeak();
+    
+                // Get peak list row to be updated
+                PeakListRow oldRow = peakList.getPeakRow(oldPeak);
+    
+                // TODO: Might be VIOLENT (quick and dirty => to be verified)
+                if (newPeak.getScanNumbers().length == 0) {
+                    ++nb_empty_peaks;
+                    // #continue;
+                    logger.log(Level.WARNING, "0 scans peak found !");
+                    break;
+                }
+    
+                // Add new merged peak to "mergedPeakList", keeping the original ID.
+                //this.updateMergedPeakList(oldRow, newPeak);
+                updateMergedPeakListRow(oldRow, newPeak);
+    
+                // Clear already treated peaks
+                for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
+                    sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
+                }
+    
+                // Update completion rate
+                processedPeaks++;
+    
+            }
         }
 
         if (nb_empty_peaks > 0)
@@ -683,6 +1181,10 @@ class PeakMergerTask extends AbstractTask {
             
             // Gaps exist, extract valid scans sequence (left connected scans)
             // The correct sequence MUST contain the "MainPeak"
+            
+            // !!!!!!!!!!!!!!!!!!
+            // TODO: Shouldn't the correct sequence contain the apex of the candidate peak as well !!??
+            
             logger.log(Level.INFO, "Gaps in sequence: " + scan_nums.toString());
             List<Integer> scan_nums_ok = new ArrayList<Integer>();
 

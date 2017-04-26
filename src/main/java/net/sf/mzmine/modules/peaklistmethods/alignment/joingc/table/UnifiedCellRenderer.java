@@ -250,9 +250,9 @@ public class UnifiedCellRenderer implements TableCellRenderer {
                 
                 // PeakShapeCellRenderer
                 if (value instanceof PeakListRow || value instanceof Feature) {
-                    Feature peak = (Feature) value;
+                    PeakListRow plr = (PeakListRow) value;
 
-                    newComp.setToolTipText(peak.toString());
+                    newComp.setToolTipText(plr.toString());
 
                     newComp.add(new PeakShapeCellRenderer(peakList, parameters).getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column));
                 }
