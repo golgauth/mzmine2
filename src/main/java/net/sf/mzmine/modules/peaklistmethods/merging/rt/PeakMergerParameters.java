@@ -6,12 +6,16 @@ package net.sf.mzmine.modules.peaklistmethods.merging.rt;
 
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.MZmineModule;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowOrderType;
+import net.sf.mzmine.modules.peaklistmethods.filtering.shapefilter.FilterShapeModel;
+import net.sf.mzmine.modules.peaklistmethods.io.csvexport.ExportRowCommonElement;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
 import net.sf.mzmine.parameters.parametertypes.IntegerParameter;
+import net.sf.mzmine.parameters.parametertypes.MultiChoiceParameter;
 //import net.sf.mzmine.parameters.parametertypes.MZTolerance;
 //import net.sf.mzmine.parameters.parametertypes.RTTolerance;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZToleranceParameter;
@@ -73,6 +77,10 @@ public class PeakMergerParameters extends SimpleParameterSet {
 //                        "...",
 //                        new MZmineModule[] {}
 //                        );
+        
+        public static final ComboParameter<FilterShapeModel> shapeFilterModel = new ComboParameter<FilterShapeModel>(
+                "Shape filter", "Used to filter peaks to be merged by shape (ie. \"Triangular\" would exclude all peak not fitting the riquirements for a triangle).",
+                FilterShapeModel.values(), FilterShapeModel.Triangle);
 
 
 	public static final BooleanParameter autoRemove = new BooleanParameter(
@@ -82,6 +90,7 @@ public class PeakMergerParameters extends SimpleParameterSet {
 	public PeakMergerParameters() {
 		super(new Parameter[] { 
 				peakLists, suffix, mzTolerance, rtTolerance,
+				shapeFilterModel,
 				useOldestRDFAncestor, detectedMZSearchWidth, useOnlyDetectedPeaks, cumulativeComputing,
 				autoRemove });
 	}

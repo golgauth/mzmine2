@@ -64,8 +64,12 @@ class PeakMergerTask extends AbstractTask {
     // peaks lists
     private PeakList peakList, mergedPeakList;
 
-    // peaks counter
-    private int processedPeaks, totalPeaks;
+//  // peaks counter
+//  private int processedPeaks, totalPeaks;
+    // Progress
+    private int processedIter, totalIter;
+    private int processedGroups, totalGroups;
+    private double progressMax;
 
     // parameter values
     private String suffix;
@@ -77,6 +81,7 @@ class PeakMergerTask extends AbstractTask {
     private double detectedMZSearchWidth;
     private boolean useOnlyDetectedPeaks;
     private boolean cumulativeComputing;
+    private FilterShapeModel shapeFilterModel;
     private boolean removeOriginal;
     private ParameterSet parameters;
 
@@ -123,7 +128,11 @@ class PeakMergerTask extends AbstractTask {
                 PeakMergerParameters.useOnlyDetectedPeaks).getValue();
         this.cumulativeComputing = parameters.getParameter(
                 PeakMergerParameters.cumulativeComputing).getValue();
-
+        
+        this.shapeFilterModel = parameters.getParameter(
+                PeakMergerParameters.shapeFilterModel).getValue();
+        
+        
         removeOriginal = parameters.getParameter(
                 PeakMergerParameters.autoRemove).getValue();
 
@@ -143,10 +152,26 @@ class PeakMergerTask extends AbstractTask {
     /**
      * @see net.sf.mzmine.taskcontrol.Task#getFinishedPercentage()
      */
+//    public double getFinishedPercentage() {
+//        if (totalPeaks == 0)
+//            return 0.0f;
+//        return (double) processedPeaks / (double) totalPeaks;
+//        
+//    }
     public double getFinishedPercentage() {
-        if (totalPeaks == 0)
+        if (totalIter == 0)
             return 0.0f;
-        return (double) processedPeaks / (double) totalPeaks;
+        double progressMax2 = 0d;
+        if (totalGroups == 0) {
+            progressMax2 = ((double) processedIter / (double) totalIter)*0.7;
+            //return progressMax;
+        } else {
+            progressMax2 = 0.7 + ((double) processedGroups / (double) totalGroups)*0.3;
+            //return progressMax;
+        }
+        if (progressMax2 > progressMax)
+            progressMax = progressMax2;
+        return Math.max(progressMax, progressMax2);
     }
     
     
@@ -175,8 +200,7 @@ class PeakMergerTask extends AbstractTask {
         
         //--------------------     <BAD SHAPED>     --------------------//
         // Store all "bad shaped" (bs) peaks.
-        //PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.5, 0.0, FilterShapeModel/*.Triangle*/.None);
-        PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.1, 0.0, FilterShapeModel.Triangle);
+        PeakList badShapedPeaksList = ShapeFilterTask.getBadShapedPeakListRows(peakList, "", 1.1, 0.0, this.shapeFilterModel);
         logger.info(">>>>>>>>>>>>>>>> Found bad shaped (non-triangular) peaks: " + badShapedPeaksList.getNumberOfRows());
         List<Feature> badShapedPeaks = Arrays.asList(badShapedPeaksList.getPeaks(this.dataFile));
         // Note: Shall we sort in some way the badShapedPeaks array?
@@ -216,7 +240,8 @@ class PeakMergerTask extends AbstractTask {
         this.initMergedPeakList();
 
         // Loop through all peaks
-        totalPeaks = sortedPeaks.size();
+        //totalPeaks = sortedPeaks.size();
+        int totalPeaks = sortedPeaks.size();
         int nb_empty_peaks = 0;
 
 
@@ -238,7 +263,7 @@ class PeakMergerTask extends AbstractTask {
                 }
                 // Skip if peak was already deleted (BS or treated)
                 if (aPeak == null) {
-                    processedPeaks++;
+                    //processedPeaks++;
                     continue;
                 }
                
@@ -408,8 +433,8 @@ class PeakMergerTask extends AbstractTask {
                     sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
                 }
     
-                // Update completion rate
-                processedPeaks++;
+//                // Update completion rate
+//                processedPeaks++;
     
             }
         } 
@@ -425,7 +450,7 @@ class PeakMergerTask extends AbstractTask {
                 
                 // Delete (and skip) if peak is a Bad Shaped one
                 if (badShapedPeaks.contains(aPeak)) {
-                    processedPeaks++;
+                    //processedPeaks++;
                     continue;
                 }
                 
@@ -456,18 +481,18 @@ class PeakMergerTask extends AbstractTask {
                 }
             }
             
-            logger.info("Found '" + baseGroups.size() + "'");
+            //##logger.info("Found '" + baseGroups.size() + "'");
             int nb_skipped_groups = 0;
             for (int g_i=0; g_i < baseGroups.size(); g_i++) {
                 
                 if (baseGroups.get(g_i).size() > 1) {
                     double curGroupApexRT = this.workingDataFile.getScan(apexScans.get(g_i)).getRetentionTime();
-                    logger.info("\t> Group of size '" + baseGroups.get(g_i).size() + "' | apex RT = '" + curGroupApexRT + "'");
+                  //##logger.info("\t> Group of size '" + baseGroups.get(g_i).size() + "' | apex RT = '" + curGroupApexRT + "'");
                 } else {
                     nb_skipped_groups++;
                 }
             }
-            logger.info("Confirmed groups: " + (baseGroups.size() - nb_skipped_groups) + " / " + baseGroups.size());
+          //##logger.info("Confirmed groups: " + (baseGroups.size() - nb_skipped_groups) + " / " + baseGroups.size());
             
             
             
@@ -475,9 +500,9 @@ class PeakMergerTask extends AbstractTask {
             // 2/ Start scan by scan groups grouping
             double scanWidth = this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[1]).getRetentionTime() 
                     - this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[0]).getRetentionTime();
-            logger.info("\n\n>>> RT scan width: " + scanWidth);
+          //##logger.info("\n\n>>> RT scan width: " + scanWidth);
             int max_step = (int) ((rtTolerance.getTolerance() / scanWidth));// / 2);
-            logger.info("\n\n>>> Window width: " + rtTolerance.getTolerance() + " ('" + (int) (rtTolerance.getTolerance() / scanWidth) + "' scans)");
+          //##logger.info("\n\n>>> Window width: " + rtTolerance.getTolerance() + " ('" + (int) (rtTolerance.getTolerance() / scanWidth) + "' scans)");
             //-
             int sc_step = 1;
             boolean changes_occurred = false;
@@ -485,27 +510,44 @@ class PeakMergerTask extends AbstractTask {
             List<List<Feature>> mergedGroups = new ArrayList<List<Feature>>();
             
             
+            // Progress
+            processedIter = 0;
+            totalIter = baseGroups.size() * max_step;
+            
             // 
             while (sc_step <= max_step) {//1) {//
                 
                 for (int g_i=0; g_i < baseGroups.size(); g_i++) {
                 //for (int g_i = baseGroups.size()-1; g_i >= 0; --g_i) {
                     
+                    processedIter++;
+                    
                     List<Feature> curGroup = baseGroups.get(g_i);
+                    
+//                    // Progress
+//                    if (curGroup != null) {
+//                        processedPeaks -= curGroup.size();
+//                    }
+                    
                     
                     // Skip already merged group
                     if (mergedGroups.contains(curGroup)) {
                         //////logger.info("> Skipped Treated Group '@" + g_i + "'");//: " + cur_grp_str);
+//                        processedPeaks += curGroup.size();
                         continue;
                     }
                     
+                    
+                    //processedPeaks += curGroup.size() / (max_step - sc_step);
+                    
+                    
                     //logger.info("!!!!!!! > treating GRP: " + curGroup);
-                    String cur_grp_str = "<";
+                   /* String cur_grp_str = "<";
                     for (int j=0; j < curGroup.size(); j++) {
                         cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
                     }
-                    cur_grp_str += ">";
-                    logger.info("######### > CURRENT Group '@" + g_i + "': " + cur_grp_str);
+                    cur_grp_str += ">";*/
+                  //##logger.info("######### > CURRENT Group '@" + g_i + "': " + cur_grp_str);
                     
                     
                     int curGroupApexScanNumber = apexScans.get(g_i);
@@ -561,7 +603,7 @@ class PeakMergerTask extends AbstractTask {
 //                                        (Math.abs(curGroupApexRT - rt_plus_1) < doublePrecision));
 //                                //logger.info("Merging groups: " + curGroupApexRT + " / " + rt + " [" + rt_minus_1 + " , " + rt_plus_1 + "]");
                                 
-                                cur_grp_str = "<";
+                                /*cur_grp_str = "<";
                                 for (int j=0; j < curGroup.size(); j++) {
                                     cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
                                 }
@@ -571,11 +613,11 @@ class PeakMergerTask extends AbstractTask {
                                 for (int j=0; j < candidateGroup.size(); j++) {
                                     candidate_grp_str += "[" + candidateGroup.get(j).getMZ() + "-" + candidateGroup.get(j).getRT() + "], ";
                                 }
-                                candidate_grp_str += ">";
+                                candidate_grp_str += ">";*/
                                 //-
-                                logger.info("> Merging Groups ('@" + baseGroups.indexOf(curGroup) + "' -> '@" + cg_i + "'): " + 
-                                        "\n\t* \t" + cur_grp_str +
-                                        "\n\t* \t" + candidate_grp_str);
+                              //##logger.info("> Merging Groups ('@" + baseGroups.indexOf(curGroup) + "' -> '@" + cg_i + "'): " + 
+                              //##          "\n\t* \t" + cur_grp_str +
+                              //##          "\n\t* \t" + candidate_grp_str);
                                                               
                                 
                                 // Merge group into current
@@ -595,14 +637,14 @@ class PeakMergerTask extends AbstractTask {
                                 // !!!!!!!!
                                 */
                                 mergedGroups.add(candidateGroup);
-                                logger.info("> Tagged Group ('@" + baseGroups.indexOf(candidateGroup) + "') as Merged.");
+                              //##logger.info("> Tagged Group ('@" + baseGroups.indexOf(candidateGroup) + "') as Merged.");
                                 
-                                cur_grp_str = "<";
+                                /*cur_grp_str = "<";
                                 for (int j=0; j < curGroup.size(); j++) {
                                     cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
                                 }
-                                cur_grp_str += ">";
-                                logger.info("> Merged Resulting Group '@" + baseGroups.indexOf(curGroup) + "': " + cur_grp_str);
+                                cur_grp_str += ">";*/
+                              //##logger.info("> Merged Resulting Group '@" + baseGroups.indexOf(curGroup) + "': " + cur_grp_str);
                                 
                                 
                                 
@@ -623,13 +665,22 @@ class PeakMergerTask extends AbstractTask {
 //    //                            // + Restart process from beginning
 //    //                            g_i = 0;
 //    //                            
-//                                changes_occurred = true;                            
+//                                changes_occurred = true;      
+                                
+                                
+                                //////processedPeaks += candidateGroup.size() / (max_step + 1 - sc_step);
+
                             }
                         }
                     }
 //                    if (!changes_occurred) {
 //                        sc_step++;
 //                    }
+                    
+
+//                    processedPeaks += curGroup.size();
+
+                    
                 }
                 
                 
@@ -659,7 +710,7 @@ class PeakMergerTask extends AbstractTask {
                     }
                     //
                     /*
-                    if (newApexScanNumber != curGroupApexScanNumber) {
+                    if (newApexScanNumber != curGrcurGroupoupApexScanNumber) {
                         
                         apexScans.set(g_i, newApexScanNumber);
 //                        // MUST reinitialize stepping if any group apex changed!
@@ -694,13 +745,22 @@ class PeakMergerTask extends AbstractTask {
                 } else {
                     sc_step = 1;
                     changes_occurred = false;
+                    
+                    processedIter = 0;
                 }
 
             }
             
             
             
+            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> !!!  STARTING MERGE  !!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            
             // <a/> Merging peaks inside each group
+            
+            // Progress
+            processedGroups = 0;
+            totalGroups = baseGroups.size();
+            
 //            for (int ind = 0; ind < totalPeaks; ind++) {
             for (int ind = 0; ind < baseGroups.size(); ind++) {
                 
@@ -722,11 +782,14 @@ class PeakMergerTask extends AbstractTask {
 //                    processedPeaks++;
 //                    continue;
 //                }
-                processedPeaks += curGroup.size();
+                
+                
+                //##processedPeaks += curGroup.size();
+                processedGroups++;
                 
                 
                 // !!!!!!!!!!!!!!!!!!!!
-                if (curGroup.size() <= 1) { continue; }
+                //if (curGroup.size() <= 1) { continue; }
                 // !!!!!!!!!!!!!!!!!!!!
                 
                 // Skip already merged group
@@ -868,7 +931,7 @@ class PeakMergerTask extends AbstractTask {
                 }
     
                 // Update completion rate
-                processedPeaks++;
+                //////processedPeaks++;
     
             }
         }
