@@ -64,6 +64,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
+    
+    public static String TASK_NAME = "Join aligner GC";
+    
     private final MZmineProject project;
     private PeakList peakLists[];
     private PeakList alignedPeakList;
@@ -73,6 +76,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     private String peakListName;
     private RowVsRowOrderType comparisonOrder;
+    static private boolean useOldestRDFAncestor;
     private MZTolerance mzTolerance;
     private RTTolerance rtTolerance;
     private double mzWeight, rtWeight;
@@ -108,6 +112,9 @@ public class JoinAlignerGCTask extends AbstractTask {
         comparisonOrder = parameters.getParameter(
                 JoinAlignerGCParameters.comparisonOrder).getValue();
 
+        useOldestRDFAncestor = parameters.getParameter(
+                JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
+        
         mzTolerance = parameters
                 .getParameter(JoinAlignerGCParameters.MZTolerance).getValue();
         rtTolerance = parameters
@@ -376,11 +383,13 @@ public class JoinAlignerGCTask extends AbstractTask {
                     }
                     **/
 
-//                    RowVsRowScore score = new RowVsRowScore(row, candidate,
+//                    RowVsRowScore score = new RowVsRowScore(this.project, 
+//                            row, candidate,
 //                            RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
 //                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight);
                     // GLG HACK: Use apex rather than average!
                     RowVsRowScoreGC score = new RowVsRowScoreGC(
+                            this.project, useOldestRDFAncestor,
                             row.getRawDataFiles()[0], rtAdjustementMapping,
                             row, candidate,
                             RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
@@ -749,7 +758,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         // Add task description to peakList
         alignedPeakList
                 .addDescriptionOfAppliedTask(new SimplePeakListAppliedMethod(
-                        "Join aligner", parameters));
+                        JoinAlignerGCTask.TASK_NAME, parameters));
 
         logger.info("Finished join aligner");
         setStatus(TaskStatus.FINISHED);
@@ -765,5 +774,5 @@ public class JoinAlignerGCTask extends AbstractTask {
         double delta_rt = a_scale * rt + b_offset;
         return (rt - delta_rt);
     }
-
+    
 }

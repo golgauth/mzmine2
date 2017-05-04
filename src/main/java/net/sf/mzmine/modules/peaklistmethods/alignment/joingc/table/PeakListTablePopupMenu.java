@@ -63,14 +63,18 @@ import org.jcamp.parser.JCAMPException;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
+import net.sf.mzmine.datamodel.PeakList.PeakListAppliedMethod;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCParameters;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCTask;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportParameters;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportTask;
@@ -96,6 +100,7 @@ import net.sf.mzmine.modules.visualization.tic.TICPlotType;
 import net.sf.mzmine.modules.visualization.tic.TICVisualizerModule;
 import net.sf.mzmine.modules.visualization.twod.TwoDVisualizerModule;
 import net.sf.mzmine.parameters.parametertypes.selectors.ScanSelection;
+import net.sf.mzmine.project.impl.MZmineProjectImpl;
 import net.sf.mzmine.util.ExitCode;
 import net.sf.mzmine.util.GUIUtils;
 
@@ -165,6 +170,9 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
     private PeakListRow clickedPeakListRow;
     private PeakListRow[] allClickedPeakListRows;
 
+    private MZmineProject project;
+    private boolean useOldestRDF;
+
     // For copying and pasting IDs - shared by all peak-list table instances.
     // Currently only accessed from this
     // class.
@@ -174,11 +182,32 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
             PeakListTable peakListTable, final PeakListFullTableModel model,
             final PeakList list) {
 
+        
         this.window = window;
         table = peakListTable;
         peakList = list;
         this.model = model;
-
+        
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // TODO: WARNING => this should be passed smoothly by a task, not by this
+        //              'brutal' singleton usage...
+        this.project = (MZmineProject) MZmineCore.getProjectManager().getCurrentProject();
+        
+        String search_descr_str = JoinAlignerGCTask.TASK_NAME;
+        String search_param_str = JoinAlignerGCParameters.useOldestRDFAncestor.getName() + ": true";
+        int method_id = -1;
+        for (int i=0; i < this.peakList.getAppliedMethods().length; i++) {
+            if (this.peakList.getAppliedMethods()[i].getDescription().equals(search_descr_str)) {
+                method_id = i;
+                break;
+            }
+        }
+        this.useOldestRDF = ((method_id != -1) &&
+            (this.peakList.getAppliedMethods()[method_id].getParameters().contains(search_param_str)));//table.getUseOldestRDF();
+        logger.info("Method param 'Use original raw data file' is '" + this.useOldestRDF + "'");
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+        
         clickedDataFile = null;
         clickedPeakListRow = null;
         allClickedPeakListRows = null;
@@ -720,12 +749,12 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                     if(table.isCellSelected(row, col)) {
                         if (peak1 == null) {
                             //peak1 = table.getPeakAt(row, col);
-                            peak1 = table.getApexScanAt(row, col);
+                            peak1 = table.getApexScanAt(row, col, this.project, this.useOldestRDF);
                             if (peak1 != null)
                                 rt1 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
                         } else if (peak2 == null) {
                             //peak2 = table.getPeakAt(row, col);
-                            peak2 = table.getApexScanAt(row, col);
+                            peak2 = table.getApexScanAt(row, col, this.project, this.useOldestRDF);
                             if (peak2 != null)
                                 rt2 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak2.getRetentionTime());
                         } else
@@ -752,14 +781,17 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                     DataPoint dp = dataPoints[j];
                     vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
+                logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
                 //-
                 dataPoints = peak2.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
+                logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
                 //-
                 double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+                logger.info("PEAK_1 VS PEAK_2 score: " + score);
                 
                 // Display
                 //JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
@@ -801,7 +833,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                             if(table.isCellSelected(row, col)) {
                                 if (peak1 == null) {
                                     //peak1 = table.getPeakAt(row, col);
-                                    peak1 = table.getApexScanAt(row, col);
+                                    peak1 = table.getApexScanAt(row, col, this.project, this.useOldestRDF);
                                     if (peak1 != null)
                                         rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
                                 } else
@@ -872,7 +904,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                         if(table.isCellSelected(row, col)) {
                             if (peak1 == null) {
                                 //peak1 = table.getPeakAt(row, col);
-                                peak1 = table.getApexScanAt(row, col);
+                                peak1 = table.getApexScanAt(row, col, this.project, this.useOldestRDF);
                                 if (peak1 != null)
                                     rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRetentionTime());
                             } else

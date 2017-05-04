@@ -31,6 +31,7 @@ import com.google.common.collect.Range;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
@@ -60,9 +61,15 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
     private PeakListRow peakListRow, alignedRow;
     double score;
 
+    private MZmineProject project;
+    private boolean useOldestRDF;
+    
+    
+    
+    @Deprecated // Is there any use of this somewhere?
     RowVsRowScoreGC(PeakListRow peakListRow, PeakListRow alignedRow,
 	    double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight) {
-
+        
 	this.peakListRow = peakListRow;
 	this.alignedRow = alignedRow;
 
@@ -78,7 +85,8 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 
     }
     
-    RowVsRowScoreGC(RawDataFile rawDF, Hashtable<RawDataFile, double[]> rtAdjustementMapping,
+    RowVsRowScoreGC(MZmineProject project, boolean useOldestRDFancestor,
+            RawDataFile rawDF, Hashtable<RawDataFile, double[]> rtAdjustementMapping,
             PeakListRow peakListRow, PeakListRow alignedRow,
             double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,
             double idWeight,
@@ -86,7 +94,10 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             //, PeakListRow[] allRows, PeakListRow[] candidateRows
             ) 
     {
-
+        
+        this.project = project;
+        this.useOldestRDF = (project != null && useOldestRDFancestor);
+        
         this.peakListRow = peakListRow;
         this.alignedRow = alignedRow;
 
@@ -178,9 +189,17 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
         
         // MZ at apex
         if (useApex) {
+            
             // MZ at apex
-            RawDataFile refRDF = peakListRow.getRawDataFiles()[0];
+            RawDataFile refRDF;
+            if (!this.useOldestRDF) {
+                refRDF = peakListRow.getRawDataFiles()[0];
+            } else {
+                refRDF = DataFileUtils.getAncestorDataFile(this.project, peakListRow.getRawDataFiles()[0], true);
+            }
+            LOG.info("!!!!!!!!!!!!!! File is: " + refRDF + " | " + peakListRow.getRawDataFiles()[0]);
             Scan apexScan = refRDF.getScan(peakListRow.getBestPeak().getRepresentativeScanNumber());
+            //
             // Get scan m/z vector.
             //LOG.info("DPs MZ Range: " + apexScan.getMZRange());
             DataPoint[] dataPoints = apexScan.getDataPoints();
@@ -202,7 +221,14 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             // Average (MZ profile) of all the already aligned peaks at apex:
             int nbPeaks = alignedRow.getRawDataFiles().length;
             for (RawDataFile rdf : alignedRow.getRawDataFiles()) {
-                apexScan = rdf.getScan(alignedRow.getPeak(rdf).getRepresentativeScanNumber());
+                
+                if (!this.useOldestRDF) {
+                    refRDF = rdf;
+                } else {
+                    refRDF = DataFileUtils.getAncestorDataFile(this.project, rdf, true);
+                }
+
+                apexScan = refRDF.getScan(alignedRow.getPeak(rdf).getRepresentativeScanNumber());
                 dataPoints = apexScan.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
@@ -216,9 +242,14 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             // Compute mean MZ profiles
             
             // MZ at apex and 5% around
-            RawDataFile refRDF = peakListRow.getRawDataFiles()[0];
+            RawDataFile refRDF;
+            if (!this.useOldestRDF) {
+                refRDF = peakListRow.getRawDataFiles()[0];
+            } else {
+                refRDF = DataFileUtils.getAncestorDataFile(this.project, peakListRow.getRawDataFiles()[0], true);
+            }
             Scan apexScan = refRDF.getScan(peakListRow.getBestPeak().getRepresentativeScanNumber());
-            // 
+            //
             // vec1
             // Scan numbers to be averaged
             int apexScanNumber = apexScan.getScanNumber();
@@ -242,7 +273,12 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             }
             
             // vec2
-            refRDF = alignedRow.getRawDataFiles()[0];
+            ////refRDF = alignedRow.getRawDataFiles()[0];
+            if (!this.useOldestRDF) {
+                refRDF = alignedRow.getRawDataFiles()[0];
+            } else {
+                refRDF = DataFileUtils.getAncestorDataFile(this.project, alignedRow.getRawDataFiles()[0], true);
+            }
             apexScan = refRDF.getScan(alignedRow.getBestPeak().getRepresentativeScanNumber());
             // Scan numbers to be averaged
             apexScanNumber = apexScan.getScanNumber();

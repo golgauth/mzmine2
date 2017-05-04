@@ -69,6 +69,7 @@ import org.jcamp.parser.JCAMPException;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.MassSpectrumType;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
@@ -85,6 +86,7 @@ import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.visualization.spectra.SpectraVisualizerModule;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.project.impl.RawDataFileImpl;
+import net.sf.mzmine.util.DataFileUtils;
 import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
@@ -93,7 +95,9 @@ import net.sf.mzmine.util.components.ComponentToolTipProvider;
 import net.sf.mzmine.util.components.PeakSummaryComponent;
 import net.sf.mzmine.util.components.PopupListener;
 import net.sf.mzmine.util.dialogs.PeakIdentitySetupDialog;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCParameters;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTablePopupMenu;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 
@@ -143,7 +147,7 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 
     public PeakListTable(PeakListTableAlaJulWindow window, ParameterSet parameters,
 	    PeakList peakList) {
-
+                        
 	this.window = window;
 	this.peakList = peakList;
 
@@ -205,6 +209,7 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
 //	resizeColumns();
 	
 	handleDoubleClick();
+	
    }
     
     
@@ -336,7 +341,12 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
         return peak;
     }
     
-    public Scan getApexScanAt(int row, int col) {
+//    public Scan getApexScanAt(int row, int col) {
+//        
+//        return getApexScanAt(row, col, null);
+//    }
+    //-
+    public Scan getApexScanAt(int row, int col, MZmineProject project, boolean useOldestRDF) {
         
         Scan apexScan = null;
         
@@ -352,7 +362,11 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 if (value != null) {
                     if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
                         RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
-                        apexScan = rdf.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
+                        RawDataFile refRDF = rdf;
+                        if (useOldestRDF) {
+                            refRDF = DataFileUtils.getAncestorDataFile(project, rdf, true);
+                        }
+                        apexScan = refRDF.getScan(pl_row.getPeak(rdf).getRepresentativeScanNumber());
                     }
                 }
             } 
@@ -1034,6 +1048,11 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                 }
                 return result;
     }
+
+
+//    public boolean getUseOldestRDF() {
+//        return this.useOldestRDF;
+//    }
 
     
     

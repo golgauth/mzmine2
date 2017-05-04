@@ -44,7 +44,16 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             "In which order peak lists (samples) should be compared to each other while running the alignment algorihtm", 
             RowVsRowOrderType.values()
             );
-
+    
+    //-- Unaltered...
+    public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
+            "Use original raw data file", 
+            "Chemical similarity is computed using unaleterd m/z profile at given scan from the very oldest Raw Data File ancestor (if it has not been removed). "
+                            + "Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from).",
+                            false
+            );
+    //--
+    
     public static final MZToleranceParameter MZTolerance = new MZToleranceParameter();
     public static final DoubleParameter MZWeight = new DoubleParameter(
 	    "Weight for m/z", "Weight for chemical similarity. Score for perfectly matching m/z values.");
@@ -66,11 +75,11 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     //*** GLG HACK: Added...
     public static final BooleanParameter useApex = new BooleanParameter(
             "Use apex",
-            "If checked, use apex scan for RT and MZ profile. Otherwise, 5% of the scans around the apex are used to redefine averaged RT and MZ profile",
+            "If checked, uses apex scan for RT and MZ profile. Otherwise, 5% of the scans around the apex are used to redefine averaged RT and MZ profile",
             true);
     public static final BooleanParameter useKnownCompoundsAsRef = new BooleanParameter(
             "Use RT recalibration",
-            "If checked, use compounds with known identities to ease alignment",
+            "If checked, uses compounds with known identities to ease alignment",
             true);
 
     public static final RTToleranceParameter RTToleranceAfter = new RTToleranceParameter(
@@ -94,7 +103,9 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     **/
 
     public JoinAlignerGCParameters() {
-	super(new Parameter[] { peakLists, comparisonOrder, peakListName, 
+	super(new Parameter[] { peakLists, 
+	        useOldestRDFAncestor, 
+	        comparisonOrder, peakListName, 
 	        MZTolerance, MZWeight,
 		RTTolerance, RTWeight,
 		minScore,
