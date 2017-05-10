@@ -311,7 +311,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 //                score = -1.0;
 //                return;
 //            }
-            if (rtDiff > rtToleranceAfter.getTolerance() / 2.0) {
+            if (rtDiff > rtToleranceAfter.getTolerance() / 2.0d) {
                 // Finally reject the peaks of this row
                 score = JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE;
                 return;
@@ -324,10 +324,10 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
         
         double idSimScore = (JDXCompound.isKnownIdentity(peakListRow.getPreferredPeakIdentity())
                 && JDXCompound.isKnownIdentity(alignedRow.getPreferredPeakIdentity())
-                && peakListRow.getPreferredPeakIdentity().getName() == alignedRow.getPreferredPeakIdentity().getName()) ? 1.0 : 0.0;
+                && peakListRow.getPreferredPeakIdentity().getName() == alignedRow.getPreferredPeakIdentity().getName()) ? 1.0d : 0.0d;
         
         score = (chemSimScore * mzWeight)
-                + ((1 - rtDiff / rtMaxDiff) * rtWeight);
+                + ((1.0d - rtDiff / rtMaxDiff) * rtWeight);
                 //+ idSimScore * idWeight;
 
     }

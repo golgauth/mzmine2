@@ -27,7 +27,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -58,6 +60,10 @@ import net.sf.mzmine.util.RangeUtils;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
 
+import com.apporiented.algorithm.clustering.AverageLinkageStrategy;
+import com.apporiented.algorithm.clustering.Cluster;
+import com.apporiented.algorithm.clustering.ClusteringAlgorithm;
+import com.apporiented.algorithm.clustering.DefaultClusteringAlgorithm;
 import com.google.common.collect.Range;
 
 public class JoinAlignerGCTask extends AbstractTask {
@@ -97,6 +103,9 @@ public class JoinAlignerGCTask extends AbstractTask {
     //
     private Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
 
+    //
+    final private static double VERY_LONG_DISTANCE = 50.0d;//Double.MAX_VALUE;
+    
 
     JoinAlignerGCTask(MZmineProject project, ParameterSet parameters) {
 
@@ -125,7 +134,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         rtWeight = parameters.getParameter(JoinAlignerGCParameters.RTWeight)
                 .getValue();
-        rtWeight = 0.0;
         
         minScore = parameters.getParameter(JoinAlignerGCParameters.minScore)
                 .getValue();
@@ -320,12 +328,23 @@ public class JoinAlignerGCTask extends AbstractTask {
         }
         Integer[] newIds = orderIds.toArray(new Integer[orderIds.size()]);
         //
+        
+        
+        
+        // Create a sorted set of scores matching
+        TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
+        
+        
+        
+        List<PairTwoWays<PeakListRow, PeakListRow>> treatedPairs = new ArrayList<>();
+        List<PeakListRow> singleRowsList = new ArrayList<>();
+        //
         for (int i = 0; i < newIds.length; ++i) {
             
             PeakList peakList = peakLists[newIds[i]];
-            
-            // Create a sorted set of scores matching
-            TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
+//            
+//            // Create a sorted set of scores matching
+//            TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
 
             PeakListRow allRows[] = peakList.getRows();
             logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
@@ -335,7 +354,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
                 if (isCanceled())
                     return;
-
+                
+                singleRowsList.add(row);
+                
                 // Calculate limits for a row with which the row can be aligned
 //                Range<Double> mzRange = mzTolerance.getToleranceRange(row
 //                        .getAverageMZ());
@@ -348,9 +369,28 @@ public class JoinAlignerGCTask extends AbstractTask {
                         .getBestPeak().getRT());
 
                 // Get all rows of the aligned peaklist within parameter limits
+                /*
                 PeakListRow candidateRows[] = alignedPeakList
                         .getRowsInsideScanAndMZRange(rtRange, mzRange);
-
+                */
+                List<PeakListRow> candidateRows = new ArrayList<>();
+                for (int k = 0; k < newIds.length; ++k) {
+                    
+                    PeakList k_peakList = peakLists[newIds[k]];
+                    PeakListRow k_allRows[] = k_peakList.getRows();
+                    
+                    if (k != i) {
+                        for (PeakListRow k_row : k_allRows) {
+                            
+                            // Is candidate
+                            if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
+                                    && Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
+                                candidateRows.add(k_row);
+                            }
+                        }
+                    }
+                }
+                
                 // Calculate scores and store them
                 for (PeakListRow candidate : candidateRows) {
 
@@ -382,6 +422,19 @@ public class JoinAlignerGCTask extends AbstractTask {
                         }
                     }
                     **/
+                    
+                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows = new PairTwoWays<PeakListRow, PeakListRow>(row, candidate);                
+//                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows_2 = new PairTwoWays<PeakListRow, PeakListRow>(candidate, row);
+//                    logger.info("TEST Pairs: " + (a_pair_of_rows == a_pair_of_rows_2));
+//                    
+//                    Pair<PeakListRow, PeakListRow> a_pair = new Pair<PeakListRow, PeakListRow>(row, candidate);                
+//                    Pair<PeakListRow, PeakListRow> a_pair_2 = new Pair<PeakListRow, PeakListRow>(candidate, row);
+//                    logger.info("TEST Pairs: " + (a_pair == a_pair_2));
+                    
+                    
+                    // Skip already treated rows combination
+                    if (treatedPairs.contains(a_pair_of_rows)) { continue; }
+                    
 
 //                    RowVsRowScore score = new RowVsRowScore(this.project, 
 //                            row, candidate,
@@ -401,8 +454,10 @@ public class JoinAlignerGCTask extends AbstractTask {
                     // (Acceptable score => higher than absolute min ever and higher than user defined min)
                     // 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
                     //if (score.getScore() > JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
-                    if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore))
+                    if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
                         scoreSet.add(score);
+                        treatedPairs.add(a_pair_of_rows);
+                    }
 
                 }
 
@@ -410,6 +465,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 
             }
 
+            
+            /*
             // Create a table of mappings for best scores
             Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
 
@@ -562,8 +619,468 @@ public class JoinAlignerGCTask extends AbstractTask {
                 processedRows++;
 
             }
+            */
 
         } // Next peak list
+        
+        
+        
+//      double[][] distances = new double[][] { { 0, 1, 9, 7, 11, 14 }, { 1, 0, 4, 3, 8, 10 }, { 9, 4, 0, 9, 2, 8 },
+//              { 7, 3, 9, 0, 6, 13 }, { 11, 8, 2, 6, 0, 10 }, { 14, 10, 8, 13, 10, 0 } };
+//      String[] names = new String[] { "O1", "O2", "O3", "O4", "O5", "O6" };
+      double[][] distances; // = new double[][] { { 0, 1, 9, 7, 11, 14 }, { 1, 0, 4, 3, 8, 10 }, { 9, 4, 0, 9, 2, 8 },
+              //{ 7, 3, 9, 0, 6, 13 }, { 11, 8, 2, 6, 0, 10 }, { 14, 10, 8, 13, 10, 0 } };
+      String[] names;
+      int nbPeaks = 0;
+      for (int i = 0; i < newIds.length; ++i) {
+          PeakList peakList = peakLists[newIds[i]];
+          nbPeaks += peakList.getNumberOfRows();
+          System.out.println("> Peaklist '" + peakList.getName() + "' [" + newIds[i] + "] has '" + peakList.getNumberOfRows() + "' rows.");
+      }
+      distances = new double[nbPeaks][nbPeaks];
+      names = new String[nbPeaks];
+      
+      Map<String, PeakListRow> row_names_dict = new HashMap<>();
+      
+      int x = 0;
+      for (int i = 0; i < newIds.length; ++i) {
+
+
+          PeakList peakList = peakLists[newIds[i]];
+
+          PeakListRow allRows[] = peakList.getRows();
+          logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
+
+          // Calculate scores for all possible alignments of this row
+          for (int j = 0; j < allRows.length; ++j) {
+              
+              ////int x = (i * allRows.length) + j;
+              
+              PeakListRow row = allRows[j];
+
+              names[x] = newIds[i] + "_" + j + "^" + row.getBestPeak().getRT();
+              row_names_dict.put(names[x], row);
+
+              if (isCanceled())
+                  return;
+
+              // Calculate limits for a row with which the row can be aligned
+              //            Range<Double> mzRange = mzTolerance.getToleranceRange(row
+              //                    .getAverageMZ());
+              //            Range<Double> rtRange = rtTolerance.getToleranceRange(row
+              //                    .getAverageRT());
+              // GLG HACK: Use best peak rather than average. No sure it is better... ???
+              Range<Double> mzRange = mzTolerance.getToleranceRange(row
+                      .getBestPeak().getMZ());
+              Range<Double> rtRange = rtTolerance.getToleranceRange(row
+                      .getBestPeak().getRT());
+
+              // Get all rows of the aligned peaklist within parameter limits
+              /*
+            PeakListRow candidateRows[] = alignedPeakList
+                    .getRowsInsideScanAndMZRange(rtRange, mzRange);
+               */
+              //////List<PeakListRow> candidateRows = new ArrayList<>();
+              int y = 0;
+              for (int k = 0; k < newIds.length; ++k) {
+                  PeakList k_peakList = peakLists[newIds[k]];
+                  PeakListRow k_allRows[] = k_peakList.getRows();
+
+//                  if (k != i) {
+                      for (int l = 0; l < k_allRows.length; ++l) {
+
+                          ////int y = (k * k_allRows.length) + l;
+                          
+                          if (x == y) {
+                              /** Row tested against himself => fill matrix diagonal with zeros */
+                              distances[x][y] = 0.0d;
+                              //continue; 
+                          } else {
+                          
+                              if (k != i) {
+                              
+                                  PeakListRow k_row = k_allRows[l];
+        
+                                  // Is candidate
+                                  if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
+                                          && Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
+                                      //////candidateRows.add(k_row);
+        
+                                      /** Row is candidate => Distance is the score */
+                                      RowVsRowScoreGC score = new RowVsRowScoreGC(
+                                              this.project, useOldestRDFAncestor,
+                                              row.getRawDataFiles()[0], rtAdjustementMapping,
+                                              row, k_row,
+                                              RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
+                                              RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
+                                              idWeight,
+                                              useApex, useKnownCompoundsAsRef, rtToleranceAfter);
+                                      //-
+                                      // If match was not rejected afterwards and score is acceptable
+                                      // (Acceptable score => higher than absolute min ever and higher than user defined min)
+                                      // 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
+                                      //if (score.getScore() > JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
+                                      if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
+                                          //////scoreSet.add(score);
+                                          // The higher the score, the lower the distance!
+                                          distances[x][y] = (mzWeight + rtWeight) - score.getScore();
+                                      } else {
+                                          /** Score too low => Distance is Infinity */
+                                          distances[x][y] = VERY_LONG_DISTANCE;
+                                      }
+        
+                                  } else {
+                                      /** Row is not candidate => Distance is Infinity */
+                                      distances[x][y] = VERY_LONG_DISTANCE;
+                                  }
+                              } else {
+                                  /** Both rows belong to same list => Distance is Infinity */
+                                  distances[x][y] = VERY_LONG_DISTANCE;
+                              }
+                          }
+                          
+                          ++y;
+                      }
+//                  } else {
+//                      /** Both rows belong to same list => Distance is Infinity */
+//                      distances[x][y] = Double.MAX_VALUE;
+//                  }
+              }
+              
+              ++x;
+          }
+
+      } 
+
+      ClusteringAlgorithm alg = new DefaultClusteringAlgorithm();
+      //      System.out.println(Arrays.toString(names));
+      //      System.out.println(Arrays.deepToString(distances));
+//      for (int i=0; i<names.length; i++)
+//          System.out.println(names[i]);
+//      for (int i=0; i<distances.length; i++)
+//          System.out.println(Arrays.toString(distances[i]));
+      Cluster clust = alg.performClustering(distances, names, new AverageLinkageStrategy());
+      //clust.toConsole(0);
+      
+      List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length);
+      for (Cluster c: validatedClusters) {
+          //System.out.println(c.getName() + " : [" + c.getLeafNames() + "]");
+          System.out.println();
+          c.toConsole(0);
+      }
+
+
+      //----------------------------------------------------------------------
+
+        
+        
+        // Create a table of mappings for best scores
+        Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
+
+//        // Iterate scores by descending order
+//        Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
+//        //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
+//        while (scoreIterator.hasNext()) {
+//
+//            RowVsRowScoreGC score = scoreIterator.next();
+//
+//            // Check if the row is already mapped
+//            if (alignmentMapping.containsKey(score.getPeakListRow()))
+//                continue;
+//
+//            // Check if the aligned row is already filled
+//            if (alignmentMapping.containsValue(score.getAlignedRow()))
+//                continue;
+//
+//            alignmentMapping.put(score.getPeakListRow(),
+//                    score.getAlignedRow());
+//            //scoresMapping.put(score.getPeakListRow(), score);
+//            //scoresMapping.put(score.getAlignedRow(), score);
+//
+//            //...
+//            alignmentMapping.put(score.getAlignedRow(),
+//                    score.getPeakListRow());
+//        }
+
+//        logger.info("AAAAAAAAAAAAAAAAAAA: alignmentMapping list " + alignmentMapping + " / NB entries: " + alignmentMapping.size());
+//        logger.info("BBBBBBBBBBBBBBBBBBB: scoreSet list " + scoreSet + " / NB entries: " + scoreSet.size());
+        
+//        // First clustering pass: try to find the N best matching buddies (from the N raw data files)
+//        for (RawDataFile dataFile : alignedPeakList.getRawDataFiles()) {
+//            
+//            
+//        }
+        
+
+        List<List<PeakListRow>> clustersList = new ArrayList<>();
+        
+/**
+        // Iterate scores by descending order
+        Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
+        //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
+        //
+        // A score must be used once, at most!
+        List<RowVsRowScoreGC> consumedScores = new ArrayList<>();
+        // A peak must be clustered once, at most!
+        List<PeakListRow> clusteredPeaks = new ArrayList<>();
+        //
+        ////int n = -1, nn = -1;
+        while (scoreIterator.hasNext()) {
+
+            ////n++;
+            
+            RowVsRowScoreGC score = scoreIterator.next();
+
+            if (consumedScores.contains(score)) { continue; }
+            
+
+//            // Check if the row is already mapped
+//            if (alignmentMapping.containsKey(score.getPeakListRow()))
+//                continue;
+//
+//            // Check if the aligned row is already filled
+//            if (alignmentMapping.containsValue(score.getAlignedRow()))
+//                continue;
+//
+//            alignmentMapping.put(score.getPeakListRow(),
+//                    score.getAlignedRow());
+//            //scoresMapping.put(score.getPeakListRow(), score);
+//            //scoresMapping.put(score.getAlignedRow(), score);
+
+            // Consume score
+            consumedScores.add(score);
+            
+            //int nb_buddies = 1;
+            List<PeakListRow> cluster = new ArrayList<>();
+            // Add current pair
+            cluster.add(score.getPeakListRow());
+            cluster.add(score.getAlignedRow());
+            clusteredPeaks.add(score.getPeakListRow());
+            clusteredPeaks.add(score.getAlignedRow());
+            //-
+            
+            // Try find the (N-2) potential other buddies 
+            Iterator<RowVsRowScoreGC> scoreIterator_2 = scoreSet.iterator();
+            while (scoreIterator_2.hasNext()) {
+    
+                ////nn++;
+                ////if (nn <= n) { continue; };
+                    
+                RowVsRowScoreGC score_2 = scoreIterator_2.next();
+                
+                if (score_2 == score) { continue; }
+                
+                // Already clustered?
+                if (clusteredPeaks.contains(score_2.getPeakListRow()) || clusteredPeaks.contains(score_2.getAlignedRow())) { continue; }
+                
+                
+                // If score_2 is referencing one of the rows of interest
+                if (!consumedScores.contains(score_2) 
+                        // Already clustered?
+                        //&& (!(cluster.contains(score_2.getPeakListRow()) && cluster.contains(score_2.getAlignedRow())))
+                        // Match?
+                        && (cluster.contains(score_2.getPeakListRow()) || cluster.contains(score_2.getAlignedRow()))
+                        ) {
+                    
+                    if (cluster.contains(score_2.getPeakListRow()) /\*&& !clusteredPeaks.contains(score_2.getAlignedRow())*\/) {
+                        cluster.add(score_2.getAlignedRow());
+                        // Consume score
+                        //consumedScores.add(score_2);
+                        clusteredPeaks.add(score_2.getAlignedRow());
+                    } else /\*if (!clusteredPeaks.contains(score_2.getPeakListRow()))*\/ {
+                        cluster.add(score_2.getPeakListRow());
+                        // Consume score
+                        //consumedScores.add(score_2);
+                        clusteredPeaks.add(score_2.getPeakListRow());
+                    }
+                    
+                    
+                    // Consume score
+                    consumedScores.add(score_2);
+                }
+                
+                // If maximum number of buddies in cluster is reached, stop looking
+                // Otherwise, keep going
+                if (cluster.size() == alignedPeakList.getRawDataFiles().length) { break; }
+            }
+            
+            // Store cluster
+            clustersList.add(cluster);
+            
+            // Clear non-single (=clustered) from list
+            for (PeakListRow c_plr: cluster) {
+                singleRowsList.remove(c_plr);
+                // Cluster is full => lock contained peaks
+//                if (cluster.size() == alignedPeakList.getRawDataFiles().length)
+//                    clusteredPeaks.add(c_plr);
+            }
+
+            
+        } 
+**/
+        
+        for (Cluster c: validatedClusters) {
+
+            List<Cluster> c_leafs = getClusterLeafs(c);
+            List<PeakListRow> rows_cluster = new ArrayList<>();
+            for (Cluster l: c_leafs) {
+                // Recover related PeakListRow
+                rows_cluster.add(row_names_dict.get(l.getName()));
+            }
+            clustersList.add(rows_cluster);
+        }
+        
+        
+        // Debug...
+        for (List<PeakListRow> c: clustersList) {
+            
+            String c_str = "";
+            for (PeakListRow plr: c) {
+                c_str += plr.getBestPeak().getRT() + " // ";
+            }
+            logger.info("$$$$$$ >> CLUSTER (size: " + c.size() + "): " + c_str);
+        }
+//        // Make clusters from remaining singles
+//        for (PeakListRow single_row: singleRowsList) {
+//            
+//            clustersList.add(new ArrayList<PeakListRow>(Arrays.asList(new PeakListRow[] { single_row })));
+//        }
+        
+        
+        // Fill alignment table: One row per cluster
+        for (List<PeakListRow> cluster: clustersList) {
+            
+            PeakListRow targetRow = new SimplePeakListRow(newRowID);
+            newRowID++;
+            alignedPeakList.addRow(targetRow);
+            //
+            infoRowsBackup.put(targetRow, new Object[] { 
+                    new HashMap<RawDataFile, Double[]>(), 
+                    new HashMap<RawDataFile, PeakIdentity>(), 
+                    new HashMap<RawDataFile, Double>() 
+            });
+            
+            for (PeakListRow row: cluster) {
+                
+                // Add all non-existing identities from the original row to the
+                // aligned row
+                //PeakUtils.copyPeakListRowProperties(row, targetRow);
+                // Set the preferred identity
+                ////if (row.getPreferredPeakIdentity() != null)
+                if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
+                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+    //                //JDXCompound.setPreferredPeakIdentity(targetRow, row.getPreferredPeakIdentity());
+    //                SimplePeakIdentity newIdentity = new SimplePeakIdentity(prop);
+    //                targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+                }
+                else
+                    targetRow.setPreferredPeakIdentity(JDXCompound.createUnknownCompound());
+    //                JDXCompound.setPreferredPeakIdentity(targetRow, JDXCompound.createUnknownCompound());
+                
+                    
+    
+                // Add all peaks from the original row to the aligned row
+                //for (RawDataFile file : row.getRawDataFiles()) {
+                for (RawDataFile file : alignedPeakList.getRawDataFiles()) {
+                    
+    //                if (recalibrateRT) {
+    //                    if (!Arrays.asList(row.getRawDataFiles()).contains(file)) {
+    //                        double b_offset = rtAdjustementMapping.get(peakList)[0];
+    //                        double a_scale = rtAdjustementMapping.get(peakList)[1];
+    //                        ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+    //                        //continue;
+    //                        //break;
+    //                    }
+    //                }
+    
+                    if (Arrays.asList(row.getRawDataFiles()).contains(file)) {
+                        
+                        Feature originalPeak = row.getPeak(file);
+                        if (originalPeak != null) {
+                            
+                            if (recalibrateRT) {
+                                // Set adjusted retention time to all peaks in this row
+                                // *[Note 1]
+                                RawDataFile pl_RDF = row.getRawDataFiles()[0];//////peakList.getRawDataFile(0);
+                                logger.info("{" + rtAdjustementMapping.get(pl_RDF)[0] + ", " + rtAdjustementMapping.get(pl_RDF)[1] + "}");
+                                double b_offset = rtAdjustementMapping.get(pl_RDF)[0];
+                                double a_scale = rtAdjustementMapping.get(pl_RDF)[1];
+                                //
+                                double adjustedRT = JoinAlignerGCTask.getAdjustedRT(originalPeak.getRT(), b_offset, a_scale);
+                                
+                                SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
+                                PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
+                                adjustedPeak.setRT(adjustedRT);
+                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+    
+                                targetRow.addPeak(file, adjustedPeak);
+                                // Adjusted RT info
+                                rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
+                                ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
+                                
+                            } else {
+                                targetRow.addPeak(file, originalPeak);
+                            }
+                            
+                            // Identification info
+                            ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
+                            //
+                            String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE);
+                            if (strScore != null)
+                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
+                            else
+                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
+                            
+                            logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
+                        }
+                        else {
+                            setStatus(TaskStatus.ERROR);
+                            setErrorMessage("Cannot run alignment, no originalPeak");
+                            return;
+                        }
+    
+                    } 
+    //                else {
+    //                    if (recalibrateRT) {
+    //                        double b_offset = rtAdjustementMapping.get(peakList)[0];
+    //                        double a_scale = rtAdjustementMapping.get(peakList)[1];
+    //                        ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+    //                        //continue;
+    //                    }
+    //                }
+    
+                }
+    
+                // Copy all possible peak identities, if these are not already present
+                for (PeakIdentity identity : row.getPeakIdentities()) {
+                    PeakIdentity clonedIdentity = (PeakIdentity) identity.clone();
+                    if (!PeakUtils.containsIdentity(targetRow, clonedIdentity))
+                        targetRow.addPeakIdentity(clonedIdentity, false);
+                }
+                
+    //            // Notify MZmine about the change in the project
+    //            // TODO: Get the "project" from the instantiator of this class instead.
+    //            // Still necessary ???????
+    //            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+    //            project.notifyObjectChanged(targetRow, false);
+    //            // Repaint the window to reflect the change in the peak list
+    //            Desktop desktop = MZmineCore.getDesktop();
+    //            if (!(desktop instanceof HeadLessDesktop))
+    //                desktop.getMainWindow().repaint();
+                
+                processedRows++;
+    
+            }
+        }
+        
+        
+        
+        //----------------------------------------------------------------------
+       
+        
+        
+        
+        
         
         
         // Restore real RT - for the sake of consistency
@@ -576,7 +1093,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         
         /** Post-processing... **/
-        // Build reference RDFs index: We need an ordered reference here, to we able to parse
+        // Build reference RDFs index: We need an ordered reference here, to be able to parse
         // correctly while reading back stored info
         RawDataFile[] rdf_sorted = alignedPeakList.getRawDataFiles().clone();
         Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
@@ -763,6 +1280,60 @@ public class JoinAlignerGCTask extends AbstractTask {
         logger.info("Finished join aligner");
         setStatus(TaskStatus.FINISHED);
 
+    }
+    
+    
+//    private static int encodeIndexes8(int index1, int index2) {
+//        return (index1 << 8) | index2;
+//    }
+//
+//    private static int[] decodeIndexes8(int combinedIds) {
+//        return new int[] { combinedIds >> 8, combinedIds & 0x00FF };
+//    }
+    
+    
+    private List<Cluster> getValidatedClusters(Cluster clust, int level) {
+
+        List<Cluster> validatedClusters = new ArrayList<>();
+        if (!clust.isLeaf()) {
+            
+            for (Cluster child : clust.getChildren())
+            {
+                //System.out.println("Testing child: " + child.getName() + ", nb leafs: " + child.countLeafs() + " (level: " + level + ")");
+                // TODO: trick to get number of leafs without browsing the hole tree (unlike how it's done in ".countLeafs()")
+                //if (child.getLeafNames().size() <= level) {
+                if (/*!validatedClusters.contains(child) &&*/ child.countLeafs() <= level) {
+                    validatedClusters.add(child);
+                    //System.out.println("Found child: " + child.getName() + ", nb leafs: " + child.countLeafs());
+                } else {
+                    validatedClusters.addAll(getValidatedClusters(child, level));
+                }
+            }
+        }
+
+        return validatedClusters;
+    }
+    
+    private List<Cluster> getClusterLeafs(Cluster clust) {
+
+        List<Cluster> leafs = new ArrayList<>();
+        
+        if (clust.isLeaf()) {
+            leafs = new ArrayList<>();
+            leafs.add(clust);
+        } else {
+            
+            for (Cluster child : clust.getChildren())
+            {
+                if (child.isLeaf()) {
+                    leafs.add(child);
+                } else {
+                    leafs.addAll(getClusterLeafs(child));
+                }
+            }
+        }
+
+        return leafs;
     }
 
     public static double getAdjustedRT(double rt, double b_offset, double a_scale) {
