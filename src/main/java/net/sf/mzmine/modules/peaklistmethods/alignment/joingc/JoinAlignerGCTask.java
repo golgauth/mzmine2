@@ -365,301 +365,300 @@ public class JoinAlignerGCTask extends AbstractTask {
         default:
             linkageStrategy = new AverageLinkageStrategy();
             break;
-
         }
 
-        
-        // Create a sorted set of scores matching
-        TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
-        
-        
-        
-        List<PairTwoWays<PeakListRow, PeakListRow>> treatedPairs = new ArrayList<>();
-        List<PeakListRow> singleRowsList = new ArrayList<>();
-        //
-        for (int i = 0; i < newIds.length; ++i) {
-            
-            PeakList peakList = peakLists[newIds[i]];
+//        
+//        // Create a sorted set of scores matching
+//        TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
+//        
+//        
+//        
+//        List<PairTwoWays<PeakListRow, PeakListRow>> treatedPairs = new ArrayList<>();
+//        List<PeakListRow> singleRowsList = new ArrayList<>();
+//        //
+//        for (int i = 0; i < newIds.length; ++i) {
 //            
-//            // Create a sorted set of scores matching
-//            TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
-
-            PeakListRow allRows[] = peakList.getRows();
-            logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
-
-            // Calculate scores for all possible alignments of this row
-            for (PeakListRow row : allRows) {
-
-                if (isCanceled())
-                    return;
-                
-                singleRowsList.add(row);
-                
-                // Calculate limits for a row with which the row can be aligned
+//            PeakList peakList = peakLists[newIds[i]];
+////            
+////            // Create a sorted set of scores matching
+////            TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
+//
+//            PeakListRow allRows[] = peakList.getRows();
+//            logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
+//
+//            // Calculate scores for all possible alignments of this row
+//            for (PeakListRow row : allRows) {
+//
+//                if (isCanceled())
+//                    return;
+//                
+//                singleRowsList.add(row);
+//                
+//                // Calculate limits for a row with which the row can be aligned
+////                Range<Double> mzRange = mzTolerance.getToleranceRange(row
+////                        .getAverageMZ());
+////                Range<Double> rtRange = rtTolerance.getToleranceRange(row
+////                        .getAverageRT());
+//                // GLG HACK: Use best peak rather than average. No sure it is better... ???
 //                Range<Double> mzRange = mzTolerance.getToleranceRange(row
-//                        .getAverageMZ());
+//                        .getBestPeak().getMZ());
 //                Range<Double> rtRange = rtTolerance.getToleranceRange(row
-//                        .getAverageRT());
-                // GLG HACK: Use best peak rather than average. No sure it is better... ???
-                Range<Double> mzRange = mzTolerance.getToleranceRange(row
-                        .getBestPeak().getMZ());
-                Range<Double> rtRange = rtTolerance.getToleranceRange(row
-                        .getBestPeak().getRT());
-
-                // Get all rows of the aligned peaklist within parameter limits
-                /*
-                PeakListRow candidateRows[] = alignedPeakList
-                        .getRowsInsideScanAndMZRange(rtRange, mzRange);
-                */
-                List<PeakListRow> candidateRows = new ArrayList<>();
-                for (int k = 0; k < newIds.length; ++k) {
-                    
-                    PeakList k_peakList = peakLists[newIds[k]];
-                    PeakListRow k_allRows[] = k_peakList.getRows();
-                    
-                    if (k != i) {
-                        for (PeakListRow k_row : k_allRows) {
-                            
-                            // Is candidate
-                            if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
-                                    && Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
-                                candidateRows.add(k_row);
-                            }
-                        }
-                    }
-                }
-                
-                // Calculate scores and store them
-                for (PeakListRow candidate : candidateRows) {
-
-                    /** GLG HACK: temporarily removed for clarity
-                    if (sameChargeRequired) {
-                        if (!PeakUtils.compareChargeState(row, candidate))
-                            continue;
-                    }
-
-                    if (sameIDRequired) {
-                        if (!PeakUtils.compareIdentities(row, candidate))
-                            continue;
-                    }
-
-                    if (compareIsotopePattern) {
-                        IsotopePattern ip1 = row.getBestIsotopePattern();
-                        IsotopePattern ip2 = candidate.getBestIsotopePattern();
-
-                        if ((ip1 != null) && (ip2 != null)) {
-                            ParameterSet isotopeParams = parameters
-                                    .getParameter(
-                                            JoinAlignerParameters.compareIsotopePattern)
-                                    .getEmbeddedParameters();
-
-                            if (!IsotopePatternScoreCalculator.checkMatch(ip1,
-                                    ip2, isotopeParams)) {
-                                continue;
-                            }
-                        }
-                    }
-                    **/
-                    
-                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows = new PairTwoWays<PeakListRow, PeakListRow>(row, candidate);                
-//                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows_2 = new PairTwoWays<PeakListRow, PeakListRow>(candidate, row);
-//                    logger.info("TEST Pairs: " + (a_pair_of_rows == a_pair_of_rows_2));
+//                        .getBestPeak().getRT());
+//
+//                // Get all rows of the aligned peaklist within parameter limits
+//                /*
+//                PeakListRow candidateRows[] = alignedPeakList
+//                        .getRowsInsideScanAndMZRange(rtRange, mzRange);
+//                */
+//                List<PeakListRow> candidateRows = new ArrayList<>();
+//                for (int k = 0; k < newIds.length; ++k) {
 //                    
-//                    Pair<PeakListRow, PeakListRow> a_pair = new Pair<PeakListRow, PeakListRow>(row, candidate);                
-//                    Pair<PeakListRow, PeakListRow> a_pair_2 = new Pair<PeakListRow, PeakListRow>(candidate, row);
-//                    logger.info("TEST Pairs: " + (a_pair == a_pair_2));
-                    
-                    
-                    // Skip already treated rows combination
-                    if (treatedPairs.contains(a_pair_of_rows)) { continue; }
-                    
-
-//                    RowVsRowScore score = new RowVsRowScore(this.project, 
+//                    PeakList k_peakList = peakLists[newIds[k]];
+//                    PeakListRow k_allRows[] = k_peakList.getRows();
+//                    
+//                    if (k != i) {
+//                        for (PeakListRow k_row : k_allRows) {
+//                            
+//                            // Is candidate
+//                            if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
+//                                    && Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
+//                                candidateRows.add(k_row);
+//                            }
+//                        }
+//                    }
+//                }
+//                
+//                // Calculate scores and store them
+//                for (PeakListRow candidate : candidateRows) {
+//
+//                    /** GLG HACK: temporarily removed for clarity
+//                    if (sameChargeRequired) {
+//                        if (!PeakUtils.compareChargeState(row, candidate))
+//                            continue;
+//                    }
+//
+//                    if (sameIDRequired) {
+//                        if (!PeakUtils.compareIdentities(row, candidate))
+//                            continue;
+//                    }
+//
+//                    if (compareIsotopePattern) {
+//                        IsotopePattern ip1 = row.getBestIsotopePattern();
+//                        IsotopePattern ip2 = candidate.getBestIsotopePattern();
+//
+//                        if ((ip1 != null) && (ip2 != null)) {
+//                            ParameterSet isotopeParams = parameters
+//                                    .getParameter(
+//                                            JoinAlignerParameters.compareIsotopePattern)
+//                                    .getEmbeddedParameters();
+//
+//                            if (!IsotopePatternScoreCalculator.checkMatch(ip1,
+//                                    ip2, isotopeParams)) {
+//                                continue;
+//                            }
+//                        }
+//                    }
+//                    **/
+//                    
+//                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows = new PairTwoWays<PeakListRow, PeakListRow>(row, candidate);                
+////                    PairTwoWays<PeakListRow, PeakListRow> a_pair_of_rows_2 = new PairTwoWays<PeakListRow, PeakListRow>(candidate, row);
+////                    logger.info("TEST Pairs: " + (a_pair_of_rows == a_pair_of_rows_2));
+////                    
+////                    Pair<PeakListRow, PeakListRow> a_pair = new Pair<PeakListRow, PeakListRow>(row, candidate);                
+////                    Pair<PeakListRow, PeakListRow> a_pair_2 = new Pair<PeakListRow, PeakListRow>(candidate, row);
+////                    logger.info("TEST Pairs: " + (a_pair == a_pair_2));
+//                    
+//                    
+//                    // Skip already treated rows combination
+//                    if (treatedPairs.contains(a_pair_of_rows)) { continue; }
+//                    
+//
+////                    RowVsRowScore score = new RowVsRowScore(this.project, 
+////                            row, candidate,
+////                            RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
+////                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight);
+//                    // GLG HACK: Use apex rather than average!
+//                    RowVsRowScoreGC score = new RowVsRowScoreGC(
+//                            this.project, useOldestRDFAncestor,
+//                            row.getRawDataFiles()[0], rtAdjustementMapping,
 //                            row, candidate,
 //                            RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-//                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight);
-                    // GLG HACK: Use apex rather than average!
-                    RowVsRowScoreGC score = new RowVsRowScoreGC(
-                            this.project, useOldestRDFAncestor,
-                            row.getRawDataFiles()[0], rtAdjustementMapping,
-                            row, candidate,
-                            RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
-                            idWeight,
-                            useApex, useKnownCompoundsAsRef, rtToleranceAfter);
-
-                    // If match was not rejected afterwards and score is acceptable
-                    // (Acceptable score => higher than absolute min ever and higher than user defined min)
-                    // 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
-                    //if (score.getScore() > JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
-                    if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
-                        scoreSet.add(score);
-                        treatedPairs.add(a_pair_of_rows);
-                    }
-
-                }
-
-                processedRows++;
-
-            }
-
-            
-            /*
-            // Create a table of mappings for best scores
-            Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
-
-            // Iterate scores by descending order
-            Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
-            //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
-            while (scoreIterator.hasNext()) {
-
-                RowVsRowScoreGC score = scoreIterator.next();
-
-                // Check if the row is already mapped
-                if (alignmentMapping.containsKey(score.getPeakListRow()))
-                    continue;
-
-                // Check if the aligned row is already filled
-                if (alignmentMapping.containsValue(score.getAlignedRow()))
-                    continue;
-
-                alignmentMapping.put(score.getPeakListRow(),
-                        score.getAlignedRow());
-                //scoresMapping.put(score.getPeakListRow(), score);
-                //scoresMapping.put(score.getAlignedRow(), score);
-
-            }
-
-            // Align all rows using mapping
-            for (PeakListRow row : allRows) {
-
-                PeakListRow targetRow = alignmentMapping.get(row);
-
-                // If we have no mapping for this row, add a new one
-                if (targetRow == null) {
-                    targetRow = new SimplePeakListRow(newRowID);
-                    newRowID++;
-                    alignedPeakList.addRow(targetRow);
-                    //
-                    infoRowsBackup.put(targetRow, new Object[] { 
-                            new HashMap<RawDataFile, Double[]>(), 
-                            new HashMap<RawDataFile, PeakIdentity>(), 
-                            new HashMap<RawDataFile, Double>() 
-                            });
-                }
-                
-                // Add all non-existing identities from the original row to the
-                // aligned row
-                //PeakUtils.copyPeakListRowProperties(row, targetRow);
-                // Set the preferred identity
-                ////if (row.getPreferredPeakIdentity() != null)
-                if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
-                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
-//                    //JDXCompound.setPreferredPeakIdentity(targetRow, row.getPreferredPeakIdentity());
-//                    SimplePeakIdentity newIdentity = new SimplePeakIdentity(prop);
+//                            RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
+//                            idWeight,
+//                            useApex, useKnownCompoundsAsRef, rtToleranceAfter);
+//
+//                    // If match was not rejected afterwards and score is acceptable
+//                    // (Acceptable score => higher than absolute min ever and higher than user defined min)
+//                    // 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
+//                    //if (score.getScore() > JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
+//                    if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
+//                        scoreSet.add(score);
+//                        treatedPairs.add(a_pair_of_rows);
+//                    }
+//
+//                }
+//
+//                processedRows++;
+//
+//            }
+//
+//            
+//            /*
+//            // Create a table of mappings for best scores
+//            Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
+//
+//            // Iterate scores by descending order
+//            Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
+//            //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
+//            while (scoreIterator.hasNext()) {
+//
+//                RowVsRowScoreGC score = scoreIterator.next();
+//
+//                // Check if the row is already mapped
+//                if (alignmentMapping.containsKey(score.getPeakListRow()))
+//                    continue;
+//
+//                // Check if the aligned row is already filled
+//                if (alignmentMapping.containsValue(score.getAlignedRow()))
+//                    continue;
+//
+//                alignmentMapping.put(score.getPeakListRow(),
+//                        score.getAlignedRow());
+//                //scoresMapping.put(score.getPeakListRow(), score);
+//                //scoresMapping.put(score.getAlignedRow(), score);
+//
+//            }
+//
+//            // Align all rows using mapping
+//            for (PeakListRow row : allRows) {
+//
+//                PeakListRow targetRow = alignmentMapping.get(row);
+//
+//                // If we have no mapping for this row, add a new one
+//                if (targetRow == null) {
+//                    targetRow = new SimplePeakListRow(newRowID);
+//                    newRowID++;
+//                    alignedPeakList.addRow(targetRow);
+//                    //
+//                    infoRowsBackup.put(targetRow, new Object[] { 
+//                            new HashMap<RawDataFile, Double[]>(), 
+//                            new HashMap<RawDataFile, PeakIdentity>(), 
+//                            new HashMap<RawDataFile, Double>() 
+//                            });
+//                }
+//                
+//                // Add all non-existing identities from the original row to the
+//                // aligned row
+//                //PeakUtils.copyPeakListRowProperties(row, targetRow);
+//                // Set the preferred identity
+//                ////if (row.getPreferredPeakIdentity() != null)
+//                if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
 //                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
-                }
-                else
-                    targetRow.setPreferredPeakIdentity(JDXCompound.createUnknownCompound());
-//                    JDXCompound.setPreferredPeakIdentity(targetRow, JDXCompound.createUnknownCompound());
-                
-                    
-
-                // Add all peaks from the original row to the aligned row
-                //for (RawDataFile file : row.getRawDataFiles()) {
-                for (RawDataFile file : alignedPeakList.getRawDataFiles()) {
-                    
-//                    if (recalibrateRT) {
-//                        if (!Arrays.asList(row.getRawDataFiles()).contains(file)) {
-//                            double b_offset = rtAdjustementMapping.get(peakList)[0];
-//                            double a_scale = rtAdjustementMapping.get(peakList)[1];
-//                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
-//                            //continue;
-//                            //break;
+////                    //JDXCompound.setPreferredPeakIdentity(targetRow, row.getPreferredPeakIdentity());
+////                    SimplePeakIdentity newIdentity = new SimplePeakIdentity(prop);
+////                    targetRow.setPreferredPeakIdentity(row.getPreferredPeakIdentity());
+//                }
+//                else
+//                    targetRow.setPreferredPeakIdentity(JDXCompound.createUnknownCompound());
+////                    JDXCompound.setPreferredPeakIdentity(targetRow, JDXCompound.createUnknownCompound());
+//                
+//                    
+//
+//                // Add all peaks from the original row to the aligned row
+//                //for (RawDataFile file : row.getRawDataFiles()) {
+//                for (RawDataFile file : alignedPeakList.getRawDataFiles()) {
+//                    
+////                    if (recalibrateRT) {
+////                        if (!Arrays.asList(row.getRawDataFiles()).contains(file)) {
+////                            double b_offset = rtAdjustementMapping.get(peakList)[0];
+////                            double a_scale = rtAdjustementMapping.get(peakList)[1];
+////                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+////                            //continue;
+////                            //break;
+////                        }
+////                    }
+//
+//                    if (Arrays.asList(row.getRawDataFiles()).contains(file)) {
+//                        
+//                        Feature originalPeak = row.getPeak(file);
+//                        if (originalPeak != null) {
+//                            
+//                            if (recalibrateRT) {
+//                                // Set adjusted retention time to all peaks in this row
+//                                // *[Note 1]
+//                                RawDataFile pl_RDF = peakList.getRawDataFile(0);
+//                                logger.info("{" + rtAdjustementMapping.get(pl_RDF)[0] + ", " + rtAdjustementMapping.get(pl_RDF)[1] + "}");
+//                                double b_offset = rtAdjustementMapping.get(pl_RDF)[0];
+//                                double a_scale = rtAdjustementMapping.get(pl_RDF)[1];
+//                                //
+//                                double adjustedRT = JoinAlignerGCTask.getAdjustedRT(originalPeak.getRT(), b_offset, a_scale);
+//                                
+//                                SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
+//                                PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
+//                                adjustedPeak.setRT(adjustedRT);
+//                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+//    
+//                                targetRow.addPeak(file, adjustedPeak);
+//                                // Adjusted RT info
+//                                rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
+//                                ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
+//                                
+//                            } else {
+//                                targetRow.addPeak(file, originalPeak);
+//                            }
+//                            
+//                            // Identification info
+//                            ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
+//                            //
+//                            String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE);
+//                            if (strScore != null)
+//                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
+//                            else
+//                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
+//                            
+//                            logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
 //                        }
-//                    }
-
-                    if (Arrays.asList(row.getRawDataFiles()).contains(file)) {
-                        
-                        Feature originalPeak = row.getPeak(file);
-                        if (originalPeak != null) {
-                            
-                            if (recalibrateRT) {
-                                // Set adjusted retention time to all peaks in this row
-                                // *[Note 1]
-                                RawDataFile pl_RDF = peakList.getRawDataFile(0);
-                                logger.info("{" + rtAdjustementMapping.get(pl_RDF)[0] + ", " + rtAdjustementMapping.get(pl_RDF)[1] + "}");
-                                double b_offset = rtAdjustementMapping.get(pl_RDF)[0];
-                                double a_scale = rtAdjustementMapping.get(pl_RDF)[1];
-                                //
-                                double adjustedRT = JoinAlignerGCTask.getAdjustedRT(originalPeak.getRT(), b_offset, a_scale);
-                                
-                                SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
-                                PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
-                                adjustedPeak.setRT(adjustedRT);
-                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
-    
-                                targetRow.addPeak(file, adjustedPeak);
-                                // Adjusted RT info
-                                rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
-                                ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
-                                
-                            } else {
-                                targetRow.addPeak(file, originalPeak);
-                            }
-                            
-                            // Identification info
-                            ((HashMap<RawDataFile, PeakIdentity>) infoRowsBackup.get(targetRow)[1]).put(file, targetRow.getPreferredPeakIdentity());
-                            //
-                            String strScore = targetRow.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE);
-                            if (strScore != null)
-                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, Double.valueOf(strScore));
-                            else
-                                ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
-                            
-                            logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
-                        }
-                        else {
-                            setStatus(TaskStatus.ERROR);
-                            setErrorMessage("Cannot run alignment, no originalPeak");
-                            return;
-                        }
-    
-                    } 
-//                    else {
-//                        if (recalibrateRT) {
-//                            double b_offset = rtAdjustementMapping.get(peakList)[0];
-//                            double a_scale = rtAdjustementMapping.get(peakList)[1];
-//                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
-//                            //continue;
+//                        else {
+//                            setStatus(TaskStatus.ERROR);
+//                            setErrorMessage("Cannot run alignment, no originalPeak");
+//                            return;
 //                        }
-//                    }
-
-                }
-
-                // Copy all possible peak identities, if these are not already present
-                for (PeakIdentity identity : row.getPeakIdentities()) {
-                    PeakIdentity clonedIdentity = (PeakIdentity) identity.clone();
-                    if (!PeakUtils.containsIdentity(targetRow, clonedIdentity))
-                        targetRow.addPeakIdentity(clonedIdentity, false);
-                }
-                
-//                // Notify MZmine about the change in the project
-//                // TODO: Get the "project" from the instantiator of this class instead.
-//                // Still necessary ???????
-//                MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-//                project.notifyObjectChanged(targetRow, false);
-//                // Repaint the window to reflect the change in the peak list
-//                Desktop desktop = MZmineCore.getDesktop();
-//                if (!(desktop instanceof HeadLessDesktop))
-//                    desktop.getMainWindow().repaint();
-                
-                processedRows++;
-
-            }
-            */
-
-        } // Next peak list
+//    
+//                    } 
+////                    else {
+////                        if (recalibrateRT) {
+////                            double b_offset = rtAdjustementMapping.get(peakList)[0];
+////                            double a_scale = rtAdjustementMapping.get(peakList)[1];
+////                            ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { Double.NaN, b_offset, a_scale });                        
+////                            //continue;
+////                        }
+////                    }
+//
+//                }
+//
+//                // Copy all possible peak identities, if these are not already present
+//                for (PeakIdentity identity : row.getPeakIdentities()) {
+//                    PeakIdentity clonedIdentity = (PeakIdentity) identity.clone();
+//                    if (!PeakUtils.containsIdentity(targetRow, clonedIdentity))
+//                        targetRow.addPeakIdentity(clonedIdentity, false);
+//                }
+//                
+////                // Notify MZmine about the change in the project
+////                // TODO: Get the "project" from the instantiator of this class instead.
+////                // Still necessary ???????
+////                MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+////                project.notifyObjectChanged(targetRow, false);
+////                // Repaint the window to reflect the change in the peak list
+////                Desktop desktop = MZmineCore.getDesktop();
+////                if (!(desktop instanceof HeadLessDesktop))
+////                    desktop.getMainWindow().repaint();
+//                
+//                processedRows++;
+//
+//            }
+//            */
+//
+//        } // Next peak list
         
         
       double[][] distances;

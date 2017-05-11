@@ -53,7 +53,7 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
 
     public static final DoubleParameter AREA_MIX_FACTOR = new DoubleParameter(
             "Area Mix factor",
-            "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantged).",
+            "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantaged).",
             MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
 
     public static final DoubleParameter MIN_SCORE = new DoubleParameter(

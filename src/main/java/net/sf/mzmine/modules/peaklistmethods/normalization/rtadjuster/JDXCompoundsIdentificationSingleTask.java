@@ -238,18 +238,26 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                         PeakListRow a_row = rows[finishedItems];
 
                         // Retrieve results for each row.
-                        scoreMatrix[finishedItems][0] = (double) finishedItems;
+                        scoreMatrix[finishedItems][0] = (double) finishedItems;//(double) a_row.getID();//
                         for (int i = 0; !isCanceled() && i < findCompounds.length; i++) {
+                            
                             if (rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
+                                
+                                System.out.println(a_row.getBestPeak().getRT() + " is in range: " + rtSearchRanges[i]);
+                                
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
                                 double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                                System.out.println("\t> Score:" + score + "( using rdf: '" + rdf.getName() + "')");
                                 if (score < minScore)
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                                 else
                                     scoreMatrix[finishedItems][i+1] = score;
                             } else {
+                                
+                                System.out.println(a_row.getBestPeak().getRT() + " is - NOT - in range: " + rtSearchRanges[i]);
+                                
                                 // Out of range.
                                 scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                             }
@@ -257,7 +265,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                         finishedItemsTotal++;
                     }
-
+                    
                     // Add piaf to the list and display it in results window.
                     if (!applyWithoutCheck)
                         window.addNewListItem(peakList, findCompounds, scoreMatrix);
@@ -275,6 +283,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                     /*else*/ 
                     if (!isCanceled()) {
 
+                        printMatrixToFile(scoreMatrix, "scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + peakList.getName() + ".txt");
+                        
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
 
@@ -283,6 +293,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             CollectionUtils.matrixCopy(scoreMatrix, mtx);
                             Arrays.sort(mtx, new ArrayComparator(i+1, false)); // +1: skip first column (row number)
 
+                            printMatrixToFile(scoreMatrix, "sorted_scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + peakList.getName() + ".txt");
+                            
                             PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[0][0]));
                             double bestScore = mtx[0][i+1];
 

@@ -407,7 +407,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 		    NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
 		    NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
                     //return "Peak " + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()); //+ " #" + this.score;
-                    return "#" + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()) + " / " + areaFormat.format(this.getArea()); //+ " #" + this.score;
+                    return "#" + this.peakListRow.getID() + " @" + rtFormat.format(this.getRT()) + " / " + areaFormat.format(this.getArea()) + " #" + this.score;
 		}
 
 	}

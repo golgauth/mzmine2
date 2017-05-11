@@ -36,6 +36,7 @@ import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
 import net.sf.mzmine.util.DataFileUtils;
+import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.PeakSorter;
 import net.sf.mzmine.util.PeakUtils;
 import net.sf.mzmine.util.ScanUtils;
@@ -192,7 +193,7 @@ class PeakMergerTask extends AbstractTask {
         // TODO: Which kind of sorting shall be applied here? By height??? Nothing???
         //       => For now, nothing is done...
         List<Feature> sortedPeaks = Arrays.asList(peakList.getPeaks(this.dataFile));
-        // Sort by RT (Ascending)
+        // Sort by RT (Ascending) => *[1]
         Collections.sort(sortedPeaks, new PeakSorter(SortingProperty.RT, SortingDirection.Ascending));
 
         
@@ -1395,6 +1396,13 @@ class PeakMergerTask extends AbstractTask {
     }
 
     void finishMergedPeakList() {
+        
+        // ---
+        // *[1] : Since we sorted by RT at the very beginning of this task:
+        //              Make sure to sort back by ID (Ascending) (The default in MZmine)
+        Collections.sort(this.mergedPeakListRows, new PeakListRowSorter(
+                SortingProperty.ID, SortingDirection.Ascending));
+        // ---
         
         // Add all final rows to peaklist
         for (PeakListRow row: this.mergedPeakListRows) {
