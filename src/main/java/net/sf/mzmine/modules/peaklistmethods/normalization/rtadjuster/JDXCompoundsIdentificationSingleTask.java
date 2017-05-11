@@ -243,8 +243,6 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             
                             if (rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
                                 
-                                System.out.println(a_row.getBestPeak().getRT() + " is in range: " + rtSearchRanges[i]);
-                                
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
@@ -255,8 +253,6 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                                 else
                                     scoreMatrix[finishedItems][i+1] = score;
                             } else {
-                                
-                                System.out.println(a_row.getBestPeak().getRT() + " is - NOT - in range: " + rtSearchRanges[i]);
                                 
                                 // Out of range.
                                 scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
@@ -283,17 +279,13 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                     /*else*/ 
                     if (!isCanceled()) {
 
-                        printMatrixToFile(scoreMatrix, "scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + peakList.getName() + ".txt");
-                        
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
-
+                            
                             // Sort matrix for compound i (by score - descending order)
                             Double[][] mtx = new Double[scoreMatrix.length][scoreMatrix[0].length]; //scoreMatrix;
                             CollectionUtils.matrixCopy(scoreMatrix, mtx);
                             Arrays.sort(mtx, new ArrayComparator(i+1, false)); // +1: skip first column (row number)
-
-                            printMatrixToFile(scoreMatrix, "sorted_scores_" + (simMethodType == SimilarityMethodType.DOT ? "dot" : "pearson") + "_" + peakList.getName() + ".txt");
                             
                             PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[0][0]));
                             double bestScore = mtx[0][i+1];

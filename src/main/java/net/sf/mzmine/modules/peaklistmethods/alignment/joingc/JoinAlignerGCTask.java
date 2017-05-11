@@ -192,6 +192,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     public double getFinishedPercentage() {
         if (totalRows == 0)
             return 0f;
+        //return (double) processedRows / (double) totalRows;
         return (double) processedRows / (double) totalRows;
     }
 
@@ -778,6 +779,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 //                      distances[x][y] = Double.MAX_VALUE;
 //                  }
               }
+              
+              processedRows++;
               
               ++x;
           }
