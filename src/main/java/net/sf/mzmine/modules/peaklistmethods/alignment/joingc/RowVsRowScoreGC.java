@@ -193,11 +193,13 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             // MZ at apex
             RawDataFile refRDF;
             if (!this.useOldestRDF) {
+                // Direct related file 
                 refRDF = peakListRow.getRawDataFiles()[0];
             } else {
+                // Oldest related file (presumably before any signal modification)
                 refRDF = DataFileUtils.getAncestorDataFile(this.project, peakListRow.getRawDataFiles()[0], true);
             }
-            LOG.info("!!!!!!!!!!!!!! File is: " + refRDF + " | " + peakListRow.getRawDataFiles()[0]);
+
             Scan apexScan = refRDF.getScan(peakListRow.getBestPeak().getRepresentativeScanNumber());
             //
             // Get scan m/z vector.

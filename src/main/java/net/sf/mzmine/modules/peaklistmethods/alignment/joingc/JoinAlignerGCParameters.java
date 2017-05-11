@@ -39,13 +39,27 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     public static final StringParameter peakListName = new StringParameter(
             "Peak list name", "Peak list name", "Aligned peak list");
 
+    // Since clustering is now order independent, option removed!
+    /*
     public static final ComboParameter<RowVsRowOrderType> comparisonOrder = new ComboParameter<RowVsRowOrderType>(
             "Comparison Order", 
             "In which order peak lists (samples) should be compared to each other while running the alignment algorihtm", 
             RowVsRowOrderType.values()
             );
+    */
     
-    //-- Unaltered...
+    
+    // Clustering linkage strategy
+    public static final ComboParameter<ClusteringLinkageStrategyType> linkageStartegyType = new ComboParameter<ClusteringLinkageStrategyType>(
+            "Clustering strategy", 
+            "What strategy shall be used for the clustering algorithm decision making (See: \"Hierarchical clustering\" algorithms in general).", 
+            ClusteringLinkageStrategyType.values(),
+            ClusteringLinkageStrategyType.AVERAGE
+            );
+    
+    
+    
+    //-- Use unaltered RDF...
     public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
             "Use original raw data file", 
             "Chemical similarity is computed using unaleterd m/z profile at given scan from the very oldest Raw Data File ancestor (if it has not been removed). "
@@ -102,10 +116,12 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 	    new IsotopePatternScoreParameters());
     **/
 
+    // Since clustering is now order independent, option removed!
     public JoinAlignerGCParameters() {
 	super(new Parameter[] { peakLists, 
 	        useOldestRDFAncestor, 
-	        comparisonOrder, peakListName, 
+	        /*comparisonOrder,*/
+	        linkageStartegyType,  peakListName, 
 	        MZTolerance, MZWeight,
 		RTTolerance, RTWeight,
 		minScore,

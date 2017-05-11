@@ -91,7 +91,9 @@ class PeakMergerTask extends AbstractTask {
     private static final String unpastableSep = " \u00BB ";// (UTF-8)               //" \uD834\uDF06 "// (UTF-16);  
     private static final String autogenPrefix = "AUTOGEN" + unpastableSep;
 
-    private static final double doublePrecision = 0.000001;
+    // For comparing small differences.
+    private static final double EPSILON = 0.0000001;
+
     
     private ArrayList<PeakListRow> mergedPeakListRows;
 
@@ -596,7 +598,7 @@ class PeakMergerTask extends AbstractTask {
                             double rt_plus_1 = this.workingDataFile.getScan(sc_num_plus).getRetentionTime();
                             double rt_minus_1 = this.workingDataFile.getScan(sc_num_minus).getRetentionTime();
                             //
-                            if (Math.abs(curGroupApexRT - rt_minus_1) < doublePrecision || Math.abs(curGroupApexRT - rt_plus_1) < doublePrecision)
+                            if (Math.abs(curGroupApexRT - rt_minus_1) < EPSILON || Math.abs(curGroupApexRT - rt_plus_1) < EPSILON)
                             {
 //                                logger.info("\n\n>>> Step: " + sc_step + " | " + 
 //                                        (Math.abs(curGroupApexRT - rt_minus_1) < doublePrecision) + ", " +
@@ -1093,7 +1095,7 @@ class PeakMergerTask extends AbstractTask {
     }
 
     static final public Double getDoublePrecision() {
-        return doublePrecision;
+        return EPSILON;
     }
 
     
@@ -1282,8 +1284,8 @@ class PeakMergerTask extends AbstractTask {
                     scan_nums_ok.get(scan_nums_ok.size() - 1))
                     .getRetentionTime();
 
-            Range<Double> rt_range_ok = Range.closed(rt_min - doublePrecision, rt_max
-                    + doublePrecision);
+            Range<Double> rt_range_ok = Range.closed(rt_min - EPSILON, rt_max
+                    + EPSILON);
 
             // List bad candidates
             Vector<Feature> badCandidates = new Vector<Feature>();

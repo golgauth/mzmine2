@@ -63,7 +63,11 @@ import net.sf.mzmine.util.SortingProperty;
 import com.apporiented.algorithm.clustering.AverageLinkageStrategy;
 import com.apporiented.algorithm.clustering.Cluster;
 import com.apporiented.algorithm.clustering.ClusteringAlgorithm;
+import com.apporiented.algorithm.clustering.CompleteLinkageStrategy;
 import com.apporiented.algorithm.clustering.DefaultClusteringAlgorithm;
+import com.apporiented.algorithm.clustering.LinkageStrategy;
+import com.apporiented.algorithm.clustering.SingleLinkageStrategy;
+import com.apporiented.algorithm.clustering.WeightedLinkageStrategy;
 import com.google.common.collect.Range;
 
 public class JoinAlignerGCTask extends AbstractTask {
@@ -81,7 +85,8 @@ public class JoinAlignerGCTask extends AbstractTask {
     private int processedRows, totalRows;
 
     private String peakListName;
-    private RowVsRowOrderType comparisonOrder;
+    //private RowVsRowOrderType comparisonOrder;
+    private ClusteringLinkageStrategyType linkageStartegyType;
     static private boolean useOldestRDFAncestor;
     private MZTolerance mzTolerance;
     private RTTolerance rtTolerance;
@@ -105,6 +110,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     //
     final private static double VERY_LONG_DISTANCE = 50.0d;//Double.MAX_VALUE;
+
+    // For comparing small differences.
+    private static final double EPSILON = 0.0000001;
+
     
 
     JoinAlignerGCTask(MZmineProject project, ParameterSet parameters) {
@@ -118,9 +127,14 @@ public class JoinAlignerGCTask extends AbstractTask {
         peakListName = parameters.getParameter(
                 JoinAlignerGCParameters.peakListName).getValue();
         
+        // Since clustering is now order independent, option removed!
+        /*
         comparisonOrder = parameters.getParameter(
                 JoinAlignerGCParameters.comparisonOrder).getValue();
-
+         */
+        linkageStartegyType = parameters.getParameter(
+                JoinAlignerGCParameters.linkageStartegyType).getValue();
+        
         useOldestRDFAncestor = parameters.getParameter(
                 JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
         
@@ -317,19 +331,43 @@ public class JoinAlignerGCTask extends AbstractTask {
         // Iterate source peak lists
         Hashtable<SimpleFeature, Double> rtPeaksBackup = new Hashtable<SimpleFeature, Double>();
         Hashtable<PeakListRow, Object[]> infoRowsBackup = new Hashtable<PeakListRow, Object[]>();
+        
+        // Since clustering is now order independent, option removed!
         // Build comparison order
         ArrayList<Integer> orderIds = new ArrayList<Integer>();
         for (int i=0; i < peakLists.length; ++i) { orderIds.add(i); }
+        /*
         logger.info("ORDER: " + comparisonOrder);
         if (comparisonOrder == RowVsRowOrderType.RANDOM) {
             Collections.shuffle(orderIds);
         } else if (comparisonOrder == RowVsRowOrderType.REVERSE_SEL) {
             Collections.reverse(orderIds);
         }
+         */
         Integer[] newIds = orderIds.toArray(new Integer[orderIds.size()]);
         //
         
-        
+        LinkageStrategy linkageStrategy;
+        //
+        switch (linkageStartegyType) {
+        case AVERAGE:
+            linkageStrategy = new AverageLinkageStrategy();
+            break;
+        case COMPLETE:
+            linkageStrategy = new CompleteLinkageStrategy();
+            break;
+        case SINGLE:
+            linkageStrategy = new SingleLinkageStrategy();
+            break;
+        case WEIGHTED:
+            linkageStrategy = new WeightedLinkageStrategy();
+            break;
+        default:
+            linkageStrategy = new AverageLinkageStrategy();
+            break;
+
+        }
+
         
         // Create a sorted set of scores matching
         TreeSet<RowVsRowScoreGC> scoreSet = new TreeSet<RowVsRowScoreGC>();
@@ -624,12 +662,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         } // Next peak list
         
         
-        
-//      double[][] distances = new double[][] { { 0, 1, 9, 7, 11, 14 }, { 1, 0, 4, 3, 8, 10 }, { 9, 4, 0, 9, 2, 8 },
-//              { 7, 3, 9, 0, 6, 13 }, { 11, 8, 2, 6, 0, 10 }, { 14, 10, 8, 13, 10, 0 } };
-//      String[] names = new String[] { "O1", "O2", "O3", "O4", "O5", "O6" };
-      double[][] distances; // = new double[][] { { 0, 1, 9, 7, 11, 14 }, { 1, 0, 4, 3, 8, 10 }, { 9, 4, 0, 9, 2, 8 },
-              //{ 7, 3, 9, 0, 6, 13 }, { 11, 8, 2, 6, 0, 10 }, { 14, 10, 8, 13, 10, 0 } };
+      double[][] distances;
       String[] names;
       int nbPeaks = 0;
       for (int i = 0; i < newIds.length; ++i) {
@@ -759,7 +792,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 //          System.out.println(names[i]);
 //      for (int i=0; i<distances.length; i++)
 //          System.out.println(Arrays.toString(distances[i]));
-      Cluster clust = alg.performClustering(distances, names, new AverageLinkageStrategy());
+      Cluster clust = alg.performClustering(distances, names, linkageStrategy);
       //clust.toConsole(0);
       
       List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length);
@@ -931,15 +964,6 @@ public class JoinAlignerGCTask extends AbstractTask {
         }
         
         
-        // Debug...
-        for (List<PeakListRow> c: clustersList) {
-            
-            String c_str = "";
-            for (PeakListRow plr: c) {
-                c_str += plr.getBestPeak().getRT() + " // ";
-            }
-            logger.info("$$$$$$ >> CLUSTER (size: " + c.size() + "): " + c_str);
-        }
 //        // Make clusters from remaining singles
 //        for (PeakListRow single_row: singleRowsList) {
 //            
@@ -1299,12 +1323,11 @@ public class JoinAlignerGCTask extends AbstractTask {
             
             for (Cluster child : clust.getChildren())
             {
-                //System.out.println("Testing child: " + child.getName() + ", nb leafs: " + child.countLeafs() + " (level: " + level + ")");
-                // TODO: trick to get number of leafs without browsing the hole tree (unlike how it's done in ".countLeafs()")
-                //if (child.getLeafNames().size() <= level) {
-                if (/*!validatedClusters.contains(child) &&*/ child.countLeafs() <= level) {
+                // Trick to get number of leafs without browsing the hole tree (unlike how it's done in ".countLeafs()")
+                //      => Weight gives the number of leafs
+                //if (child.countLeafs() <= level) {
+                if (child.getWeightValue() < level + EPSILON) {
                     validatedClusters.add(child);
-                    //System.out.println("Found child: " + child.getName() + ", nb leafs: " + child.countLeafs());
                 } else {
                     validatedClusters.addAll(getValidatedClusters(child, level));
                 }
