@@ -28,6 +28,7 @@ import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
+import net.sf.mzmine.parameters.parametertypes.filenames.FileNameParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZToleranceParameter;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTToleranceParameter;
@@ -99,6 +100,20 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     public static final RTToleranceParameter RTToleranceAfter = new RTToleranceParameter(
             "RT tolerance post-recalibration",
             "Ignored if \"Use RT recalibration\" is unchecked. Maximum allowed difference between two RT values after RT recalibration");
+    
+    
+    public static final BooleanParameter exportDendrogram = new BooleanParameter(
+            "Export dendrogram",
+            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
+            false);
+    public static final FileNameParameter dendrogramPngFilename = new FileNameParameter(
+            "Dendrogram output filename",
+            " Requires \"Export dendrogram\" checked."
+                    + " Name of the resulting PNG file to write the clustering resulting dendrogram to."
+                    + " If the file already exists, it will be overwritten.",
+            "png");
+
+    
     //***
     
     /** GLG HACK: temporarily removed for clarity
@@ -115,6 +130,10 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 	    "If both peaks represent an isotope pattern, add isotope pattern score to match score",
 	    new IsotopePatternScoreParameters());
     **/
+    
+    
+    
+    
 
     // Since clustering is now order independent, option removed!
     public JoinAlignerGCParameters() {
@@ -129,6 +148,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,
 		compareIsotopePattern*/ 
+		exportDendrogram, dendrogramPngFilename
 		});
     }
 

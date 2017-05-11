@@ -19,6 +19,12 @@
 
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +39,9 @@ import java.util.Objects;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
+import javax.swing.JPanel;
 
 import org.apache.commons.collections.CollectionUtils;
 import net.sf.mzmine.datamodel.Feature;
@@ -68,6 +77,7 @@ import com.apporiented.algorithm.clustering.DefaultClusteringAlgorithm;
 import com.apporiented.algorithm.clustering.LinkageStrategy;
 import com.apporiented.algorithm.clustering.SingleLinkageStrategy;
 import com.apporiented.algorithm.clustering.WeightedLinkageStrategy;
+import com.apporiented.algorithm.clustering.visualization.DendrogramPanel;
 import com.google.common.collect.Range;
 
 public class JoinAlignerGCTask extends AbstractTask {
@@ -96,6 +106,10 @@ public class JoinAlignerGCTask extends AbstractTask {
     
     private boolean useApex, useKnownCompoundsAsRef;
     private RTTolerance rtToleranceAfter;
+    
+    private boolean exportDendrogram;
+    private File dendrogramPngFilename;
+    
     
     /** GLG HACK: temporary removed for clarity
     private boolean sameIDRequired, sameChargeRequired, compareIsotopePattern;
@@ -176,6 +190,11 @@ public class JoinAlignerGCTask extends AbstractTask {
         compareIsotopePattern = parameters.getParameter(
                 JoinAlignerParameters.compareIsotopePattern).getValue();
         **/
+        
+        exportDendrogram = parameters.getParameter(
+                JoinAlignerGCParameters.exportDendrogram).getValue();
+        dendrogramPngFilename = parameters.getParameter(
+                JoinAlignerGCParameters.dendrogramPngFilename).getValue();
     }
 
     /**
@@ -804,6 +823,43 @@ public class JoinAlignerGCTask extends AbstractTask {
           c.toConsole(0);
       }
 
+
+      //----------------------------------------------------------------------
+
+      if (exportDendrogram && dendrogramPngFilename != null) {
+          
+          JPanel content = new JPanel();
+          DendrogramPanel dp = new DendrogramPanel();
+    
+//          Dimension requiredSize = new Dimension(400, 300);
+          int nbLeafs = clust.countLeafs();
+          Dimension requiredSize = new Dimension((int) (10 * clust.getTotalDistance()), 30 * nbLeafs);
+          
+          content.setPreferredSize(requiredSize);
+          dp.setPreferredSize(requiredSize);
+          content.setSize(requiredSize);
+          dp.setSize(requiredSize);
+          
+          content.setBackground(Color.red);
+          content.setLayout(new BorderLayout());
+          content.add(dp, BorderLayout.CENTER);
+          dp.setBackground(Color.WHITE);
+          dp.setLineColor(Color.BLACK);
+          dp.setScaleValueDecimals(0);
+          dp.setScaleValueInterval(0);//1);
+          dp.setShowDistances(false);
+    
+          dp.setModel(clust);
+    
+          BufferedImage im = new BufferedImage(dp.getWidth(), dp.getHeight(), BufferedImage.TYPE_INT_ARGB);
+          dp.paint(im.getGraphics());
+          try {
+              ImageIO.write(im, "PNG", dendrogramPngFilename);
+          } catch (IOException e) {
+              e.printStackTrace();
+              logger.info("Could not export dendrogram to file: '" + dendrogramPngFilename + "' !");
+          }
+      }
 
       //----------------------------------------------------------------------
 
