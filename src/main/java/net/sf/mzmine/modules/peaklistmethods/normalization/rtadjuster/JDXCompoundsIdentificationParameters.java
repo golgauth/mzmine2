@@ -52,6 +52,17 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	//		SingleRowIdentificationParameters.MZ_TOLERANCE,
 	//		SingleRowIdentificationParameters.ISOTOPE_FILTER });
 	//    }
+    
+        
+        //-- Use unaltered RDF...
+        public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
+                "Use original raw data file", 
+                "Chemical similarity is computed using unaleterd m/z profile at given scan from the very oldest "
+                                + "Raw Data File ancestor (if it has not been removed). "
+                                + "Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from).",
+                                false
+                );
+
 
 	public static final FileNameParameter JDX_FILE_C1 = new FileNameParameter(
 			"Compound 1 file (JDX)", "JDX file for standard compound 1", ".jdx");
@@ -63,7 +74,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 			"Compound 2 search window", "Search window for standard compound 2", true, null);
 
 	public static final ComboParameter<SimilarityMethodType> SIMILARITY_METHOD = new ComboParameter<SimilarityMethodType>(
-			"Similarity method", "Similarity method", SimilarityMethodType.values());
+			"Similarity method", "Similarity method used for computing chemical likelyhood score", SimilarityMethodType.values());
         public static final DoubleParameter AREA_MIX_FACTOR = new DoubleParameter(
                 "Area Mix factor", "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantged).",
                 MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
@@ -90,6 +101,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	public JDXCompoundsIdentificationParameters() {
 		super(new Parameter[] { PEAK_LISTS,
 				SUFFIX,
+				useOldestRDFAncestor,
 				JDX_FILE_C1, RT_SEARCH_WINDOW_C1, 
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
 				SIMILARITY_METHOD, AREA_MIX_FACTOR,

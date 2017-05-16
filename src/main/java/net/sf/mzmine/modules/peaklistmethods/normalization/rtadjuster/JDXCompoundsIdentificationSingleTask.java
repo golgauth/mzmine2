@@ -45,6 +45,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCParameters;
 import net.sf.mzmine.modules.peaklistmethods.identification.customjdxsearch.CustomJDXSearchTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.parameters.ParameterSet;
@@ -109,7 +110,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     private NumberFormat mzFormat = MZmineCore.getConfiguration().getMZFormat();
     private NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
 
-
+    
+    private boolean useOldestRDFAncestor;
+    
 
     /**
      * Create the identification task.
@@ -129,6 +132,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         numItems = 0;
         finishedItems = 0;
         currentRow = null;
+        
+        useOldestRDFAncestor = parameters.getParameter(
+                JDXCompoundsIdentificationParameters.useOldestRDFAncestor).getValue();
 
         jdxFileC1 = parameters.getParameter(JDXCompoundsIdentificationParameters.JDX_FILE_C1).getValue();
         jdxFileC2 = parameters.getParameter(JDXCompoundsIdentificationParameters.JDX_FILE_C2).getValue();
@@ -243,7 +249,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                             
                             if (rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
                                 
-                                RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
+                                // Oldest related file (presumably before any signal modification)
+                                RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, this.useOldestRDFAncestor);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
                                 double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
