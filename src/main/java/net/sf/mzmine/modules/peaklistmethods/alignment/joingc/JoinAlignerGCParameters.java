@@ -102,16 +102,26 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             "Ignored if \"Use RT recalibration\" is unchecked. Maximum allowed difference between two RT values after RT recalibration");
     
     
-    public static final BooleanParameter exportDendrogram = new BooleanParameter(
-            "Export dendrogram",
+    public static final BooleanParameter exportDendrogramPng = new BooleanParameter(
+            "Export dendrogram as PNG",
             "If checked, exports the clustering resulting dendrogram to the given PNG file.",
             false);
     public static final FileNameParameter dendrogramPngFilename = new FileNameParameter(
-            "Dendrogram output filename",
-            " Requires \"Export dendrogram\" checked."
+            "Dendrogram output image filename",
+            " Requires \"Export dendrogram as PNG\" checked."
                     + " Name of the resulting PNG file to write the clustering resulting dendrogram to."
                     + " If the file already exists, it will be overwritten.",
             "png");
+    public static final BooleanParameter exportDendrogramTxt = new BooleanParameter(
+            "Export dendrogram as TXT",
+            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
+            false);
+    public static final FileNameParameter dendrogramTxtFilename = new FileNameParameter(
+            "Dendrogram output text filename",
+            " Requires \"Export dendrogram as TXT\" checked."
+                    + " Name of the resulting TXT file to write the clustering resulting dendrogram to."
+                    + " If the file already exists, it will be overwritten.",
+            "txt");
 
     
     //***
@@ -148,7 +158,8 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,
 		compareIsotopePattern*/ 
-		exportDendrogram, dendrogramPngFilename
+                exportDendrogramPng, dendrogramPngFilename,
+                exportDendrogramTxt, dendrogramTxtFilename,
 		});
     }
 

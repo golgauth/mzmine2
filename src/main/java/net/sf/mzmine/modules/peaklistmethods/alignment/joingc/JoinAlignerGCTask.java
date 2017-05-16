@@ -24,7 +24,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +65,7 @@ import net.sf.mzmine.parameters.parametertypes.tolerances.MZTolerance;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.DataFileUtils;
 import net.sf.mzmine.util.PeakListRowSorter;
 import net.sf.mzmine.util.PeakUtils;
 import net.sf.mzmine.util.RangeUtils;
@@ -107,7 +110,9 @@ public class JoinAlignerGCTask extends AbstractTask {
     private boolean useApex, useKnownCompoundsAsRef;
     private RTTolerance rtToleranceAfter;
     
-    private boolean exportDendrogram;
+    private boolean exportDendrogramAsPng;
+    private File dendrogramTxtFilename;
+    private boolean exportDendrogramAsTxt;
     private File dendrogramPngFilename;
     
     
@@ -123,8 +128,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     private Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
 
     //
-    final private static double VERY_LONG_DISTANCE = 50.0d;//Double.MAX_VALUE;
-
+    final private static double VERY_LONG_DISTANCE = 1.0d;//50.0d;//Double.MAX_VALUE;
     // For comparing small differences.
     private static final double EPSILON = 0.0000001;
 
@@ -191,10 +195,14 @@ public class JoinAlignerGCTask extends AbstractTask {
                 JoinAlignerParameters.compareIsotopePattern).getValue();
         **/
         
-        exportDendrogram = parameters.getParameter(
-                JoinAlignerGCParameters.exportDendrogram).getValue();
+        exportDendrogramAsPng = parameters.getParameter(
+                JoinAlignerGCParameters.exportDendrogramPng).getValue();
         dendrogramPngFilename = parameters.getParameter(
                 JoinAlignerGCParameters.dendrogramPngFilename).getValue();
+        exportDendrogramAsTxt = parameters.getParameter(
+                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
+        dendrogramTxtFilename = parameters.getParameter(
+                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
     }
 
     /**
@@ -710,7 +718,9 @@ public class JoinAlignerGCTask extends AbstractTask {
               
               PeakListRow row = allRows[j];
 
-              names[x] = newIds[i] + "_" + j + "^" + row.getBestPeak().getRT();
+              //names[x] = newIds[i] + "_" + j + "^" + rtFormat.format(row.getBestPeak().getRT());
+              names[x] = "[" + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true).getName() 
+                      + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
               row_names_dict.put(names[x], row);
 
               if (isCanceled())
@@ -826,41 +836,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 
       //----------------------------------------------------------------------
 
-      if (exportDendrogram && dendrogramPngFilename != null) {
-          
-//          JPanel content = new JPanel();
-//          DendrogramPanel dp = new DendrogramPanel();
-//    
-////          Dimension requiredSize = new Dimension(400, 300);
-//          int nbLeafs = clust.countLeafs();
-//          Dimension requiredSize = new Dimension((int) (10 * clust.getTotalDistance()), 30 * nbLeafs);
-//          
-//          content.setPreferredSize(requiredSize);
-//          dp.setPreferredSize(requiredSize);
-//          content.setSize(requiredSize);
-//          dp.setSize(requiredSize);
-//          
-//          content.setBackground(Color.red);
-//          content.setLayout(new BorderLayout());
-//          content.add(dp, BorderLayout.CENTER);
-//          dp.setBackground(Color.WHITE);
-//          dp.setLineColor(Color.BLACK);
-//          dp.setScaleValueDecimals(0);
-//          dp.setScaleValueInterval(0);//1);
-//          dp.setShowDistances(false);
-//    
-//          dp.setModel(clust);
-//    
-//          BufferedImage im = new BufferedImage(dp.getWidth(), dp.getHeight(), BufferedImage.TYPE_INT_ARGB);
-//          dp.paint(im.getGraphics());
-//          try {
-//              ImageIO.write(im, "PNG", dendrogramPngFilename);
-//          } catch (IOException e) {
-//              e.printStackTrace();
-//              logger.info("Could not export dendrogram to file: '" + dendrogramPngFilename + "' !");
-//          }
-          
+      if (exportDendrogramAsPng && dendrogramPngFilename != null) {          
           saveDendrogramAsPng(clust, dendrogramPngFilename);
+      }
+      if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {          
+          saveDendrogramAsTxt(clust, dendrogramTxtFilename);
       }
 
       //----------------------------------------------------------------------
@@ -1424,9 +1404,16 @@ public class JoinAlignerGCTask extends AbstractTask {
         JPanel content = new JPanel();
         DendrogramPanel dp = new DendrogramPanel();
 
-        //        Dimension requiredSize = new Dimension(400, 300);
+        
+        // Dimension requiredSize = new Dimension(400, 300);
+        int min_width = 200;//px
+        int dst_width = 500;
+        int leaf_height = 30;
+        //
+        
+        
         int nbLeafs = clust.countLeafs();
-        Dimension requiredSize = new Dimension((int) (10 * clust.getTotalDistance()), 30 * nbLeafs);
+        Dimension requiredSize = new Dimension((int) (min_width + dst_width * clust.getTotalDistance()), leaf_height * nbLeafs);
 
         content.setPreferredSize(requiredSize);
         dp.setPreferredSize(requiredSize);
@@ -1438,9 +1425,10 @@ public class JoinAlignerGCTask extends AbstractTask {
         content.add(dp, BorderLayout.CENTER);
         dp.setBackground(Color.WHITE);
         dp.setLineColor(Color.BLACK);
-        dp.setScaleValueDecimals(0);
-        dp.setScaleValueInterval(0);//1);
-        dp.setShowDistances(false);
+        dp.setScaleValueDecimals(2);
+        dp.setScaleValueInterval(0);//1d);
+        //dp.setScaleTickLength(1);
+        dp.setShowDistances(true);
 
         dp.setModel(clust);
 
@@ -1454,6 +1442,37 @@ public class JoinAlignerGCTask extends AbstractTask {
         }
     }
     
+    private void saveDendrogramAsTxt(Cluster clust, File dendrogramTxtFilename) {
+    
+        try{
+            FileWriter writer = new FileWriter(dendrogramTxtFilename);
+            writer.write(toConsole(clust, 0));
+            writer.close();
+        } catch (IOException e) {
+            logger.info("Could not export dendrogram to file: '" + dendrogramTxtFilename + "' !");
+        }
+    }
+    //-
+    public String toConsole(Cluster clust, int indent)
+    {
+        String str = "";
+        
+        for (int i = 0; i < indent; i++)
+        {
+            str += "  ";
+
+        }
+        String name = clust.getName() + (clust.isLeaf() ? " (leaf)" : "") 
+                + (clust.getDistanceValue() != null ? "  distance: " + clust.getDistanceValue() : "");
+        str += name + "\n";
+        for (Cluster child : clust.getChildren())
+        {
+            str += toConsole(child, indent + 1);
+        }
+        
+        return str;
+    }
+
     
 
     public static double getAdjustedRT(double rt, double b_offset, double a_scale) {

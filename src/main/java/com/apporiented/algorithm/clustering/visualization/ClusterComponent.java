@@ -117,7 +117,7 @@ public class ClusterComponent implements Paintable {
             g.drawString(cluster.getName(), x1 + namePadding, y1 + (fontMetrics.getHeight()/2) - 2);
         }
         if (decorated && cluster.getDistance() != null && !cluster.getDistance().isNaN() && cluster.getDistance().getDistance() > 0) {
-            String s = String.format("%.2f", cluster.getDistance());
+            String s = String.format("%.2f", cluster.getDistance().getDistance());
             Rectangle2D rect = fontMetrics.getStringBounds(s, g);
             g.drawString(s, x1 - (int)rect.getWidth() , y1 - 2);
         }
