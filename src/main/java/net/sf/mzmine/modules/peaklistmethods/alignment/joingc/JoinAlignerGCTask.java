@@ -128,7 +128,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     private Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
 
     //
-    final private static double VERY_LONG_DISTANCE = 1.0d;//50.0d;//Double.MAX_VALUE;
+    private double veryLongDistance = 1.0d;//50.0d;//Double.MAX_VALUE;
     // For comparing small differences.
     private static final double EPSILON = 0.0000001;
 
@@ -203,6 +203,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                 JoinAlignerGCParameters.exportDendrogramTxt).getValue();
         dendrogramTxtFilename = parameters.getParameter(
                 JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
+        
+        //
+        veryLongDistance = mzWeight + rtWeight;
     }
 
     /**
@@ -785,19 +788,19 @@ public class JoinAlignerGCTask extends AbstractTask {
                                       if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
                                           //////scoreSet.add(score);
                                           // The higher the score, the lower the distance!
-                                          distances[x][y] = (mzWeight + rtWeight) - score.getScore();
+                                          distances[x][y] = veryLongDistance - score.getScore();//(mzWeight + rtWeight) - score.getScore();
                                       } else {
                                           /** Score too low => Distance is Infinity */
-                                          distances[x][y] = VERY_LONG_DISTANCE;
+                                          distances[x][y] = veryLongDistance;
                                       }
         
                                   } else {
                                       /** Row is not candidate => Distance is Infinity */
-                                      distances[x][y] = VERY_LONG_DISTANCE;
+                                      distances[x][y] = veryLongDistance;
                                   }
                               } else {
                                   /** Both rows belong to same list => Distance is Infinity */
-                                  distances[x][y] = VERY_LONG_DISTANCE;
+                                  distances[x][y] = veryLongDistance;
                               }
                           }
                           

@@ -4,21 +4,28 @@
 
 package net.sf.mzmine.modules.peaklistmethods.merging.rt;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.List;
 
 import javax.annotation.Nonnull;
+
+import org.openscience.cdk.interfaces.IMolecularFormula;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.IsotopePattern;
+import net.sf.mzmine.datamodel.IsotopePattern.IsotopePatternStatus;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.datamodel.Feature.FeatureStatus;
 import net.sf.mzmine.datamodel.impl.SimpleDataPoint;
 import net.sf.mzmine.datamodel.impl.SimpleFeature;
+import net.sf.mzmine.datamodel.impl.SimpleIsotopePattern;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.util.CollectionUtils;
+import net.sf.mzmine.util.FormulaUtils;
 import net.sf.mzmine.util.MathUtils;
 import net.sf.mzmine.util.PeakUtils;
 import net.sf.mzmine.util.ScanUtils;
@@ -75,6 +82,7 @@ public class MergedPeak implements Feature {
     // Number of most intense fragment scan
     private int fragmentScanNumber;
 
+    
 
     /**
      * Initializes this MergedPeak
@@ -294,6 +302,79 @@ public class MergedPeak implements Feature {
             if ((precursorCharge > 0) && (this.charge == 0))
                 this.charge = precursorCharge;
         }
+
+        
+    }
+    
+//    public void setSpectrumOfInterest(List<DataPoint> spectrumOfInterest) {
+//        
+//        
+//    }
+    
+    public void setSpectrumOfInterest(List<Feature> mergedPeaks) {
+        
+        
+        // Use isotope pattern property to keep significant mz resulting from merge
+        isotopePattern = calculateIsotopePattern(representativeScan, mergedPeaks);
+        setIsotopePattern(isotopePattern);    
+        
+    }
+    
+    
+    private IsotopePattern calculateIsotopePattern(
+            /*IMolecularFormula cdkFormula, double minAbundance, int charge,
+            PolarityType polarity*/
+            int apexScanNumber, List<Feature> mergedPeaks
+            ) {
+
+        /*
+        // TODO: check if the formula is not too big (>100 of a single atom?).
+        // if so, just cancel the prediction
+
+        // Set the minimum abundance of isotope
+        IsotopePatternGenerator generator = new IsotopePatternGenerator(
+                minAbundance);
+
+        org.openscience.cdk.formula.IsotopePattern pattern = generator
+                .getIsotopes(cdkFormula);
+
+        int numOfIsotopes = pattern.getNumberOfIsotopes();
+        
+        DataPoint dataPoints[] = new DataPoint[numOfIsotopes];
+
+        for (int i = 0; i < numOfIsotopes; i++) {
+            IsotopeContainer isotope = pattern.getIsotope(i);
+
+            // For each unit of charge, we have to add or remove a mass of a
+            // single electron. If the charge is positive, we remove electron
+            // mass. If the charge is negative, we add it.
+            double mass = isotope.getMass()
+                    + (polarity.getSign() * -1 * charge * ELECTRON_MASS);
+
+            if (charge != 0)
+                mass /= charge;
+
+            double intensity = isotope.getIntensity();
+
+            dataPoints[i] = new SimpleDataPoint(mass, intensity);
+        }
+
+        String formulaString = MolecularFormulaManipulator
+                .getString(cdkFormula);
+         */
+        
+        List<DataPoint> dataPoints = new ArrayList<>();
+        
+        for (int i=0; i < mergedPeaks.size(); i++) {
+            
+            if (mergedPeaks.get(i).getDataPoint(apexScanNumber) != null)
+                dataPoints.add(mergedPeaks.get(i).getDataPoint(apexScanNumber));
+        }
+        
+        DataPoint[] dataPointsArr = dataPoints.toArray(new DataPoint[dataPoints.size()]);
+        SimpleIsotopePattern newPattern = new SimpleIsotopePattern(dataPointsArr, IsotopePatternStatus.PREDICTED, "DETECTED-from-merger");
+
+        return newPattern;
 
     }
 

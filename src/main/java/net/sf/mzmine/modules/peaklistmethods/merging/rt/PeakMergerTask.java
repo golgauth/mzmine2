@@ -764,6 +764,8 @@ class PeakMergerTask extends AbstractTask {
             processedGroups = 0;
             totalGroups = baseGroups.size();
             
+            List<List<DataPoint>> spectrumOfInterestPerMergedPeak = new ArrayList<>();
+
 //            for (int ind = 0; ind < totalPeaks; ind++) {
             for (int ind = 0; ind < baseGroups.size(); ind++) {
                 
@@ -909,10 +911,29 @@ class PeakMergerTask extends AbstractTask {
     
                     scanNumber++;
                 }
-    
+                
+                /*// Setting MZes of interest
+                List<DataPoint> spectrumOfInterest = new ArrayList<>();
+                for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
+                    
+                    // Save MZ of interest (Cf. DETECTED only...)
+                    int curGroupApexScanNumber = apexScans.get(g_i);
+                    spectrumOfInterest.add(new SimpleDataPoint(groupedPeaks.get(g_i).getMZ(), groupedPeaks.get(g_i).getHeight()));
+                }*/
+                //newPeak.setSpectrumOfInterest(/*spectrumOfInterest*/groupedPeaks);
+
+                
                 // Finishing the merged peak
                 newPeak.finishMergedPeak();
     
+                
+                
+                //- Set DETECTED only spectrum
+                newPeak.setSpectrumOfInterest(/*spectrumOfInterest*/groupedPeaks);
+                //-
+                
+                
+                
                 // Get peak list row to be updated
                 PeakListRow oldRow = peakList.getPeakRow(oldPeak);
     
@@ -928,8 +949,10 @@ class PeakMergerTask extends AbstractTask {
                 //this.updateMergedPeakList(oldRow, newPeak);
                 updateMergedPeakListRow(oldRow, newPeak);
     
+                
                 // Clear already treated peaks
                 for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
+                    
                     sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
                 }
     
@@ -999,6 +1022,12 @@ class PeakMergerTask extends AbstractTask {
                 }
                 
                 new_p.finishMergedPeak();
+                
+                //- Set DETECTED only spectrum
+                //new_p.setSpectrumOfInterest(mergedPeaks);
+                new_p.setIsotopePattern(p.getIsotopePattern());
+                //-
+                
                 this.updateMergedPeakListRow(row, new_p);
     
             }
@@ -1423,48 +1452,5 @@ class PeakMergerTask extends AbstractTask {
                         "RT peaks merger", parameters));
     }
 
-    /** 
-     * GLG HACK: 
-     * Added constructor for "SimpleScan" that guarantees DEEP COPY.
-     */
-    public class SimpleScanClonable extends SimpleScan {
-        
-        private RawDataFile dataFile;
-        private int fragmentScans[];
-        private DataPoint dataPoints[];
-
-        public SimpleScanClonable(Scan sc, RawDataFile rawDataFile) {
-            
-            // Call above clone constructor
-            super(sc.getDataFile(), sc.getScanNumber(), sc.getMSLevel(), sc
-                    .getRetentionTime(), sc
-                    .getPrecursorMZ(), sc.getPrecursorCharge(), sc
-                    .getFragmentScanNumbers(), sc.getDataPoints(), sc
-                    .getSpectrumType(), sc.getPolarity(), sc.getScanDefinition(),
-                    sc.getScanningMZRange());
-            
-            
-            // Handle non-primitive attributes
-            
-            if (rawDataFile != null) { this.dataFile = rawDataFile; }
-            
-            if (sc.getFragmentScanNumbers() != null) 
-                    this.fragmentScans = Arrays.copyOf(sc.getFragmentScanNumbers(), sc.getFragmentScanNumbers().length);
-            else 
-                    this.fragmentScans = sc.getFragmentScanNumbers();
-            this.setFragmentScanNumbers(fragmentScans);
-            
-            this.dataPoints = new DataPoint[sc.getNumberOfDataPoints()]; 
-            for (int i=0; i < sc.getNumberOfDataPoints(); ++i)
-                    this.dataPoints[i] = new SimpleDataPoint(sc.getDataPoints()[i]);
-            
-            if (this.dataPoints != null) { this.setDataPoints(this.dataPoints); }
-        }
-        
-        @Override
-        public @Nonnull RawDataFile getDataFile() {
-            return dataFile;
-        }
-    }
 
 }

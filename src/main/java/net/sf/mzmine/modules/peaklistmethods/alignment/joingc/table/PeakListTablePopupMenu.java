@@ -63,6 +63,7 @@ import org.jcamp.parser.JCAMPException;
 
 import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.IsotopePattern;
 import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
@@ -71,11 +72,13 @@ import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
+import net.sf.mzmine.datamodel.impl.SimpleScan;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCParameters;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCTask;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.SimpleScanClonable;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportParameters;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.csvexport.CSVExportTask;
 import net.sf.mzmine.modules.peaklistmethods.identification.formulaprediction.FormulaPredictionModule;
@@ -125,6 +128,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //    private final JMenu idsMenu;
     private final JMenu exportMenu;
     private final JMenu indentificationMenu;
+    private final JMenu visualizationMenu;
     
 //    private final JMenuItem deleteRowsItem;
 //    private final JMenuItem addNewRowItem;
@@ -151,6 +155,13 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
     private final JMenuItem computeRowVsNistSim;
     //
     private static String latestExportDir = ".";
+    
+    
+    private final JMenuItem showDectedOnlySpectrum;
+    //
+    private final JMenuItem computeRowVsRowSimDetectedOnly;
+    private final JMenuItem computeRowVsRefCompSimDetectedOnly;
+    private final JMenuItem computeRowVsNistSimDetectedOnly;
     
     
     private final NumberFormat format = new DecimalFormat("#0.0000");
@@ -256,12 +267,20 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
         
         indentificationMenu = new JMenu("Identification");
         add(indentificationMenu);
+        //
         computeRowVsRowSim = GUIUtils.addMenuItem(indentificationMenu,
                 "Compute similarity between two selected peaks", this);
         computeRowVsRefCompSim = GUIUtils.addMenuItem(indentificationMenu,
                 "Compute similarity between the selected peak and a JDX compound", this);
         computeRowVsNistSim = GUIUtils.addMenuItem(indentificationMenu,
                 "Compute similarity between the selected peak and the NIST", this);
+        //
+        computeRowVsRowSimDetectedOnly = GUIUtils.addMenuItem(indentificationMenu,
+                "[DETECTED only] Compute similarity between two selected peaks", this);
+        computeRowVsRefCompSimDetectedOnly = GUIUtils.addMenuItem(indentificationMenu,
+                "[DETECTED only] Compute similarity between the selected peak and a JDX compound", this);
+        computeRowVsNistSimDetectedOnly = GUIUtils.addMenuItem(indentificationMenu,
+                "[DETECTED only] Compute similarity between the selected peak and the NIST", this);
 
 //        // Identities menu.
 //        idsMenu = new JMenu("Identities");
@@ -277,6 +296,12 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //        deleteRowsItem = GUIUtils.addMenuItem(this, "Delete selected row(s)",
 //                this);
 //        addNewRowItem = GUIUtils.addMenuItem(this, "Add new row", this);
+        
+        
+        visualizationMenu = new JMenu("Visualization");
+        add(visualizationMenu);
+        showDectedOnlySpectrum = GUIUtils.addMenuItem(visualizationMenu,
+                "Show \"DETECTED only\" spectrum", this);
     }
 
 //    @Override
@@ -986,6 +1011,7 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
             }
         }
 
+        
         //        if (clearIdsItem.equals(src)) {
 //
 //            // Delete identities of selected rows.
@@ -1023,7 +1049,324 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
 //
 //            // Update table GUI.
 //            updateTableGUI();
-//        }
+//        }        
+        
+        
+        if (showDectedOnlySpectrum.equals(src)) {
+
+            // Get peak
+//            Map<RawDataFile, PeakListRow> peak1 = null;           
+//            for(int row = 0 ; row < table.getRowCount() ; row++) {
+//                for(int col = 0 ; col < table.getColumnCount() ; col++) {
+//                    if(table.isCellSelected(row, col)) {
+//                        if (peak1 == null)
+//                            peak1 = table.getPeakAt(row, col);
+//                        else
+//                            break;
+//                    }
+//                }
+//            }
+//
+//            Entry<RawDataFile, PeakListRow> entry = peak1.entrySet().iterator().next();
+//            RawDataFile rdf = entry.getKey();
+//            PeakListRow pl_row = entry.getValue();                
+//            // Show spectrum
+//            Feature peak = pl_row.getPeak(rdf);
+            Feature peak1 = null;           
+            for(int row = 0 ; row < table.getRowCount() ; row++) {
+                for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                    if(table.isCellSelected(row, col)) {
+                        if (peak1 == null)
+                            peak1 = table.getPeakAt(row, col);
+                        else
+                            break;
+                    }
+                }
+            }
+
+            // Show spectrum
+            SpectraVisualizerModule.showNewSpectrumWindow(
+                    peak1.getDataFile(),
+                    peak1.getRepresentativeScanNumber(),
+                    peak1.getIsotopePattern());
+
+        }
+
+        
+        if (computeRowVsRowSimDetectedOnly.equals(src)) {
+            
+            // Get peaks
+            String rt1 = null, rt2 = null;
+            //Map<RawDataFile, PeakListRow> peak1_map = null, peak2_map = null;           
+            Feature peak1 = null, peak2 = null;           
+            for(int row = 0 ; row < table.getRowCount() ; row++) {
+                for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                    if(table.isCellSelected(row, col)) {
+//                        if (peak1_map == null) {
+//                            peak1_map = table.getPeakAt(row, col);
+//                            if (peak1_map != null) {
+//                                Entry<RawDataFile, PeakListRow> entry = peak1_map.entrySet().iterator().next();
+//                                RawDataFile rdf = entry.getKey();
+//                                PeakListRow pl_row = entry.getValue();                
+//                                peak1 = pl_row.getPeak(rdf);
+//                                rt1 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRT());
+//                            }
+//                        }
+//                        else if (peak2_map == null) {
+//                            peak2_map = table.getPeakAt(row, col);
+//                            if (peak2_map != null) {
+//                                Entry<RawDataFile, PeakListRow> entry = peak1_map.entrySet().iterator().next();
+//                                RawDataFile rdf = entry.getKey();
+//                                PeakListRow pl_row = entry.getValue();                
+//                                peak2 = pl_row.getPeak(rdf);
+//                                rt2 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak2.getRT());
+//                            }
+//                        }
+//                        else
+//                            break;peak1.
+                        if (peak1 == null) {
+                            peak1 = table.getPeakAt(row, col);
+                            if (peak1 != null)
+                                rt1 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRT());
+                        }
+                        else if (peak2 == null) {
+                            peak2 = table.getPeakAt(row, col);
+                            if (peak2 != null)
+                                rt2 = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak2.getRT());
+                        }
+                        else
+                            break;
+                    }
+                }
+            }
+
+            
+            String msg_title = "Similarity";
+            int info = JOptionPane.INFORMATION_MESSAGE;
+            // Compute & display
+            if (peak1 != null && peak2 != null) {
+                
+                msg_title += " - [" + format.format(Double.valueOf(rt1)) + " / " + format.format(Double.valueOf(rt2)) + "]";
+                
+                // Compute
+                double[] vec1 = new double[JDXCompound.MAX_MZ];
+                Arrays.fill(vec1, 0.0);
+                double[] vec2 = new double[JDXCompound.MAX_MZ];
+                Arrays.fill(vec2, 0.0);
+                
+                DataPoint[] dataPoints = peak1.getIsotopePattern().getDataPoints();//peak1.getDataPoints();
+                for (int j=0; j < dataPoints.length; ++j) {
+                    DataPoint dp = dataPoints[j];
+                    vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                }
+                logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
+                //-
+                dataPoints = peak2.getIsotopePattern().getDataPoints();//peak2.getDataPoints();
+                for (int j=0; j < dataPoints.length; ++j) {
+                    DataPoint dp = dataPoints[j];
+                    vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                }
+                logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
+                //-
+                double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+                logger.info("PEAK_1 VS PEAK_2 score: " + score);
+                
+                // Display
+                //JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+                JDialog dialog = createInfoDialog(table.getWindow(), 
+                        "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + format.format(score), 
+                        msg_title);
+                dialog.setVisible(true);
+                
+            } else {
+                JOptionPane.showMessageDialog(this, "Select 2 peaks in the table using 'Ctrl+LMB'...", msg_title, info);                
+            }
+        }
+
+        
+        if (computeRowVsRefCompSimDetectedOnly.equals(src)) {
+            
+            final JFileChooser chooser = new JFileChooser();
+            FileNameExtensionFilter filter = new FileNameExtensionFilter("JDX Files", "jdx");
+            chooser.setFileFilter(filter);
+            chooser.setCurrentDirectory(new java.io.File(latestImportDir));
+            chooser.setDialogTitle("Select a JDX file to compare to...");
+            // Disable the "All files" option
+            chooser.setAcceptAllFileFilterUsed(false);
+            int ret = chooser.showOpenDialog(this);
+            if(ret == JFileChooser.APPROVE_OPTION) {
+                
+                latestImportDir = chooser.getSelectedFile().getPath();
+                
+                String msg_title = "Similarity";
+                int info = JOptionPane.INFORMATION_MESSAGE;
+                int err  = JOptionPane.ERROR_MESSAGE;
+                
+                try {
+                    // Get selected peak
+                    Feature peak1 = null;
+                    String rt = null;
+                    for(int row = 0 ; row < table.getRowCount() ; row++) {
+                        for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                            if(table.isCellSelected(row, col)) {
+                                if (peak1 == null) {
+                                    peak1 = table.getPeakAt(row, col);
+                                    if (peak1 != null)
+                                        rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRT());
+                                } else
+                                    break;
+                            }
+                        }
+                    }
+                    // Compute & display
+                    if (peak1 != null) {
+                        
+                        msg_title += " - [" + format.format(Double.valueOf(rt)) + "]";
+                        
+                        JDXCompound jdxComp = JDXCompound.parseJDXfile(chooser.getSelectedFile());
+                        
+                        // Compute
+                        double[] vec1 = new double[JDXCompound.MAX_MZ];
+                        Arrays.fill(vec1, 0.0);
+                        double[] vec2 = new double[JDXCompound.MAX_MZ];
+                        Arrays.fill(vec2, 0.0);
+                        
+                        DataPoint[] dataPoints = peak1.getIsotopePattern().getDataPoints();//peak1.getDataPoints();
+                        for (int j=0; j < dataPoints.length; ++j) {
+                            DataPoint dp = dataPoints[j];
+                            vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
+                        }
+                        //-
+                        vec2 = jdxComp.getSpectrum();
+                        //-
+                        double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
+                        
+                        // Display
+//                        JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
+                        JDialog dialog = createInfoDialog(table.getWindow(), 
+                                "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + format.format(score), 
+                                msg_title);
+                        dialog.setVisible(true);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Select a peak in the table...", msg_title, err);                
+                    }
+                } catch (JCAMPException e1) {
+                    logger.log(Level.SEVERE, e1.getMessage());
+                    JOptionPane.showMessageDialog(this, e1.getMessage(), "Error [" + msg_title + "]", err);
+                }
+                
+            }
+            
+        }
+
+        
+        if (computeRowVsNistSimDetectedOnly.equals(src)) {
+            
+            // Get NIST parameters
+            NistParameters params = new NistParameters();
+            ExitCode exitCode = params.showSetupDialog(null, true);
+            
+            if (exitCode == ExitCode.OK) {
+                File nistMsSearchDir = params.getParameter(NistParameters.NIST_MS_SEARCH_DIR).getValue();
+                File nistMsSearchExe = ((NistParameters) params).getNistMsSearchExecutable();
+                int minMatchFactor = params.getParameter(NistParameters.MIN_MATCH_FACTOR).getValue();
+                int minReverseMatchFactor = params.getParameter(NistParameters.MIN_REVERSE_MATCH_FACTOR).getValue();
+                           
+                // Get selected peak
+                Feature peak1 = null;
+                String rt = null;
+                for(int row = 0 ; row < table.getRowCount() ; row++) {
+                    for(int col = 0 ; col < table.getColumnCount() ; col++) {
+                        if(table.isCellSelected(row, col)) {
+                            if (peak1 == null) {
+                                peak1 = table.getPeakAt(row, col);
+                                if (peak1 != null)
+                                    rt = (row == 0) ? (String) table.getValueAt(row, col) : String.valueOf(peak1.getRT());
+                            } else
+                                break;
+                        }
+                    }
+                }
+                
+                String msg_title = "Similarities (NIST)";
+                int info = JOptionPane.INFORMATION_MESSAGE;
+                int err  = JOptionPane.ERROR_MESSAGE;
+                // Compute & display
+                if (peak1 != null) {
+                    
+                    msg_title += " - [" + format.format(Double.valueOf(rt)) + "]";
+                    // Compute...
+                
+                    try {
+                        // Configure locator files.
+                        final File locatorFile1 = new File(nistMsSearchDir,
+                                NistMsSearchGCTask.PRIMARY_LOCATOR_FILE_NAME);
+                        File locatorFile2 = NistMsSearchGCTask.getSecondLocatorFile(nistMsSearchDir, locatorFile1);
+                        if (locatorFile2 == null) {
+        
+                            throw new IOException("Primary locator file "
+                                    + locatorFile1
+                                    + " doesn't contain the name of a valid file.");
+                        }
+        
+                        // Is MS Search already running?
+                        if (locatorFile2.exists()) {
+        
+                            throw new IllegalStateException(
+                                    "NIST MS Search appears to be busy - please wait until it finishes its current task and then try again.  Alternatively, try manually deleting the file "
+                                            + locatorFile2);
+                        }
+                        
+                        // Search command string.
+                        final String command = nistMsSearchExe.getAbsolutePath() + ' '
+                                + NistMsSearchGCTask.COMMAND_LINE_ARGS;
+                        
+                        final int resultId = peak1.getRepresentativeScanNumber();//peak1.getScanNumber();
+                        
+                        //-
+                        // Write spectra file.
+                        // Need a Scan object to grab spectrum from 
+                        Scan peak1_scan = new SimpleScanClonable(
+                                peak1.getDataFile().getScan(peak1.getRepresentativeScanNumber()),
+                                peak1.getDataFile()
+                                );
+                        final File spectraFile = NistMsSearchGCTask.writeSpectraFile(peak1_scan, resultId, null);//peak1, resultId, null);
+                        
+                        // Write locator file.
+                        NistMsSearchGCTask.writeSecondaryLocatorFile(locatorFile2, spectraFile);
+        
+                        // Run the search.
+                        NistMsSearchGCTask.runNistMsSearchNoTask(nistMsSearchDir, command);
+        
+                        // Read the search results file and store the
+                        // results.
+                        List<PeakIdentity> identities = NistMsSearchGCTask.readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, resultId);
+                        
+                        
+                        //-
+                        String msg = "";
+                        for (PeakIdentity id : identities) {
+                            double a_score = Double.valueOf(id.getPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE));
+                            msg += format.format(a_score) + " : \t" + id.getName() + "\n";
+                        }
+                        
+                        // Display
+//                        JOptionPane.showMessageDialog(this, msg, msg_title, info);
+                        JDialog dialog = createInfoDialog(table.getWindow(), msg, msg_title);
+                        dialog.setVisible(true);
+                        
+                    } catch (IOException e1) {
+                        JOptionPane.showMessageDialog(this, e1.getMessage(), msg_title, err);
+                        e1.printStackTrace();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Select a peak in the table...", msg_title, err);                
+                }
+            }
+        }
+
+        
+
     }
 
     /**

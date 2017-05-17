@@ -308,7 +308,7 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
         return true;
     }
     
-    public Map<RawDataFile, PeakListRow> getPeakAt(int row, int col) {
+    public Map<RawDataFile, PeakListRow> getPeakListRowAt(int row, int col) {
         
         Map<RawDataFile, PeakListRow> peak = null;
         
@@ -326,6 +326,38 @@ public class PeakListTable extends JTable implements ComponentToolTipProvider {
                         RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
                         peak = new HashMap<RawDataFile, PeakListRow>();
                         peak.put(rdf, pl_row);
+                    }
+                }
+            } 
+            // Averaged peak
+            else if (row == 0) {
+                int halfNbMarginScans = 0; // Get apex scan only
+                double avgRT = Double.valueOf((String)this.getValueAt(row, col));
+                RawDataFile avgRDF = PeakListTable.buildAverageRDF(this.peakList, col-1, halfNbMarginScans, avgRT);
+                // TODO: ... Build an AveragedPeak (The class already exists, but is pretty much unused for now)...
+            }
+        }
+        
+        return peak;
+    }
+    
+    public Feature getPeakAt(int row, int col) {
+        
+        Feature peak = null;
+        
+        if (col >= 1) {
+            // Regular peak
+            if (row >= NB_HEADER_ROWS) {
+                    
+                // Sort rows by ascending RT
+                final PeakListRow[] peakListRows = PeakListTable.getPeakListSortedByRT(this.peakList);
+                PeakListRow pl_row = peakListRows[col-1];
+                
+                Object value = this.getValueAt(row, col);
+                if (value != null) {
+                    if (value instanceof String && !value.equals("") && !value.equals(JoinAlignerGcModule.MISSING_PEAK_VAL)) {
+                        RawDataFile rdf = this.peakList.getRawDataFile(row - NB_HEADER_ROWS);
+                        peak = pl_row.getPeak(rdf);
                     }
                 }
             } 
