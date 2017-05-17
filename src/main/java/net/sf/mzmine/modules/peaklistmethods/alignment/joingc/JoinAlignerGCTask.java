@@ -108,6 +108,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     private double idWeight;
     
     private boolean useApex, useKnownCompoundsAsRef;
+    private boolean useDetectedMzOnly;
     private RTTolerance rtToleranceAfter;
     
     private boolean exportDendrogramAsPng;
@@ -180,6 +181,8 @@ public class JoinAlignerGCTask extends AbstractTask {
                 JoinAlignerGCParameters.useApex).getValue();
         useKnownCompoundsAsRef = parameters.getParameter(
                 JoinAlignerGCParameters.useKnownCompoundsAsRef).getValue();
+        useDetectedMzOnly = parameters.getParameter(
+                JoinAlignerGCParameters.useDetectedMzOnly).getValue();
         rtToleranceAfter = parameters.getParameter(
                 JoinAlignerGCParameters.RTToleranceAfter).getValue();
         //***
@@ -687,7 +690,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 //                processedRows++;
 //
 //            }
-//            */
+//            */5.0E-1
 //
 //        } // Next peak list
         
@@ -779,7 +782,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                                               RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
                                               RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
                                               idWeight,
-                                              useApex, useKnownCompoundsAsRef, rtToleranceAfter);
+                                              useApex, useKnownCompoundsAsRef, 
+                                              useDetectedMzOnly,
+                                              rtToleranceAfter);
                                       //-
                                       // If match was not rejected afterwards and score is acceptable
                                       // (Acceptable score => higher than absolute min ever and higher than user defined min)

@@ -99,6 +99,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     private SimilarityMethodType simMethodType;
     private double areaMixFactor;
     private double minScore;
+    //
+    private boolean useDetectedMzOnly;
+    //
     private boolean applyWithoutCheck;
     private File blastOutputFilename;
     private String fieldSeparator;
@@ -143,6 +146,9 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         simMethodType = parameters.getParameter(JDXCompoundsIdentificationParameters.SIMILARITY_METHOD).getValue();
         areaMixFactor = parameters.getParameter(JDXCompoundsIdentificationParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(JDXCompoundsIdentificationParameters.MIN_SCORE).getValue();
+        
+        useDetectedMzOnly = parameters.getParameter(JDXCompoundsIdentificationParameters.useDetectedMzOnly).getValue();
+        
         applyWithoutCheck = parameters.getParameter(JDXCompoundsIdentificationParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
@@ -253,7 +259,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, this.useOldestRDFAncestor);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
-                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i], this.useDetectedMzOnly);
                                 System.out.println("\t> Score:" + score + "( using rdf: '" + rdf.getName() + "')");
                                 if (score < minScore)
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
@@ -392,7 +398,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     }
 
     
-    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, final JDXCompound compound)
+    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, final JDXCompound compound, boolean useDetectedMzOnly)
             throws IOException {
 
         double score = 0.0;
@@ -408,7 +414,11 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         // Get scan m/z vector.
         double[] vec1 = new double[JDXCompound.MAX_MZ];
         Arrays.fill(vec1, 0.0);
-        DataPoint[] dataPoints = apexScan.getDataPoints();
+        DataPoint[] dataPoints;
+        if (useDetectedMzOnly)
+            dataPoints = row.getBestPeak().getIsotopePattern().getDataPoints();
+        else
+            dataPoints = apexScan.getDataPoints();
         for (int j=0; j < dataPoints.length; ++j) {
             DataPoint dp = dataPoints[j];
             vec1[(int) Math.round(dp.getMZ())] = dp.getIntensity();

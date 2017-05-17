@@ -90,7 +90,8 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             PeakListRow peakListRow, PeakListRow alignedRow,
             double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,
             double idWeight,
-            boolean useApex, boolean useKnownCompoundsAsRef, RTTolerance rtToleranceAfter
+            boolean useApex, boolean useKnownCompoundsAsRef, 
+            boolean useDetectedMzOnly, RTTolerance rtToleranceAfter
             //, PeakListRow[] allRows, PeakListRow[] candidateRows
             ) 
     {
@@ -204,7 +205,11 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             //
             // Get scan m/z vector.
             //LOG.info("DPs MZ Range: " + apexScan.getMZRange());
-            DataPoint[] dataPoints = apexScan.getDataPoints();
+            DataPoint[] dataPoints;
+            if (useDetectedMzOnly && peakListRow.getBestPeak().getIsotopePattern() != null)
+                dataPoints = peakListRow.getBestPeak().getIsotopePattern().getDataPoints();//apexScan.getDataPoints();
+            else
+                dataPoints = apexScan.getDataPoints();
             for (int j=0; j < dataPoints.length; ++j) {
                 DataPoint dp = dataPoints[j];
                 vec1[(int) Math.round(dp.getMZ())] = dp.getIntensity();
@@ -231,7 +236,10 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
                 }
 
                 apexScan = refRDF.getScan(alignedRow.getPeak(rdf).getRepresentativeScanNumber());
-                dataPoints = apexScan.getDataPoints();
+                if (useDetectedMzOnly && peakListRow.getBestPeak().getIsotopePattern() != null)
+                    dataPoints = peakListRow.getBestPeak().getIsotopePattern().getDataPoints();//apexScan.getDataPoints();
+                else
+                    dataPoints = apexScan.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();

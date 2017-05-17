@@ -96,6 +96,10 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             "Use RT recalibration",
             "If checked, uses compounds with known identities to ease alignment",
             true);
+    public static final BooleanParameter useDetectedMzOnly = new BooleanParameter(
+            "Use DETECTED m/z only",
+            "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
+            false);
 
     public static final RTToleranceParameter RTToleranceAfter = new RTToleranceParameter(
             "RT tolerance post-recalibration",
@@ -155,7 +159,9 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 		RTTolerance, RTWeight,
 		minScore,
 //		IDWeight,
-		useApex, useKnownCompoundsAsRef, RTToleranceAfter, 
+		useApex, useKnownCompoundsAsRef, 
+		useDetectedMzOnly,
+		RTToleranceAfter, 
 		/*SameChargeRequired, SameIDRequired,
 		compareIsotopePattern*/ 
                 exportDendrogramPng, dendrogramPngFilename,

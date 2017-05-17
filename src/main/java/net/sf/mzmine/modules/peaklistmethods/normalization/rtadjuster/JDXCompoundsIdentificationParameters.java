@@ -83,7 +83,12 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
                 "Minimum score for matching between two peaks to be considered as successful " +
                 "(WARN: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0)",
                 NumberFormat.getNumberInstance(), JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE);
-	
+        //
+        public static final BooleanParameter useDetectedMzOnly = new BooleanParameter(
+                "Use DETECTED m/z only",
+                "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
+                false);
+	//
 	public static final BooleanParameter APPLY_WITHOUT_CHECK = new BooleanParameter(
 	        "Apply without checking", "Apply best scoring compounds without checking manually " 
 	                + "(displaying validation table) first", false);
@@ -106,6 +111,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 				JDX_FILE_C2, RT_SEARCH_WINDOW_C2, 
 				SIMILARITY_METHOD, AREA_MIX_FACTOR,
 				MIN_SCORE,
+				useDetectedMzOnly,
 				APPLY_WITHOUT_CHECK, BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
 	}
 
