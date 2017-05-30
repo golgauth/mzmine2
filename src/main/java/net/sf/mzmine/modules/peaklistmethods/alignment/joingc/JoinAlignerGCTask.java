@@ -75,9 +75,13 @@ import net.sf.mzmine.util.SortingProperty;
 
 import com.apporiented.algorithm.clustering.AverageLinkageStrategy;
 import com.apporiented.algorithm.clustering.Cluster;
+import com.apporiented.algorithm.clustering.ClusterPair;
 import com.apporiented.algorithm.clustering.ClusteringAlgorithm;
 import com.apporiented.algorithm.clustering.CompleteLinkageStrategy;
 import com.apporiented.algorithm.clustering.DefaultClusteringAlgorithm;
+import com.apporiented.algorithm.clustering.Distance;
+import com.apporiented.algorithm.clustering.DistanceMap;
+import com.apporiented.algorithm.clustering.HierarchyBuilder;
 import com.apporiented.algorithm.clustering.LinkageStrategy;
 import com.apporiented.algorithm.clustering.SingleLinkageStrategy;
 import com.apporiented.algorithm.clustering.WeightedLinkageStrategy;
@@ -806,16 +810,16 @@ public class JoinAlignerGCTask extends AbstractTask {
                                           distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
                                       } else {
                                           /** Score too low => Distance is Infinity */
-                                          distances[x][y] = veryLongDistance;
+                                          distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
                                       }
         
                                   } else {
                                       /** Row is not candidate => Distance is Infinity */
-                                      distances[x][y] = 3.0d * veryLongDistance;
+                                      distances[x][y] = 3.0d * veryLongDistance; // Need to rank distances for "rejected" cases
                                   }
                               } else {
                                   /** Both rows belong to same list => Distance is Infinity */
-                                  distances[x][y] = 5.0d * veryLongDistance;
+                                  distances[x][y] = 5.0d * veryLongDistance; // Need to rank distances for "rejected" cases
                               }
                           }
                           
@@ -879,7 +883,7 @@ public class JoinAlignerGCTask extends AbstractTask {
       }
       
 
-      ClusteringAlgorithm alg = new DefaultClusteringAlgorithm();
+      ClusteringAlgorithm alg = new DefaultClusteringAlgorithmWithProgress(); //DefaultClusteringAlgorithm();
       //      System.out.println(Arrays.toString(names));
       //      System.out.println(Arrays.deepToString(distances));
 //      for (int i=0; i<names.length; i++)
@@ -888,6 +892,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 //          System.out.println(Arrays.toString(distances[i]));
       Cluster clust = alg.performClustering(distances, names, linkageStrategy);
       //clust.toConsole(0);
+      
+      System.out.println("Done clustering");
       
       List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length);
       //
@@ -1242,7 +1248,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     //            if (!(desktop instanceof HeadLessDesktop))
     //                desktop.getMainWindow().repaint();
                 
-                processedRows++;
+                //processedRows++;
     
             }
         }
@@ -1625,6 +1631,152 @@ public class JoinAlignerGCTask extends AbstractTask {
     public static double getReverseAdjustedRT(double rt, double b_offset, double a_scale) {
         double delta_rt = a_scale * rt + b_offset;
         return (rt - delta_rt);
+    }
+    
+    
+
+    // 
+    public class DefaultClusteringAlgorithmWithProgress implements ClusteringAlgorithm //extends DefaultClusteringAlgorithm
+    {
+
+        @Override
+        public Cluster performClustering(double[][] distances,
+                                         String[] clusterNames, LinkageStrategy linkageStrategy)
+        {
+            
+            int prev_leafs = 0;
+            
+
+            checkArguments(distances, clusterNames, linkageStrategy);
+        /* Setup model */
+            List<Cluster> clusters = createClusters(clusterNames);
+            DistanceMap linkages = createLinkages(distances, clusters);
+
+        /* Process */
+            HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            
+            
+            // GLG HACK: update progress bar
+            int nb_leafs = clusterNames.length;
+            int progress_base = processedRows;
+            
+            while (!builder.isTreeComplete())
+            {
+                builder.agglomerate(linkageStrategy);
+                
+                // GLG HACK: update progress bar
+                processedRows = progress_base + nb_leafs - builder.getClusters().size() + 1;
+            }
+
+            return builder.getRootCluster();
+        }
+
+        @Override
+        public List<Cluster> performFlatClustering(double[][] distances,
+                                                   String[] clusterNames, LinkageStrategy linkageStrategy, Double threshold)
+        {
+
+            checkArguments(distances, clusterNames, linkageStrategy);
+        /* Setup model */
+            List<Cluster> clusters = createClusters(clusterNames);
+            DistanceMap linkages = createLinkages(distances, clusters);
+
+        /* Process */
+            HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            return builder.flatAgg(linkageStrategy, threshold);
+        }
+
+        private void checkArguments(double[][] distances, String[] clusterNames,
+                                    LinkageStrategy linkageStrategy)
+        {
+            if (distances == null || distances.length == 0
+                    || distances[0].length != distances.length)
+            {
+                throw new IllegalArgumentException("Invalid distance matrix");
+            }
+            if (distances.length != clusterNames.length)
+            {
+                throw new IllegalArgumentException("Invalid cluster name array");
+            }
+            if (linkageStrategy == null)
+            {
+                throw new IllegalArgumentException("Undefined linkage strategy");
+            }
+            int uniqueCount = new HashSet<String>(Arrays.asList(clusterNames)).size();
+            if (uniqueCount != clusterNames.length)
+            {
+                throw new IllegalArgumentException("Duplicate names");
+            }
+        }
+
+        @Override
+        public Cluster performWeightedClustering(double[][] distances, String[] clusterNames,
+                                                 double[] weights, LinkageStrategy linkageStrategy)
+        {
+
+            checkArguments(distances, clusterNames, linkageStrategy);
+
+            if (weights.length != clusterNames.length)
+            {
+                throw new IllegalArgumentException("Invalid weights array");
+            }
+
+        /* Setup model */
+            List<Cluster> clusters = createClusters(clusterNames, weights);
+            DistanceMap linkages = createLinkages(distances, clusters);
+
+        /* Process */
+            HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            while (!builder.isTreeComplete())
+            {
+                builder.agglomerate(linkageStrategy);
+            }
+
+            return builder.getRootCluster();
+        }
+
+        private DistanceMap createLinkages(double[][] distances,
+                                           List<Cluster> clusters)
+        {
+            DistanceMap linkages = new DistanceMap();
+            for (int col = 0; col < clusters.size(); col++)
+            {
+                for (int row = col + 1; row < clusters.size(); row++)
+                {
+                    ClusterPair link = new ClusterPair();
+                    Cluster lCluster = clusters.get(col);
+                    Cluster rCluster = clusters.get(row);
+                    link.setLinkageDistance(distances[col][row]);
+                    link.setlCluster(lCluster);
+                    link.setrCluster(rCluster);
+                    linkages.add(link);
+                }
+            }
+            return linkages;
+        }
+
+        private List<Cluster> createClusters(String[] clusterNames)
+        {
+            List<Cluster> clusters = new ArrayList<Cluster>();
+            for (String clusterName : clusterNames)
+            {
+                Cluster cluster = new Cluster(clusterName);
+                clusters.add(cluster);
+            }
+            return clusters;
+        }
+
+        private List<Cluster> createClusters(String[] clusterNames, double[] weights)
+        {
+            List<Cluster> clusters = new ArrayList<Cluster>();
+            for (int i = 0; i < weights.length; i++)
+            {
+                Cluster cluster = new Cluster(clusterNames[i]);
+                cluster.setDistance(new Distance(0.0, weights[i]));
+                clusters.add(cluster);
+            }
+            return clusters;
+        }
     }
     
 }
