@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -129,9 +130,13 @@ public class JoinAlignerGCTask extends AbstractTask {
     private Format rtFormat = MZmineCore.getConfiguration().getRTFormat();
 
     //
-    private double veryLongDistance = 1.0d;//50.0d;//Double.MAX_VALUE;
+    private final double maximumScore; // = 1.0d;
+    private final double veryLongDistance; // = 1.0d;//50.0d;//Double.MAX_VALUE;
     // For comparing small differences.
     private static final double EPSILON = 0.0000001;
+
+
+    private static final boolean DEBUG = false;
 
     
 
@@ -208,7 +213,8 @@ public class JoinAlignerGCTask extends AbstractTask {
                 JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
         
         //
-        veryLongDistance = mzWeight + rtWeight;
+        maximumScore = mzWeight + rtWeight;
+        veryLongDistance = 10.0d * maximumScore;
     }
 
     /**
@@ -707,6 +713,7 @@ public class JoinAlignerGCTask extends AbstractTask {
       names = new String[nbPeaks];
       
       Map<String, PeakListRow> row_names_dict = new HashMap<>();
+      List<String> rows_list = new ArrayList<>();
       
       int x = 0;
       for (int i = 0; i < newIds.length; ++i) {
@@ -724,10 +731,13 @@ public class JoinAlignerGCTask extends AbstractTask {
               
               PeakListRow row = allRows[j];
 
+              // Each name HAS to be unique
               //names[x] = newIds[i] + "_" + j + "^" + rtFormat.format(row.getBestPeak().getRT());
               names[x] = "[" + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true).getName() 
                       + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
               row_names_dict.put(names[x], row);
+              rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
+              
 
               if (isCanceled())
                   return;
@@ -793,7 +803,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                                       if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
                                           //////scoreSet.add(score);
                                           // The higher the score, the lower the distance!
-                                          distances[x][y] = veryLongDistance - score.getScore();//(mzWeight + rtWeight) - score.getScore();
+                                          distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
                                       } else {
                                           /** Score too low => Distance is Infinity */
                                           distances[x][y] = veryLongDistance;
@@ -801,11 +811,11 @@ public class JoinAlignerGCTask extends AbstractTask {
         
                                   } else {
                                       /** Row is not candidate => Distance is Infinity */
-                                      distances[x][y] = veryLongDistance;
+                                      distances[x][y] = 3.0d * veryLongDistance;
                                   }
                               } else {
                                   /** Both rows belong to same list => Distance is Infinity */
-                                  distances[x][y] = veryLongDistance;
+                                  distances[x][y] = 5.0d * veryLongDistance;
                               }
                           }
                           
@@ -822,7 +832,52 @@ public class JoinAlignerGCTask extends AbstractTask {
               ++x;
           }
 
-      } 
+      }
+      
+      
+      // DEBUG: save distances matrix as CSV
+      if (DEBUG) {
+          // Open file
+          File curFile = new File("/home/golgauth/matrix-aligner.csv");
+          FileWriter writer;
+          try {
+              writer = new FileWriter(curFile);
+          } catch (Exception e) {
+              setStatus(TaskStatus.ERROR);
+              setErrorMessage("Could not open file " + curFile
+                      + " for writing.");
+              return;
+          }
+          // Write things
+          try {
+              for (int i = 0; i < distances.length; i++) {
+    
+                  if (i == 0)
+                      for (int j = 0; j < distances[i].length; j++) {
+                          writer.write(names[j] + "\t");
+                      }
+    
+                  for (int j = 0; j < distances[i].length; j++) {
+                      if (j == 0)
+                          writer.write(names[i] + "\t");
+                      writer.write(rtFormat.format(distances[i][j]) + "\t");
+                  }
+                  writer.write("\n");
+              }
+          } catch (IOException e) {
+              // TODO Auto-generated catch block
+              e.printStackTrace();
+          }
+          // Close file
+          try {
+              writer.close();
+          } catch (Exception e) {
+              setStatus(TaskStatus.ERROR);
+              setErrorMessage("Could not close file " + curFile);
+              return;
+          }
+      }
+      
 
       ClusteringAlgorithm alg = new DefaultClusteringAlgorithm();
       //      System.out.println(Arrays.toString(names));
@@ -835,12 +890,14 @@ public class JoinAlignerGCTask extends AbstractTask {
       //clust.toConsole(0);
       
       List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length);
-      for (Cluster c: validatedClusters) {
-          //System.out.println(c.getName() + " : [" + c.getLeafNames() + "]");
-          System.out.println();
-          c.toConsole(0);
+      //
+      if (DEBUG) {
+          for (Cluster c: validatedClusters) {
+              //System.out.println(c.getName() + " : [" + c.getLeafNames() + "]");
+              System.out.println();
+              c.toConsole(0);
+          }
       }
-
 
       //----------------------------------------------------------------------
 
@@ -1000,15 +1057,29 @@ public class JoinAlignerGCTask extends AbstractTask {
         } 
 **/
         
+//        int finalNbPeaks = 0;
+        Set<String> leaf_names = new HashSet<>();
         for (Cluster c: validatedClusters) {
 
             List<Cluster> c_leafs = getClusterLeafs(c);
             List<PeakListRow> rows_cluster = new ArrayList<>();
+            RawDataFile rdf = null;
             for (Cluster l: c_leafs) {
                 // Recover related PeakListRow
                 rows_cluster.add(row_names_dict.get(l.getName()));
+                leaf_names.add(l.getName());
+                
+//                if (DEBUG) {
+//                    RawDataFile a_rdf = row_names_dict.get(l.getName()).getBestPeak().getDataFile();
+//                    if (a_rdf == rdf) {
+//                        logger.info("RDF duplicate for row: " + row_names_dict.get(l.getName()) 
+//                                + " [Peak: " + row_names_dict.get(l.getName()).getBestPeak() + "]");
+//                    }
+//                    rdf = a_rdf;
+//                }
             }
             clustersList.add(rows_cluster);
+//            finalNbPeaks += rows_cluster.size();
         }
         
         
@@ -1019,12 +1090,15 @@ public class JoinAlignerGCTask extends AbstractTask {
 //        }
         
         
+//        int nbAddedPeaks = 0;
+        
         // Fill alignment table: One row per cluster
         for (List<PeakListRow> cluster: clustersList) {
             
             PeakListRow targetRow = new SimplePeakListRow(newRowID);
             newRowID++;
             alignedPeakList.addRow(targetRow);
+//            nbAddedRows++;
             //
             infoRowsBackup.put(targetRow, new Object[] { 
                     new HashMap<RawDataFile, Double[]>(), 
@@ -1086,12 +1160,38 @@ public class JoinAlignerGCTask extends AbstractTask {
                                 logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
     
                                 targetRow.addPeak(file, adjustedPeak);
+//                                nbAddedPeaks++;
                                 // Adjusted RT info
                                 rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
                                 ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
                                 
                             } else {
-                                targetRow.addPeak(file, originalPeak);
+                                
+                                // HELP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                ////if (!Arrays.asList(targetRow.getPeaks()).contains(originalPeak)) {
+                                
+                                    targetRow.addPeak(file, originalPeak);
+//                                    nbAddedPeaks++;
+                                    logger.info("Added peak: " + originalPeak);
+                                ////}
+                            
+                                if (DEBUG) {
+//                                    if (targetRow.getNumberOfPeaks() > peakLists.length) {
+//                                        bip = true;
+//                                        
+//                                        String str_p = "";
+//                                        for (Feature p: targetRow.getPeaks())
+//                                            str_p += p + ", ";
+//                                        logger.info("----------- >> " + targetRow.getNumberOfPeaks() + " peaks for row: " + targetRow.getID() + "! " + "(" + str_p + ")");
+//                                    }
+//                                    
+//                                    int nbPeaks_0 = 0;
+//                                    for (PeakListRow plr: alignedPeakList.getRows()) {
+//                                        nbPeaks_0 += plr.getNumberOfPeaks();
+//                                        logger.info("R-" + plr.getID() + " > Found peaks" + Arrays.toString(plr.getPeaks()));
+//                                    }
+//                                    logger.info("++++++++++++++ >> " + nbPeaks_0 + " / " + nbAddedPeaks);
+                                }
                             }
                             
                             // Identification info
@@ -1103,7 +1203,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                             else
                                 ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
                             
-                            logger.info("targetRow RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + newRowID);
+                            logger.info("targetRow >>> Added Peak @" + originalPeak.getClass().getName() + '@' + Integer.toHexString(originalPeak.hashCode()) 
+                                    + ",  RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + targetRow.getID());
+                            logger.info(".");
                         }
                         else {
                             setStatus(TaskStatus.ERROR);
@@ -1145,10 +1247,15 @@ public class JoinAlignerGCTask extends AbstractTask {
             }
         }
         
+        int finalNbPeaks_0 = 0;
+        
+        for (PeakListRow plr: alignedPeakList.getRows()) {
+            finalNbPeaks_0 += plr.getNumberOfPeaks();
+        }
         
         
         //----------------------------------------------------------------------
-       
+      
         
         
         
@@ -1204,7 +1311,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             /** Tricky: using preferred row identity to store information **/
             for (RawDataFile rdf: rdf_sorted) {
                 
-                logger.info(">>>> RDF_write: " + rdf.getName());
+                ////logger.info(">>>> RDF_write: " + rdf.getName());
                 
                 if (Arrays.asList(targetRow.getRawDataFiles()).contains(rdf)) {
 
@@ -1246,7 +1353,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                     if ((sum == 0.0 && cardinality > mainIdentityCard) || sum > mainIdentitySum) {
                         mainIdentity = id;
                         mainIdentityCard = cardinality;
-                        logger.info(">> found max for: " + mainIdentity.getName() + " / " + sum + ", " + mainIdentitySum + " / " + cardinality + ", " + mainIdentityCard);
+                        ////logger.info(">> found max for: " + mainIdentity.getName() + " / " + sum + ", " + mainIdentitySum + " / " + cardinality + ", " + mainIdentityCard);
                         mainIdentitySum = sum;
                     }
                     
@@ -1352,6 +1459,33 @@ public class JoinAlignerGCTask extends AbstractTask {
         logger.info("Finished join aligner");
         setStatus(TaskStatus.FINISHED);
 
+        
+        if (DEBUG) {
+//            int finalNbPeaks2 = 0;
+//            
+//            for (PeakListRow plr: alignedPeakList.getRows()) {
+//                finalNbPeaks2 += plr.getNumberOfPeaks();
+//                
+//                for (int i=0; i <  plr.getNumberOfPeaks(); i++) {
+//                    
+//                    Feature peak = plr.getPeaks()[i];
+//                    
+//                    String str = peak.getDataFile() + ", @" + peak.getRT();
+//                    
+//                    //if (!rows_list.contains(str))
+//                        //logger.info("# MISSING Peak: " + str);
+//                        rows_list.remove(str);
+//    //                else
+//    //                    logger.info("> OK Peak: " + str);
+//                }
+//            }
+//            for (String str: rows_list)
+//                logger.info("# MISSING Peak: " + str);
+//        
+//            logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
+//            logger.info("Nb peaks ...: bip = " + bip);
+//            logger.info("Nb peaks treated: " + names.length + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2);
+        }
     }
     
     
@@ -1371,7 +1505,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             
             for (Cluster child : clust.getChildren())
             {
-                // Trick to get number of leafs without browsing the hole tree (unlike how it's done in ".countLeafs()")
+                // Trick to get number of leafs without browsing the whole tree (unlike how it's done in ".countLeafs()")
                 //      => Weight gives the number of leafs
                 //if (child.countLeafs() <= level) {
                 if (child.getWeightValue() < level + EPSILON) {
