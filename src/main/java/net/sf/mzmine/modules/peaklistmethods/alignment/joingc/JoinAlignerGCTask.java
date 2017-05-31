@@ -283,7 +283,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         /** RTAdjustement mapping **/
         boolean recalibrateRT = useKnownCompoundsAsRef;
-        Hashtable<RawDataFile, double[]> rtAdjustementMapping = new Hashtable<RawDataFile, double[]>();
+        Hashtable<RawDataFile, double[]> rtAdjustementMapping = new Hashtable<>();
+        //Hashtable<RawDataFile, List<double[]>> rtAdjustementMapping = new Hashtable<>();
+
         if (recalibrateRT) {
             
             boolean rtAdjustOk = true;

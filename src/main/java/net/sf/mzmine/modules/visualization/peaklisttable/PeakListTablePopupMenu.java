@@ -364,7 +364,9 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
             TICVisualizerModule.showNewTICVisualizerWindow(
                     new RawDataFile[] { selectedDataFile },
                     selectedPeaks.toArray(new Feature[selectedPeaks.size()]),
-                    labelsMap, scanSelection, TICPlotType.BASEPEAK, mzRange);
+                    labelsMap, scanSelection, TICPlotType.BASEPEAK, 
+                    false,
+                    mzRange);
         }
 
         if (showXICSetupItem.equals(src) && allClickedPeakListRows.length != 0) {

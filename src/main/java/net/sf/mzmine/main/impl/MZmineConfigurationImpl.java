@@ -127,6 +127,12 @@ public class MZmineConfigurationImpl implements MZmineConfiguration {
                 .getValue();
     }
 
+//    @Override
+//    public Boolean getPreferRTlabels() {
+//        return preferences.getParameter(MZminePreferences.preferRTlabels)
+//                .getValue();
+//    }
+
     @Override
     public void loadConfiguration(File file) throws IOException {
 

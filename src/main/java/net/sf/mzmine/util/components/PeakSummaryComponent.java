@@ -396,7 +396,9 @@ public class PeakSummaryComponent extends JPanel implements ActionListener {
 
                 TICVisualizerModule.showNewTICVisualizerWindow(dataFiles,
                         selectedPeaks, labelMap, scanSelection,
-                        TICPlotType.BASEPEAK, mzRange);
+                        TICPlotType.BASEPEAK, 
+                        false,
+                        mzRange);
                 return;
 
             } else if (visualizerType.equals("Mass spectrum")) {

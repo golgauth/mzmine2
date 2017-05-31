@@ -63,6 +63,11 @@ public class MZminePreferences extends SimpleParameterSet {
             "Allow MZmine to send anonymous statistics on the module usage?",
             true);
 
+//    public static final BooleanParameter preferRTlabels = new BooleanParameter(
+//            "Prefer retention time as plot labels",
+//            "Make MZmine use RT values rather than MZ values in TIC plots",
+//            true);
+
     public static final WindowSettingsParameter windowSetttings = new WindowSettingsParameter();
 
     public MZminePreferences() {

@@ -70,6 +70,10 @@ public class TICVisualizerModule implements MZmineRunnableModule {
                 .getParameter(TICVisualizerParameters.scanSelection).getValue();
         final TICPlotType plotType = parameters
                 .getParameter(TICVisualizerParameters.PLOT_TYPE).getValue();
+
+        final boolean preferRTlabels = parameters
+                .getParameter(TICVisualizerParameters.preferRTlabels).getValue();
+
         final Feature[] selectionPeaks = parameters
                 .getParameter(TICVisualizerParameters.PEAKS).getValue();
 
@@ -85,7 +89,8 @@ public class TICVisualizerModule implements MZmineRunnableModule {
         if (weHaveData) {
             TICVisualizerWindow window = new TICVisualizerWindow(dataFiles,
                     plotType, scanSelection, mzRange, selectionPeaks,
-                    ((TICVisualizerParameters) parameters).getPeakLabelMap());
+                    ((TICVisualizerParameters) parameters).getPeakLabelMap(),
+                    preferRTlabels);
             window.setVisible(true);
 
         } else {
@@ -175,10 +180,11 @@ public class TICVisualizerModule implements MZmineRunnableModule {
             final Feature[] selectionPeaks,
             final Map<Feature, String> peakLabels,
             final ScanSelection scanSelection, final TICPlotType plotType,
+            boolean preferRTlabels,
             final Range<Double> mzRange) {
 
         TICVisualizerWindow window = new TICVisualizerWindow(dataFiles,
-                plotType, scanSelection, mzRange, selectionPeaks, peakLabels);
+                plotType, scanSelection, mzRange, selectionPeaks, peakLabels, preferRTlabels);
         window.setVisible(true);
     }
 

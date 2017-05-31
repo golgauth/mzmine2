@@ -27,6 +27,7 @@ import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.text.Format;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -83,6 +84,9 @@ public class TICVisualizerWindow extends JFrame implements ActionListener {
     private Hashtable<RawDataFile, TICDataSet> ticDataSets;
 
     private TICPlotType plotType;
+    
+    private boolean preferRTlabels;
+    
     private ScanSelection scanSelection;
     private Range<Double> mzRange;
 
@@ -91,12 +95,19 @@ public class TICVisualizerWindow extends JFrame implements ActionListener {
     // Export file chooser.
     private static LoadSaveFileChooser exportChooser = null;
 
+    
     /**
      * Constructor for total ion chromatogram visualizer
      */
     public TICVisualizerWindow(RawDataFile dataFiles[], TICPlotType plotType,
             ScanSelection scanSelection, Range<Double> mzRange,
             Feature[] peaks, Map<Feature, String> peakLabels) {
+        this(dataFiles, plotType, scanSelection, mzRange, peaks, peakLabels, false);
+    }
+    public TICVisualizerWindow(RawDataFile dataFiles[], TICPlotType plotType,
+            ScanSelection scanSelection, Range<Double> mzRange,
+            Feature[] peaks, Map<Feature, String> peakLabels, 
+            boolean preferRTlabels) {
 
         super("Chromatogram loading...");
 
@@ -104,6 +115,9 @@ public class TICVisualizerWindow extends JFrame implements ActionListener {
 
         this.desktop = MZmineCore.getDesktop();
         this.plotType = plotType;
+        
+        this.preferRTlabels = preferRTlabels;
+        
         this.ticDataSets = new Hashtable<RawDataFile, TICDataSet>();
         this.scanSelection = scanSelection;
         this.mzRange = mzRange;
@@ -295,6 +309,11 @@ public class TICVisualizerWindow extends JFrame implements ActionListener {
     TICPlotType getPlotType() {
         return plotType;
     }
+    
+    boolean getPreferRTlabels() {
+        return preferRTlabels;
+    }
+    
 
     TICDataSet[] getAllDataSets() {
         return ticDataSets.values().toArray(new TICDataSet[0]);

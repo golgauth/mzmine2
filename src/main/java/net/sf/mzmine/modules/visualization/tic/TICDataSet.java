@@ -19,6 +19,7 @@
 
 package net.sf.mzmine.modules.visualization.tic;
 
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -83,6 +84,9 @@ public class TICDataSet extends AbstractXYZDataset implements Task {
 
     // Plot type
     private TICPlotType plotType;
+    
+    // Label type
+    private boolean preferRTlabels;
 
     /**
      * Create the data set.
@@ -99,7 +103,15 @@ public class TICDataSet extends AbstractXYZDataset implements Task {
     public TICDataSet(final RawDataFile file, final Scan scans[],
             final Range<Double> rangeMZ, final TICVisualizerWindow window) {
         this(file, scans, rangeMZ, window, ((window != null) ? window
-                .getPlotType() : TICPlotType.BASEPEAK));
+                .getPlotType() : TICPlotType.BASEPEAK), ((window != null) ? window
+                        .getPreferRTlabels() : false));
+    }
+    
+    public TICDataSet(final RawDataFile file, final Scan scans[],
+            final Range<Double> rangeMZ, final TICVisualizerWindow window,
+            TICPlotType plotType) {
+        this(file, scans, rangeMZ, window, plotType, ((window != null) ? window
+                        .getPreferRTlabels() : false));        
     }
 
     /**
@@ -119,7 +131,7 @@ public class TICDataSet extends AbstractXYZDataset implements Task {
      */
     public TICDataSet(final RawDataFile file, final Scan scans[],
             final Range<Double> rangeMZ, final TICVisualizerWindow window,
-            TICPlotType plotType) {
+            TICPlotType plotType, boolean preferRTlabels) {
 
         mzRange = rangeMZ;
         dataFile = file;
@@ -137,6 +149,8 @@ public class TICDataSet extends AbstractXYZDataset implements Task {
 
         this.plotType = plotType;
 
+        this.preferRTlabels = preferRTlabels;
+        
         // Start-up the refresh task.
         MZmineCore.getTaskController().addTask(this, TaskPriority.HIGH);
     }
@@ -359,7 +373,7 @@ public class TICDataSet extends AbstractXYZDataset implements Task {
                     : ScanUtils.findBasePeak(scan, mzRange);
             if (basePeak != null) {
 
-                basePeakValues[index] = basePeak.getMZ();
+                basePeakValues[index] = ((preferRTlabels) ? scan.getRetentionTime() : basePeak.getMZ());//basePeak.getMZ();
             }
 
             // Determine peak intensity.

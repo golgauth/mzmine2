@@ -55,4 +55,6 @@ public interface MZmineConfiguration {
 
     public Boolean getSendStatistics();
 
+//    
+//    public Boolean getPreferRTlabels();
 }

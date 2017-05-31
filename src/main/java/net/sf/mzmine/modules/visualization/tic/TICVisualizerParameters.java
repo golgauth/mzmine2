@@ -27,6 +27,7 @@ import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
+import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.MultiChoiceParameter;
 import net.sf.mzmine.parameters.parametertypes.WindowSettingsParameter;
@@ -59,6 +60,11 @@ public class TICVisualizerParameters extends SimpleParameterSet {
             "Type of Y value calculation (TIC = sum, base peak = max)",
             TICPlotType.values(),
             TICPlotType.BASEPEAK);
+    
+    public static final BooleanParameter preferRTlabels = new BooleanParameter(
+            "Prefer RT labels",
+            "Display RT values rather than MZ values in TIC plots on top of peaks",
+            true);
 
     /**
      * m/z range.
@@ -84,7 +90,9 @@ public class TICVisualizerParameters extends SimpleParameterSet {
      * Create the parameter set.
      */
     public TICVisualizerParameters() {
-        super(new Parameter[] { DATA_FILES, scanSelection, PLOT_TYPE, MZ_RANGE,
+        super(new Parameter[] { DATA_FILES, scanSelection, PLOT_TYPE, 
+                preferRTlabels,
+                MZ_RANGE,
                 PEAKS, WINDOWSETTINGSPARAMETER });
         peakLabelMap = null;
     }

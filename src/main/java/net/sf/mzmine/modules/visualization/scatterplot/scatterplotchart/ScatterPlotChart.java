@@ -276,7 +276,9 @@ public class ScatterPlotChart extends ChartPanel implements
 
             TICVisualizerModule.showNewTICVisualizerWindow(
                     peakList.getRawDataFiles(), peaks, labelMap, scanSelection,
-                    TICPlotType.BASEPEAK, mzRange);
+                    TICPlotType.BASEPEAK, 
+                    false,
+                    mzRange);
         }
 
         if ("SAVE_EMF".equals(command)) {
