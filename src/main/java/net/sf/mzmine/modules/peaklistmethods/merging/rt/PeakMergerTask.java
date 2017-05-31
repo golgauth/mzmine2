@@ -441,15 +441,37 @@ class PeakMergerTask extends AbstractTask {
     
             }
         } 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        /** ********************************************************************
+         >>> PEAKS MERGING (new way!)
+         ******************************************************************** */
+        
         else {
             
             // Build groups nicely, aka iteratively
             // 1/ Group peaks with exact same apex
             List<List<Feature>> baseGroups = new ArrayList<List<Feature>>();
             List<Integer> apexScans = new ArrayList<Integer>();
+            List<Range<Double>> groupBounds = new ArrayList<>();
             for (int ind = 0; ind < totalPeaks; ind++) {
                 
                 Feature aPeak = sortedPeaks.get(ind);
+                
+                for (int s_i: aPeak.getScanNumbers()) { 
+                    if(aPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
+                        logger.info("!!! Found input peak with zero intensity scan: " + aPeak);
+                        break;
+                    }
+                }
+                
                 
                 // Delete (and skip) if peak is a Bad Shaped one
                 if (badShapedPeaks.contains(aPeak)) {
@@ -481,22 +503,9 @@ class PeakMergerTask extends AbstractTask {
                     baseGroups.add(new ArrayList<Feature>());
                     baseGroups.get(baseGroups.size() - 1).add(aPeak);
                     apexScans.add(apexScan);
+                    groupBounds.add(aPeak.getRawDataPointsRTRange());
                 }
             }
-            
-            //##logger.info("Found '" + baseGroups.size() + "'");
-            int nb_skipped_groups = 0;
-            for (int g_i=0; g_i < baseGroups.size(); g_i++) {
-                
-                if (baseGroups.get(g_i).size() > 1) {
-                    double curGroupApexRT = this.workingDataFile.getScan(apexScans.get(g_i)).getRetentionTime();
-                  //##logger.info("\t> Group of size '" + baseGroups.get(g_i).size() + "' | apex RT = '" + curGroupApexRT + "'");
-                } else {
-                    nb_skipped_groups++;
-                }
-            }
-          //##logger.info("Confirmed groups: " + (baseGroups.size() - nb_skipped_groups) + " / " + baseGroups.size());
-            
             
             
             // 
@@ -527,30 +536,10 @@ class PeakMergerTask extends AbstractTask {
                     
                     List<Feature> curGroup = baseGroups.get(g_i);
                     
-//                    // Progress
-//                    if (curGroup != null) {
-//                        processedPeaks -= curGroup.size();
-//                    }
-                    
-                    
                     // Skip already merged group
                     if (mergedGroups.contains(curGroup)) {
-                        //////logger.info("> Skipped Treated Group '@" + g_i + "'");//: " + cur_grp_str);
-//                        processedPeaks += curGroup.size();
                         continue;
                     }
-                    
-                    
-                    //processedPeaks += curGroup.size() / (max_step - sc_step);
-                    
-                    
-                    //logger.info("!!!!!!! > treating GRP: " + curGroup);
-                   /* String cur_grp_str = "<";
-                    for (int j=0; j < curGroup.size(); j++) {
-                        cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
-                    }
-                    cur_grp_str += ">";*/
-                  //##logger.info("######### > CURRENT Group '@" + g_i + "': " + cur_grp_str);
                     
                     
                     int curGroupApexScanNumber = apexScans.get(g_i);
@@ -559,7 +548,6 @@ class PeakMergerTask extends AbstractTask {
                     
                     // Find candidates in other groups
                     for (int cg_i=0; cg_i < baseGroups.size(); cg_i++) {
-                    //for (int cg_i = baseGroups.size()-1; cg_i >= 0; --cg_i) {
                         
                         // Skip current group 
                         if (cg_i == g_i) { continue; }
@@ -568,15 +556,7 @@ class PeakMergerTask extends AbstractTask {
                         
                         // Skip already merged group
                         if (mergedGroups.contains(candidateGroup)) {
-//                            
-//                            cur_grp_str = "<";
-//                            for (int j=0; j < candidateGroup.size(); j++) {
-//                                cur_grp_str += "[" + candidateGroup.get(j).getMZ() + "-" + candidateGroup.get(j).getRT() + "], ";
-//                            }
-//                            cur_grp_str += ">";
-                            //////logger.info("> Skipped Treated Group '@" + cg_i + "'");//: " + cur_grp_str);
                             continue;
-//                            break;
                         }
                         
                         
@@ -587,8 +567,14 @@ class PeakMergerTask extends AbstractTask {
                         if (!rtTolerance.checkWithinTolerance(curGroupApexRT, candidateGroupApexRT))
                             continue;
                         
-                        // If group apex is close enough from current group (considering scan by scan stepping)
-                        // integrate it...
+//                         If group apex is close enough from current group (considering scan by scan stepping)
+//                         integrate it...
+                        //-
+                        // Integrate group to current group if and ONLY if:
+                        //      1) Apex is close enough from current group (considering scan by scan stepping)
+                        //      2) Group is overlapping current group in some way 
+                        //              2.1) -> at least one scan of one peak in common (see group bounds are overlapping)
+                        //              2.2) -> the intensity of the common scan is strictly greater > 0.0 
                         int sc_num_plus = candidateGroupApexScanNumber + sc_step;
                         int sc_num_minus = candidateGroupApexScanNumber - sc_step;
                         //
@@ -598,139 +584,51 @@ class PeakMergerTask extends AbstractTask {
                             
                             double rt_plus_1 = this.workingDataFile.getScan(sc_num_plus).getRetentionTime();
                             double rt_minus_1 = this.workingDataFile.getScan(sc_num_minus).getRetentionTime();
-                            //
+                            // 1)
                             if (Math.abs(curGroupApexRT - rt_minus_1) < EPSILON || Math.abs(curGroupApexRT - rt_plus_1) < EPSILON)
                             {
-//                                logger.info("\n\n>>> Step: " + sc_step + " | " + 
-//                                        (Math.abs(curGroupApexRT - rt_minus_1) < doublePrecision) + ", " +
-//                                        (Math.abs(curGroupApexRT - rt_plus_1) < doublePrecision));
-//                                //logger.info("Merging groups: " + curGroupApexRT + " / " + rt + " [" + rt_minus_1 + " , " + rt_plus_1 + "]");
                                 
-                                /*cur_grp_str = "<";
-                                for (int j=0; j < curGroup.size(); j++) {
-                                    cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
+                                // 2) An intersection exists and is not empty
+                                if (groupBounds.get(g_i).isConnected(groupBounds.get(cg_i))
+                                        && !groupBounds.get(g_i).intersection(groupBounds.get(cg_i)).isEmpty()) {
+                                    // Merge group into current
+                                    curGroup.addAll(candidateGroup);
+                                    // Clear candidate group once merged
+                                    mergedGroups.add(candidateGroup);
                                 }
-                                cur_grp_str += ">";
-                                //-
-                                String candidate_grp_str = "<";
-                                for (int j=0; j < candidateGroup.size(); j++) {
-                                    candidate_grp_str += "[" + candidateGroup.get(j).getMZ() + "-" + candidateGroup.get(j).getRT() + "], ";
-                                }
-                                candidate_grp_str += ">";*/
-                                //-
-                              //##logger.info("> Merging Groups ('@" + baseGroups.indexOf(curGroup) + "' -> '@" + cg_i + "'): " + 
-                              //##          "\n\t* \t" + cur_grp_str +
-                              //##          "\n\t* \t" + candidate_grp_str);
-                                                              
-                                
-                                // Merge group into current
-                                curGroup.addAll(candidateGroup);
-                                // Clear candidate group once merged
-                                /*
-//                                logger.info("> 1/ contained GRP: " + baseGroups.contains(candidateGroup));
-                                boolean removed = baseGroups.remove(candidateGroup);
-//                                if (removed) {
-//                                    logger.info("> removed GRP: " + candidateGroup);
-//                                    logger.info("> 2/ contained GRP: " + baseGroups.contains(candidateGroup));
-//                                }
-                                apexScans.remove((Integer) cg_i);
-                                // !!!!!!!!
-                                //g_i--;
-                                //cg_i--;
-                                // !!!!!!!!
-                                */
-                                mergedGroups.add(candidateGroup);
-                              //##logger.info("> Tagged Group ('@" + baseGroups.indexOf(candidateGroup) + "') as Merged.");
-                                
-                                /*cur_grp_str = "<";
-                                for (int j=0; j < curGroup.size(); j++) {
-                                    cur_grp_str += "[" + curGroup.get(j).getMZ() + "-" + curGroup.get(j).getRT() + "], ";
-                                }
-                                cur_grp_str += ">";*/
-                              //##logger.info("> Merged Resulting Group '@" + baseGroups.indexOf(curGroup) + "': " + cur_grp_str);
-                                
-                                
-                                
-//                                // Groups merged => Apex changed !!!
-//                                // So: Update apex scan index
-//                                int newApexScanNumber = curGroupApexScanNumber;
-//                                for (Feature peak: curGroup) {
-//                                    for (int s_i=0; s_i < peak.getScanNumbers().length; s_i++) {
-//                                        
-//                                        if ( this.workingDataFile.getScan(peak.getScanNumbers()[s_i]).getTIC() > curGroupApexIntensity ) {
-//                                            newApexScanNumber = peak.getScanNumbers()[s_i];
-//                                        }
-//                                    }
-//                                }
-//                                apexScans.set(g_i, newApexScanNumber);
-//    //                            // MUST reinitialize stepping if any group apex changed!
-//    //                            sc_step = 1;
-//    //                            // + Restart process from beginning
-//    //                            g_i = 0;
-//    //                            
-//                                changes_occurred = true;      
-                                
-                                
-                                //////processedPeaks += candidateGroup.size() / (max_step + 1 - sc_step);
-
                             }
                         }
+                        
                     }
-//                    if (!changes_occurred) {
-//                        sc_step++;
-//                    }
-                    
-
-//                    processedPeaks += curGroup.size();
-
                     
                 }
                 
                 
-                // Update apex for all groups!
+                // Update apex and bounds for all groups!
                 for (int g_i=0; g_i < baseGroups.size(); g_i++) {
                     
                     List<Feature> curGroup = baseGroups.get(g_i);
                     
                     int curGroupApexScanNumber = apexScans.get(g_i);
                     double curGroupApexIntensity = this.workingDataFile.getScan(curGroupApexScanNumber).getTIC();
-
+                    //-
+                    Range<Double> bounds = curGroup.get(0).getRawDataPointsRTRange();//Range.openClosed(Double.MAX_VALUE, Double.MIN_VALUE);
+                    
                     
                     // Update apex scan index
                     int newApexScanNumber = curGroupApexScanNumber;
                     Feature bestPeak = null;
                     for (Feature peak: curGroup) {
-                        /*
-                        for (int s_i=0; s_i < peak.getScanNumbers().length; s_i++) {
-                            
-                            if ( this.workingDataFile.getScan(peak.getScanNumbers()[s_i]).getTIC() > curGroupApexIntensity ) {
-                                newApexScanNumber = peak.getScanNumbers()[s_i];
-                            }
-                        }
-                        */
+
+                        // Best peak
                         if (bestPeak == null || peak.getHeight() > bestPeak.getHeight())
                             bestPeak = peak;
+                        
+                        // Best bounds overall
+                        bounds.span(peak.getRawDataPointsRTRange());
                     }
-                    //
-                    /*
-                    if (newApexScanNumber != curGrcurGroupoupApexScanNumber) {
-                        
-                        apexScans.set(g_i, newApexScanNumber);
-//                        // MUST reinitialize stepping if any group apex changed!
-//                        sc_step = 1;
-//                        // + Restart process from beginning
-//                        g_i = 0;
-                        
-                        //////logger.info("> Changes Detected For Group '@" + g_i + 
-                         //////       "' (Apex adjusted from '" + curGroupApexScanNumber + "' to '" + newApexScanNumber + "')");
-                        
-                    } 
-//                    else {
-//                        
-//                        // Keep stepping if no apex changed.
-//                        sc_step++;
-//                    }
-                     */
+                    
+                    // Apex
                     if (bestPeak != null) {
                         newApexScanNumber = bestPeak.getRepresentativeScanNumber();
                         apexScans.set(g_i, newApexScanNumber);
@@ -739,7 +637,8 @@ class PeakMergerTask extends AbstractTask {
                             changes_occurred = true;
                     }
                     
-                
+                    // Bounds
+                    groupBounds.set(g_i, bounds);
                 }
                 
                 
@@ -774,28 +673,9 @@ class PeakMergerTask extends AbstractTask {
                     return;
                 
                 List<Feature> curGroup = baseGroups.get(ind);
-    
-//                Feature aPeak = sortedPeaks.get(ind);
-    
-//                // Delete (and skip) if peak is a Bad Shaped one
-//                if (badShapedPeaks.contains(aPeak)) {
-//                    sortedPeaks.set(sortedPeaks.indexOf(aPeak), null);
-//                    aPeak = null;
-//                }
-//                // Skip if peak was already deleted (BS or treated)
-//                if (aPeak == null) {
-//                    processedPeaks++;
-//                    continue;
-//                }
-                
                 
                 //##processedPeaks += curGroup.size();
                 processedGroups++;
-                
-                
-                // !!!!!!!!!!!!!!!!!!!!
-                //if (curGroup.size() <= 1) { continue; }
-                // !!!!!!!!!!!!!!!!!!!!
                 
                 // Skip already merged group
                 if (mergedGroups.contains(curGroup)) { continue; }
@@ -820,7 +700,6 @@ class PeakMergerTask extends AbstractTask {
                 double futureMz = groupedPeaks.get(0).getMZ();
                 // Maximized bounds (min/max scan numbers)
                 
-    //            double height = -1.0d;
                 for (int i = 0; i < groupedPeaks.size(); i++) {
                     int[] scanNums = groupedPeaks.get(i).getScanNumbers();
                     if (scanNums[0] < minScanNumber) {
@@ -834,7 +713,6 @@ class PeakMergerTask extends AbstractTask {
                 // Apex of the most representative (highest) peak of the group.
                 int originScanNumber = oldPeak.getRepresentativeScanNumber();
                 MergedPeak newPeak = new MergedPeak(this.workingDataFile, FeatureStatus.DETECTED);
-                ////int totalScanNumber = this.workingDataFile.getNumOfScans();
                 // No MZ requirement (take the full dataFile MZ Range)
                 Range<Double> mzRange = this.workingDataFile.getDataMZRange(1);
                 Scan scan;
@@ -911,16 +789,6 @@ class PeakMergerTask extends AbstractTask {
     
                     scanNumber++;
                 }
-                
-                /*// Setting MZes of interest
-                List<DataPoint> spectrumOfInterest = new ArrayList<>();
-                for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
-                    
-                    // Save MZ of interest (Cf. DETECTED only...)
-                    int curGroupApexScanNumber = apexScans.get(g_i);
-                    spectrumOfInterest.add(new SimpleDataPoint(groupedPeaks.get(g_i).getMZ(), groupedPeaks.get(g_i).getHeight()));
-                }*/
-                //newPeak.setSpectrumOfInterest(/*spectrumOfInterest*/groupedPeaks);
 
                 
                 // Finishing the merged peak
@@ -940,24 +808,26 @@ class PeakMergerTask extends AbstractTask {
                 // TODO: Might be VIOLENT (quick and dirty => to be verified)
                 if (newPeak.getScanNumbers().length == 0) {
                     ++nb_empty_peaks;
-                    // #continue;
                     logger.log(Level.WARNING, "0 scans peak found !");
                     break;
                 }
     
                 // Add new merged peak to "mergedPeakList", keeping the original ID.
-                //this.updateMergedPeakList(oldRow, newPeak);
                 updateMergedPeakListRow(oldRow, newPeak);
-    
+                
+                for (int s_i: newPeak.getScanNumbers()) { 
+                    if(newPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
+                        logger.info("!!! Found merged peak with zero intensity scan: " + newPeak);
+                        break;
+                    }
+                }
+
                 
                 // Clear already treated peaks
                 for (int g_i = 0; g_i < groupedPeaks.size(); g_i++) {
                     
                     sortedPeaks.set(sortedPeaks.indexOf(groupedPeaks.get(g_i)), null);
                 }
-    
-                // Update completion rate
-                //////processedPeaks++;
     
             }
         }

@@ -1635,7 +1635,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     
     
 
-    // 
+    // Rewriting class "DefaultClusteringAlgorithm" to be able to update the progress bar!
     public class DefaultClusteringAlgorithmWithProgress implements ClusteringAlgorithm //extends DefaultClusteringAlgorithm
     {
 
@@ -1644,9 +1644,6 @@ public class JoinAlignerGCTask extends AbstractTask {
                                          String[] clusterNames, LinkageStrategy linkageStrategy)
         {
             
-            int prev_leafs = 0;
-            
-
             checkArguments(distances, clusterNames, linkageStrategy);
         /* Setup model */
             List<Cluster> clusters = createClusters(clusterNames);
@@ -1656,10 +1653,11 @@ public class JoinAlignerGCTask extends AbstractTask {
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
             
             
+            /** --------------------------------------------------------------*/
             // GLG HACK: update progress bar
             int nb_leafs = clusterNames.length;
             int progress_base = processedRows;
-            
+            //
             while (!builder.isTreeComplete())
             {
                 builder.agglomerate(linkageStrategy);
@@ -1667,6 +1665,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                 // GLG HACK: update progress bar
                 processedRows = progress_base + nb_leafs - builder.getClusters().size() + 1;
             }
+            /** --------------------------------------------------------------*/
 
             return builder.getRootCluster();
         }
@@ -1683,7 +1682,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         /* Process */
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            /** --------------------------------------------------------------*/
+            // GLG HACK: update progress bar not possible here, unless we modify 'HierarchyBuilder.flatAgg()'
             return builder.flatAgg(linkageStrategy, threshold);
+            /** --------------------------------------------------------------*/
         }
 
         private void checkArguments(double[][] distances, String[] clusterNames,
@@ -1727,10 +1729,22 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         /* Process */
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            
+            
+            /** --------------------------------------------------------------*/
+            // GLG HACK: update progress bar
+            int nb_leafs = clusterNames.length;
+            int progress_base = processedRows;
+            //
             while (!builder.isTreeComplete())
             {
                 builder.agglomerate(linkageStrategy);
+                
+                // GLG HACK: update progress bar
+                processedRows = progress_base + nb_leafs - builder.getClusters().size() + 1;
             }
+            /** --------------------------------------------------------------*/
+
 
             return builder.getRootCluster();
         }
@@ -1755,7 +1769,8 @@ public class JoinAlignerGCTask extends AbstractTask {
             return linkages;
         }
 
-        private List<Cluster> createClusters(String[] clusterNames)
+        private List<Cluster> createClusters(String[] clusterNames)            /** --------------------------------------------------------------*/
+
         {
             List<Cluster> clusters = new ArrayList<Cluster>();
             for (String clusterName : clusterNames)
