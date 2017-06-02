@@ -22,6 +22,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.commons.math.linear.ArrayRealVector;
@@ -86,7 +87,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
     }
     
     RowVsRowScoreGC(MZmineProject project, boolean useOldestRDFancestor,
-            RawDataFile rawDF, Hashtable<RawDataFile, double[]> rtAdjustementMapping,
+            /*RawDataFile rawDF,*/ Hashtable<RawDataFile, List<double[]>> rtAdjustementMapping,
             PeakListRow peakListRow, PeakListRow alignedRow,
             double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,
             double idWeight,
@@ -117,42 +118,48 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
         Arrays.fill(vec1, 0.0);
         double[] vec2 = new double[JDXCompound.MAX_MZ];
         Arrays.fill(vec2, 0.0);
+
         
+        RawDataFile rawDF = peakListRow.getRawDataFiles()[0];
+        RawDataFile rawDF_aligned = alignedRow.getRawDataFiles()[0];
+
         // RT at apex
-        boolean recalibrateRT = useKnownCompoundsAsRef;
-        double adjustedRT = 0.0;
+        boolean recalibrateRT = useKnownCompoundsAsRef 
+                && (rtAdjustementMapping.get(rawDF).size() > 0) && (rtAdjustementMapping.get(rawDF_aligned).size() > 0);
+        //double adjustedRT = 0.0;
         if (useApex) {
             // RT at apex
 
             if (recalibrateRT) {
                 
-                double b_offset = rtAdjustementMapping.get(rawDF)[0];
-                double a_scale = rtAdjustementMapping.get(rawDF)[1];
-                //**double rt1 = rtAdjustementMapping.get(peakList)[2];
-                //**double rt2 = rtAdjustementMapping.get(peakList)[3];
-                //adjustedRT = (peakListRow.getAverageRT() + offset) * scale;
-                //**adjustedRT = ((peakListRow.getAverageRT() - rt1) * scale) + rt1 + offset;
-//                double delta_rt = a_scale * peakListRow.getAverageRT() + b_offset;
-//                adjustedRT = peakListRow.getAverageRT() + delta_rt;
-                adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
-
-
+                ////double b_offset = rtAdjustementMapping.get(rawDF)[0];
+                ////double a_scale = rtAdjustementMapping.get(rawDF)[1];
+                ////adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
+                //-
+                double[] row_offset_scale = JoinAlignerGCTask.getOffsetScaleForRow(rawDF, peakListRow.getAverageRT(), rtAdjustementMapping);
+                double b_offset = row_offset_scale[0];
+                double a_scale = row_offset_scale[1];
+                //-
+                double adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
                 
-                // Compare what is comparable: "alignedRow.getAverageRT()" returns
+/*                // Compare what is comparable: "alignedRow.getAverageRT()" returns
                 // a comparable value because RT are adjusted on the fly in the
                 // "JoinAlignerTask" (See *[Note 1]).
                 rtDiff = Math.abs(adjustedRT
                         - alignedRow.getAverageRT());
+  */
+                // Compare what is comparable: No more adjustment on the fly, so we need 
+                // the adjusted RT values for both rows!
+                double[] row_offset_scale_aligned = JoinAlignerGCTask.getOffsetScaleForRow(rawDF_aligned, alignedRow.getAverageRT(), rtAdjustementMapping);
+                double b_offset_aligned = row_offset_scale_aligned[0];
+                double a_scale_aligned = row_offset_scale_aligned[1];
+                double adjustedRT_aligned = JoinAlignerGCTask.getAdjustedRT(alignedRow.getAverageRT(), b_offset_aligned, a_scale_aligned);
+                rtDiff = Math.abs(adjustedRT
+                        - adjustedRT_aligned); // !!!!!!!!!!!!
                 
-//                // DEBUG
-//                LOG.info("RT (adjusted / avg): " + adjustedRT + " / " + peakListRow.getAverageRT());
-//                double rtDiff000 = Math.abs(peakListRow.getAverageRT()
-//                        - alignedRow.getAverageRT());
-//                LOG.info("RTdiff (row / alignRow): " + peakListRow + " / " + alignedRow);
-//                LOG.info("RTdiff (offset / scale): " + b_offset + " / " + a_scale);
-//                LOG.info("RTdiff (adjusted / avg): " + rtDiff + " / " + rtDiff000);
                 
                 
+/**                
 //                switch (commonIdentified.size()) {
 //                case 0: // Do not recalibrate
 //                    rtDiff = Math.abs(peakListRow.getBestPeak().getRT()
@@ -169,7 +176,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 //                    // ... Complicated: We do not want to implement this yet ...
 //                    break;
 //                }
-                
+ */             
                 
             } else {
                 
@@ -334,12 +341,37 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
         
         double idSimScore = (JDXCompound.isKnownIdentity(peakListRow.getPreferredPeakIdentity())
                 && JDXCompound.isKnownIdentity(alignedRow.getPreferredPeakIdentity())
-                && peakListRow.getPreferredPeakIdentity().getName() == alignedRow.getPreferredPeakIdentity().getName()) ? 1.0d : 0.0d;
+                && peakListRow.getPreferredPeakIdentity().getName().equals(alignedRow.getPreferredPeakIdentity().getName())) ? 1.0d : 0.0d;
         
         score = (chemSimScore * mzWeight)
                 + ((1.0d - rtDiff / rtMaxDiff) * rtWeight);
                 //+ idSimScore * idWeight;
 
+//        // If same identity 
+//        if (JDXCompound.isKnownIdentity(alignedRow.getPreferredPeakIdentity()) 
+//                && peakListRow.getPreferredPeakIdentity().getName().equals(alignedRow.getPreferredPeakIdentity().getName())) {
+//            LOG.info("\n-------------------------------------------------------");
+//            LOG.info("Identity: \t" + peakListRow.getPreferredPeakIdentity().getName());
+//            LOG.info("Score: \t" + peakListRow.getBestPeak() + "    VS    " + alignedRow.getBestPeak() + " are same identity, and scored like: " + score);
+//            
+//            // Offset only (scale negative/invalid ...)
+//            double[] row_offset_scale = JoinAlignerGCTask.getOffsetScaleForRow(rawDF, peakListRow.getAverageRT(), rtAdjustementMapping);
+//            double b_offset = row_offset_scale[0];
+//            double a_scale = row_offset_scale[1];
+//            adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
+//            
+//            // Offset only (scale negative/invalid ...)
+//            double[] row_offset_scale_2 = JoinAlignerGCTask.getOffsetScaleForRow(rawDF, alignedRow.getAverageRT(), rtAdjustementMapping);
+//            double b_offset_2 = row_offset_scale_2[0];
+//            double a_scale_2 = row_offset_scale_2[1];
+//            adjustedRT = JoinAlignerGCTask.getAdjustedRT(peakListRow.getAverageRT(), b_offset, a_scale);
+//            
+//            rtDiff = Math.abs(adjustedRT - alignedRow.getAverageRT());
+//            
+//            LOG.info("Computed from: \t" + b_offset + " | " + a_scale + " | " + adjustedRT + " | " + rtDiff);
+//            LOG.info("-------------------------------------------------------\n");
+//        }
+        
     }
     
     // Compute chemical similarity score using dot product method

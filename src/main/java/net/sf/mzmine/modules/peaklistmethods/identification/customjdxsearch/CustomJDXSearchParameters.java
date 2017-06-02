@@ -62,6 +62,11 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                     + "(WARN: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0)",
             NumberFormat.getNumberInstance(),
             CustomJDXSearchTask.MIN_SCORE_ABSOLUTE);
+    //
+    public static final BooleanParameter useDetectedMzOnly = new BooleanParameter(
+            "Use DETECTED m/z only",
+            "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
+            false);
 
     public static final BooleanParameter IGNORE_RT_RANGES_FILES = new BooleanParameter(
             "Ignore ranges files", "Ignore files containing RT search ranges, "
@@ -91,11 +96,18 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
             "Erases any previous identitification operation "
                     + "(use with caution)", false);
 
+    public static final BooleanParameter USE_AS_STD_COMPOUND = new BooleanParameter(
+            "Use as standard compound",
+            " Tag as reference/standard compound for later use in 'Join Aligner GC'.", false);
+
     public CustomJDXSearchParameters() {
         super(new Parameter[] { PEAK_LISTS,
                 // RI_SEARCH_WINDOW
-                JDX_DIR, BRUTE_FORCE_ERASE, SIMILARITY_METHOD, AREA_MIX_FACTOR,
-                MIN_SCORE, IGNORE_RT_RANGES_FILES,
+                JDX_DIR, 
+                BRUTE_FORCE_ERASE, USE_AS_STD_COMPOUND,
+                SIMILARITY_METHOD, AREA_MIX_FACTOR,
+                MIN_SCORE, useDetectedMzOnly, 
+                IGNORE_RT_RANGES_FILES,
                 // APPLY_WITHOUT_CHECK,
                 BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
     }

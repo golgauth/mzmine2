@@ -63,7 +63,7 @@ public class TICVisualizerParameters extends SimpleParameterSet {
     
     public static final BooleanParameter preferRTlabels = new BooleanParameter(
             "Prefer RT labels",
-            "Display RT values rather than MZ values in TIC plots on top of peaks",
+            "Display 'RT' rather than 'MZ' values in TIC plots on top of the peaks",
             true);
 
     /**

@@ -311,7 +311,8 @@ public class JDXCompound extends SimplePeakIdentity {
     }
 
     public static boolean isKnownIdentity(PeakIdentity peakId) {
-        return (peakId != null && peakId.getName() != UNKNOWN_JDX_COMP.getName());
+        ////return (peakId != null && peakId.getName() != UNKNOWN_JDX_COMP.getName());
+        return (peakId != null && !peakId.getName().equals(UNKNOWN_JDX_COMP.getName()));
     }
     
     public static void setPreferredPeakIdentity(PeakListRow row, PeakIdentity identity) {

@@ -398,7 +398,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
     }
 
     
-    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, final JDXCompound compound, boolean useDetectedMzOnly)
+    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, 
+            final JDXCompound compound, boolean useDetectedMzOnly)
             throws IOException {
 
         double score = 0.0;

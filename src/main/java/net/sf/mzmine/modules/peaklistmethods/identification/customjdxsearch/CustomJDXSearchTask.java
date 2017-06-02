@@ -55,6 +55,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationParameters;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -102,12 +103,16 @@ public class CustomJDXSearchTask extends AbstractTask {
     
     private File searchDir;
     private boolean bruteForceErase;
+    private boolean useAsStdCompound;
 //    private File jdxFileC1, jdxFileC2;
 //    private JDXCompound jdxComp1, jdxComp2;
 //    private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
     private SimilarityMethodType simMethodType;
     private double areaMixFactor;
     private double minScore;
+    
+    private boolean useDetectedMzOnly;
+    
     private boolean ignoreRanges;
 //    private boolean applyWithoutCheck;
     private File blastOutputFilename;
@@ -144,6 +149,7 @@ public class CustomJDXSearchTask extends AbstractTask {
 
         searchDir = parameters.getParameter(CustomJDXSearchParameters.JDX_DIR).getValue();
         bruteForceErase = parameters.getParameter(CustomJDXSearchParameters.BRUTE_FORCE_ERASE).getValue();
+        useAsStdCompound = parameters.getParameter(CustomJDXSearchParameters.USE_AS_STD_COMPOUND).getValue();
 //        jdxFileC1 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C1).getValue();
 //        jdxFileC2 = parameters.getParameter(CustomJDXSearchParameters.JDX_FILE_C2).getValue();
 //        rtSearchRangeC1 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C1).getValue();
@@ -151,6 +157,9 @@ public class CustomJDXSearchTask extends AbstractTask {
         simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
         areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(CustomJDXSearchParameters.MIN_SCORE).getValue();
+        
+        useDetectedMzOnly = parameters.getParameter(CustomJDXSearchParameters.useDetectedMzOnly).getValue();
+
         ignoreRanges = parameters.getParameter(CustomJDXSearchParameters.IGNORE_RT_RANGES_FILES).getValue();
 //        applyWithoutCheck = parameters.getParameter(CustomJDXSearchParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
@@ -317,7 +326,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
-                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i]);
+                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i], this.useDetectedMzOnly);
                                 if (score < minScore)
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                                 else
@@ -352,7 +361,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                             double bestScore = mtx[0][i+1];
 
                             // Update identities
-                            applyIdentityBF(peakList, findCompounds[i], bestRow.getID(), bestScore, bruteForceErase);
+                            applyIdentityBF(peakList, findCompounds[i], bestRow.getID(), bestScore, bruteForceErase, useAsStdCompound);
 
                             // CSV export...
                             if (!isEmptyFilename(blastOutputFilename)) {
@@ -497,7 +506,7 @@ public class CustomJDXSearchTask extends AbstractTask {
 //         project.notifyObjectChanged(a_pl_row, false);
 //     }
 // }
-    public void applyIdentityBF(PeakList peaklist, JDXCompound identity, int rowId, double score, boolean bruteForce) {
+    public void applyIdentityBF(PeakList peaklist, JDXCompound identity, int rowId, double score, boolean bruteForce, boolean canTagAsRef) {
 
         // Do not overrule the identity if marked as "ref compound"
         if (!bruteForce) {
@@ -516,7 +525,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         }
 
         // If identity is available for change, feel free
-        CustomJDXSearchTask.applyIdentity(peaklist, identity, rowId, score, false);
+        CustomJDXSearchTask.applyIdentity(peaklist, identity, rowId, score, canTagAsRef);
     }
     /**
      * Apply an identity (type JDX) to a peak list
@@ -578,7 +587,8 @@ public class CustomJDXSearchTask extends AbstractTask {
         }
     }
 
-    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, final JDXCompound compound)
+    private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, 
+            final JDXCompound compound, boolean useDetectedMzOnly)
             throws IOException {
 
         double score = 0.0;
@@ -594,7 +604,12 @@ public class CustomJDXSearchTask extends AbstractTask {
         // Get scan m/z vector.
         double[] vec1 = new double[JDXCompound.MAX_MZ];
         Arrays.fill(vec1, 0.0);
-        DataPoint[] dataPoints = apexScan.getDataPoints();
+        //DataPoint[] dataPoints = apexScan.getDataPoints();
+        DataPoint[] dataPoints;
+        if (useDetectedMzOnly)
+            dataPoints = row.getBestPeak().getIsotopePattern().getDataPoints();
+        else
+            dataPoints = apexScan.getDataPoints();
         for (int j=0; j < dataPoints.length; ++j) {
             DataPoint dp = dataPoints[j];
             vec1[(int) Math.round(dp.getMZ())] = dp.getIntensity();

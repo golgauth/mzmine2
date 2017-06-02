@@ -1,6 +1,5 @@
 package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
-import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 
 public class AlignedRowProps {
 
