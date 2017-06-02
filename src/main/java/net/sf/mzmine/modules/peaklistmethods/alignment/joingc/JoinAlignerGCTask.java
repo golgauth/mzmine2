@@ -429,22 +429,29 @@ public class JoinAlignerGCTask extends AbstractTask {
 //                    return;
 
                 }
+                
+                boolean offset_only = (rtList.size() == 1);
+                // Think of "y = ax+b" (line equation)
+                double b_offset, a_scale;
 
+                RawDataFile refPL_RDF = peakLists[0].getRawDataFile(0);
+          
                 // We have ref(s) to work with
-                if (rtList.size() > 0) {
-
+                if (rtList.size() > 1) {
+                    
                     for (int i_rt = 0; i_rt < (rtList.size() - 1); i_rt++) {
 
                         double rt1 = rtList.get(i_rt);
-                        double rt2 = -1.0d;//rtList.get(i_rt + 1);
+//                        double rt2;
+                        double rt2 = rtList.get(i_rt + 1);
 
-                        // Offset only => no scale
-                        if (rtList.size() > 1)
-                            rt2 = rtList.get(i_rt + 1);
+//                        // If not "Offset only" case, set 'rt2'
+//                        if (!offset_only)
+//                            rt2 = rtList.get(i_rt + 1);
+//                        // Unset otherwise
+//                        else
+//                            rt2 = -1.0d;
                         
-                        
-                        // Think of "y = ax+b" (line equation)
-                        double b_offset, a_scale;
 
                         // First list as ref, so:
                         if (i == 0) {
@@ -452,9 +459,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                             b_offset = 0.0d;                      
                             a_scale = 0.0d;
 
-                            // Offset only => no scale
-                            if (rtList.size() == 1)
-                                a_scale = -1.0d;
+//                            // If "Offset only" case, unset scale
+//                            if (offset_only)
+//                                a_scale = -1.0d;
 
                             //
                             ////rtAdjustementMapping.put(a_pl.getRawDataFile(0), new double[]{ b_offset, a_scale, rt1, rt2 });
@@ -465,8 +472,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 
                         } else {
 
-                            RawDataFile refPL_RDF = peakLists[0].getRawDataFile(0);
-
                             //double rt1_ref = rtAdjustementMapping.get(refPL_RDF)[2];
                             //double rt2_ref = rtAdjustementMapping.get(refPL_RDF)[3];
                             double rt1_ref = rtAdjustementMapping.get(refPL_RDF).get(i_rt)[2];
@@ -475,9 +480,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                             a_scale = ((rt2_ref - rt2) - (rt1_ref - rt1)) / (rt2 - rt1);
                             b_offset = (rt1_ref - rt1) - (a_scale * rt1);
 
-                            // Offset only => no scale
-                            if (rtList.size() == 1)
-                                a_scale = -1.0d;
+//                         // If "Offset only" case, unset scale
+//                            if (offset_only)
+//                                a_scale = -1.0d;
 
                             //
                             ////rtAdjustementMapping.put(a_pl.getRawDataFile(0), new double[]{ b_offset, a_scale, rt1, rt2 });
@@ -491,8 +496,42 @@ public class JoinAlignerGCTask extends AbstractTask {
                             logger.info(">> rt2_ref/rt2:" + rt2_ref + "/" + rt2);
                             logger.info(">> offset/scale: " + b_offset + "/" + a_scale);
                         }
-
+                        
+                        
+//                        // If not "Offset only" case, skip last iteration
+//                        if (!offset_only && (i_rt == rtList.size() - 2)) {
+//                            break;
+//                        }
                     }
+                    
+                } else if (offset_only) {
+                    
+                    double rt1 = rtList.get(0);
+                    double rt2 = -1.0d;
+                  
+                    if (i == 0) {
+                        
+                        b_offset = 0.0d;                      
+                        a_scale = 0.0d;
+                        
+                        if (rtAdjustementMapping.get(a_pl.getRawDataFile(0)) == null) {
+                            rtAdjustementMapping.put(a_pl.getRawDataFile(0), new ArrayList<double[]>());
+                        }
+                        rtAdjustementMapping.get(a_pl.getRawDataFile(0)).add(new double[]{ b_offset, a_scale, rt1, rt2 });
+                    
+                    } else {
+                        
+                        double rt1_ref = rtAdjustementMapping.get(refPL_RDF).get(0)[2];
+                        a_scale = 0.0d;
+                        b_offset = (rt1_ref - rt1); // - (a_scale * rt1);
+                        
+                        if (rtAdjustementMapping.get(a_pl.getRawDataFile(0)) == null) {
+                            rtAdjustementMapping.put(a_pl.getRawDataFile(0), new ArrayList<double[]>());
+                        }
+                        rtAdjustementMapping.get(a_pl.getRawDataFile(0)).add(new double[]{ b_offset, a_scale, rt1, rt2 });
+                    
+                    }
+                    
                 }
 
             }
@@ -1523,9 +1562,18 @@ public class JoinAlignerGCTask extends AbstractTask {
         
         List<double[]> ref_values = rtAdjustementMapping.get(rdf);
         
-        // No scale
-        if (ref_values.size() == 1)
-            return new double[] { ref_values.get(0)[0], -1.0d };
+        // Single ref => 2 cases:
+        //      1/ Single [offset, scale]
+        //      2/ Offset only
+        if (ref_values.size() == 1) {
+//            // Offset only (scale set to -1.0d)
+//            if (Math.abs(ref_values.get(0)[1] + 1.0d) < EPSILON)
+//                return new double[] { ref_values.get(0)[0], 1.0d };
+//            // Single [offset, scale]
+//            else {
+                return new double[] { ref_values.get(0)[0], ref_values.get(0)[1] };
+//            }
+        }
         
         // Scale, but before the first interval
         if (row_rt < ref_values.get(0)[2]) 
@@ -1696,8 +1744,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             return linkages;
         }
 
-        private List<Cluster> createClusters(String[] clusterNames)            /** --------------------------------------------------------------*/
-
+        private List<Cluster> createClusters(String[] clusterNames)
         {
             List<Cluster> clusters = new ArrayList<Cluster>();
             for (String clusterName : clusterNames)
