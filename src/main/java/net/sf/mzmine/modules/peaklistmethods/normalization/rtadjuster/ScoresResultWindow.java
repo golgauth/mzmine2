@@ -503,8 +503,8 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
             double scorePeak2 = (double) tableRow.get(6);
 
             //applyIdentities(pl, peak1, peak2);
-            CustomJDXSearchTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1, false, true);
-            CustomJDXSearchTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2, false, true);
+            CustomJDXSearchTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1, /*false,*/ true);
+            CustomJDXSearchTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2, /*false,*/ true);
         }
         
         // Repaint the window to reflect the change in the peak list

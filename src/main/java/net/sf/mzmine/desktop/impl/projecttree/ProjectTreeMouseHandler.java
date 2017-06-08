@@ -41,6 +41,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
+import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsParameters;
 import net.sf.mzmine.modules.rawdatamethods.orderdatafiles.OrderDataFilesModule;
@@ -324,78 +325,53 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
         }
         
         
-        
-        if (command.equals("CLEAR_ALL_PEAKLIST_IDENTITIES")) {
-            PeakList[] selectedPeakLists = tree
-                    .getSelectedObjects(PeakList.class);
+        if (command.endsWith("_PEAKLIST_IDENTITIES")) {
+            
+            PeakList[] selectedPeakLists = tree.getSelectedObjects(PeakList.class);
             for (PeakList peakList : selectedPeakLists) {
-                // Delete identities for all rows
+
                 for (final PeakListRow row : peakList.getRows()) {
                     for (final PeakIdentity id : row.getPeakIdentities()) {
-                        row.removePeakIdentity(id);
-                    }
-                    // Notify MZmine about the change in the project
-                    // TODO: Get the "project" from the instantiator of this class instead.
-                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                    project.notifyObjectChanged(row, false);
-                }
-            }            
-        }
-        if (command.equals("UNTAG_ALL_PEAKLIST_IDENTITIES")) {
-            PeakList[] selectedPeakLists = tree
-                    .getSelectedObjects(PeakList.class);
-            for (PeakList peakList : selectedPeakLists) {
-                // Delete identities tag for all rows
-                for (final PeakListRow row : peakList.getRows()) {
-                    for (final PeakIdentity id : row.getPeakIdentities()) {
-                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
-                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
-                            if (row.getPreferredPeakIdentity() instanceof SimplePeakIdentity) {
-//                                row.getPreferredPeakIdentity().getAllProperties().remove(AlignedRowProps.PROPERTY_IS_REF);
-                                ((SimplePeakIdentity)row.getPreferredPeakIdentity()).setPropertyValue(
-                                        AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.FALSE);
-                            }
-                        }
-                    }
-                    // Notify MZmine about the change in the project
-                    // TODO: Get the "project" from the instantiator of this class instead.
-                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                    project.notifyObjectChanged(row, false);
-                }
-            }            
-        }
-        if (command.equals("TAG_ALL_PEAKLIST_IDENTITIES")) {
-            PeakList[] selectedPeakLists = tree
-                    .getSelectedObjects(PeakList.class);
-            for (PeakList peakList : selectedPeakLists) {
-                // Delete identities tag for all rows
-                for (final PeakListRow row : peakList.getRows()) {
-                    for (final PeakIdentity id : row.getPeakIdentities()) {
-                        //String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
-                        //if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.FALSE)) {
-                            if (row.getPreferredPeakIdentity() instanceof SimplePeakIdentity) {
-                                ((SimplePeakIdentity)row.getPreferredPeakIdentity()).setPropertyValue(
-                                        AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
-                            }
-                        //}
-                    }
-                    // Notify MZmine about the change in the project
-                    // TODO: Get the "project" from the instantiator of this class instead.
-                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-                    project.notifyObjectChanged(row, false);
-                }
-            }            
-        }
-        if (command.equals("REMOVE_ALL_TAGGED_PEAKLIST_IDENTITIES")) {
-            PeakList[] selectedPeakLists = tree
-                    .getSelectedObjects(PeakList.class);
-            for (PeakList peakList : selectedPeakLists) {
-                // Delete identities tag for all rows
-                for (final PeakListRow row : peakList.getRows()) {
-                    for (final PeakIdentity id : row.getPeakIdentities()) {
-                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
-                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+                        
+                        if (command.equals("CLEAR_ALL_PEAKLIST_IDENTITIES")) {
                             row.removePeakIdentity(id);
+                        } 
+                        else if (command.equals("UNTAG_ALL_PEAKLIST_IDENTITIES")) {
+                            String isRefCompound = id.getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                            if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)
+                                    // Ignoring Unknown Identities
+                                    && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())
+                                    ) {
+                                if (id instanceof SimplePeakIdentity) {
+//                                    row.getPreferredPeakIdentity().getAllProperties().remove(AlignedRowProps.PROPERTY_IS_REF);
+                                    ((SimplePeakIdentity) id).setPropertyValue(
+                                            AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.FALSE);
+                                }
+                            }
+                        } 
+                        else if (command.equals("TAG_ALL_PEAKLIST_IDENTITIES")) {
+                            //String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                            //if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.FALSE)) {
+                                if (id instanceof SimplePeakIdentity 
+                                        // Ignoring Unknown Identities
+                                        && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())
+                                        ) {
+                                    
+                                    ((SimplePeakIdentity) id).setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
+                                }
+                            //}
+                        }
+                        else if (command.equals("REMOVE_ALL_TAGGED_PEAKLIST_IDENTITIES") 
+                                // Ignoring Unknown Identities
+                                && !id.getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())
+                                ) {
+                            
+                            String isRefCompound = id.getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                            if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) 
+                            {
+                                row.removePeakIdentity(id);
+                            }
+                            //row.setPreferredPeakIdentity(identity);
                         }
                     }
                     // Notify MZmine about the change in the project
@@ -404,6 +380,7 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                     project.notifyObjectChanged(row, false);
                 }
             }            
+            
         }
         
         

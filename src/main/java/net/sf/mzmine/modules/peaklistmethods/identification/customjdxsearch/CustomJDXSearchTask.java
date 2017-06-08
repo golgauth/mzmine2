@@ -362,6 +362,16 @@ public class CustomJDXSearchTask extends AbstractTask {
 //                    else
                     if (!isCanceled()) {
 
+                        // Clear if necessary/requested
+                        if (bruteForceErase) {
+                            for (int i=0; i < peakList.getNumberOfRows(); ++i) {
+                                PeakListRow a_pl_row = peakList.getRows()[i];
+                                for (final PeakIdentity id : a_pl_row.getPeakIdentities()) {
+                                        a_pl_row.removePeakIdentity(id);
+                                }
+                            }
+                        }
+                        
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
 
@@ -544,7 +554,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
 
             PeakListRow a_pl_row = peaklist.getRows()[i];
-            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, bruteForce, canTagAsRef);
+            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, /*bruteForce,*/ canTagAsRef);
             progressItemNumber++;
         }
     }
@@ -554,16 +564,16 @@ public class CustomJDXSearchTask extends AbstractTask {
      * @param peak
      */
     public static void applyIdentity(PeakList peaklist, JDXCompound identity, 
-            int rowId, double score, boolean bruteForce, boolean canTagAsRef) {
+            int rowId, double score, /*boolean bruteForce,*/ boolean canTagAsRef) {
         
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
 
             PeakListRow a_pl_row = peaklist.getRows()[i];
-            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, bruteForce, canTagAsRef);
+            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, /*bruteForce,*/ canTagAsRef);
         }
     }
     public static void applyRowIdentity(PeakListRow row, JDXCompound identity, 
-            int rowId, double score, boolean bruteForce, boolean canTagAsRef) {
+            int rowId, double score, /*boolean bruteForce,*/ boolean canTagAsRef) {
 
         // Add possible identities to peaks (need to renew for the sake of unicity)
         JDXCompound unknownComp = JDXCompound.createUnknownCompound();
@@ -575,20 +585,23 @@ public class CustomJDXSearchTask extends AbstractTask {
         row.addPeakIdentity(newIdentity, false);
         row.addPeakIdentity(unknownComp, false);
 
+        // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+        if (canTagAsRef) {
+            newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
+        }
+        unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.FALSE);
+
         // Set new identity.
         if (row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
             row.setPreferredPeakIdentity(newIdentity);
             logger.info("Set preferred identity: " + newIdentity + " for row: " + row.getID());
-            // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-            if (canTagAsRef) {
-                newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
-            }
             // Save score
             newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
         }
         // Erase / reset identity.
-        else if (bruteForce 
-                || row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
+        else if (
+                //bruteForce || 
+                row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
 
             unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(0.0));
             row.setPreferredPeakIdentity(unknownComp);

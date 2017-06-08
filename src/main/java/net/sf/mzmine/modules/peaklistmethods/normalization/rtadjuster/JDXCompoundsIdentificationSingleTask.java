@@ -305,7 +305,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
                             // Update identities
                             if (applyWithoutCheck)
-                                CustomJDXSearchTask.applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore, false, true);
+                                CustomJDXSearchTask.applyIdentity(peakList, findCompounds[i], bestRow.getID(), bestScore, /*false,*/ true);
 
                             // CSV export...
                             if (!isEmptyFilename(blastOutputFilename)) {
