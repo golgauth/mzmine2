@@ -125,16 +125,16 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
         
 //        GUIUtils.addMenuItem(peakListPopupMenu, "Clear peak list identites", this,
 //                "CLEAR_PEAKLIST_IDENTITIES");
-        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identities", 
                 "Remove all identites", this,
                 "CLEAR_ALL_PEAKLIST_IDENTITIES");
-        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identities", 
                 "Untag all identities", this,
                 "UNTAG_ALL_PEAKLIST_IDENTITIES");
-        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identities", 
                 "Tag all identities", this,
                 "TAG_ALL_PEAKLIST_IDENTITIES");
-        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identities", 
                 "Remove all tagged identities", this,
                 "REMOVE_ALL_TAGGED_PEAKLIST_IDENTITIES");
         

@@ -97,8 +97,8 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                     + "(use with caution)", false);
 
     public static final BooleanParameter USE_AS_STD_COMPOUND = new BooleanParameter(
-            "Use as standard compound",
-            " Tag as reference/standard compound for later use in 'Join Aligner GC'.", false);
+            "Tag as standard compound",
+            " Use as reference/standard compound for later use in 'Join Aligner GC'.", false);
 
     public CustomJDXSearchParameters() {
         super(new Parameter[] { PEAK_LISTS,
