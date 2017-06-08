@@ -37,7 +37,9 @@ import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.datamodel.Scan;
+import net.sf.mzmine.datamodel.impl.SimplePeakIdentity;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsModule;
 import net.sf.mzmine.modules.peaklistmethods.orderpeaklists.OrderPeakListsParameters;
@@ -119,8 +121,22 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 "SHOW_PEAKLIST_TABLES");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list a'la Jul", this,
                 "SHOW_PEAKLIST_TABLES_ALA_JUL");
-        GUIUtils.addMenuItem(peakListPopupMenu, "Clear peak list identites", this,
-                "CLEAR_PEAKLIST_IDENTITIES");
+        
+//        GUIUtils.addMenuItem(peakListPopupMenu, "Clear peak list identites", this,
+//                "CLEAR_PEAKLIST_IDENTITIES");
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+                "Remove all identites", this,
+                "CLEAR_ALL_PEAKLIST_IDENTITIES");
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+                "Untag all identities", this,
+                "UNTAG_ALL_PEAKLIST_IDENTITIES");
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+                "Tag all identities", this,
+                "TAG_ALL_PEAKLIST_IDENTITIES");
+        GUIUtils.addMenuItemToSubMenu(peakListPopupMenu, "Identites", 
+                "Remove all tagged identities", this,
+                "REMOVE_ALL_TAGGED_PEAKLIST_IDENTITIES");
+        
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list info", this,
                 "SHOW_PEAKLIST_INFO");
         GUIUtils.addMenuItem(peakListPopupMenu, "Show scatter plot", this,
@@ -306,11 +322,14 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 JoinAlignerGcModule.showNewPeakListVisualizerWindow(peakList);
             }
         }
-        if (command.equals("CLEAR_PEAKLIST_IDENTITIES")) {
+        
+        
+        
+        if (command.equals("CLEAR_ALL_PEAKLIST_IDENTITIES")) {
             PeakList[] selectedPeakLists = tree
                     .getSelectedObjects(PeakList.class);
             for (PeakList peakList : selectedPeakLists) {
-                // Delete identities all rows
+                // Delete identities for all rows
                 for (final PeakListRow row : peakList.getRows()) {
                     for (final PeakIdentity id : row.getPeakIdentities()) {
                         row.removePeakIdentity(id);
@@ -322,6 +341,72 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
                 }
             }            
         }
+        if (command.equals("UNTAG_ALL_PEAKLIST_IDENTITIES")) {
+            PeakList[] selectedPeakLists = tree
+                    .getSelectedObjects(PeakList.class);
+            for (PeakList peakList : selectedPeakLists) {
+                // Delete identities tag for all rows
+                for (final PeakListRow row : peakList.getRows()) {
+                    for (final PeakIdentity id : row.getPeakIdentities()) {
+                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+                            if (row.getPreferredPeakIdentity() instanceof SimplePeakIdentity) {
+//                                row.getPreferredPeakIdentity().getAllProperties().remove(AlignedRowProps.PROPERTY_IS_REF);
+                                ((SimplePeakIdentity)row.getPreferredPeakIdentity()).setPropertyValue(
+                                        AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.FALSE);
+                            }
+                        }
+                    }
+                    // Notify MZmine about the change in the project
+                    // TODO: Get the "project" from the instantiator of this class instead.
+                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+                    project.notifyObjectChanged(row, false);
+                }
+            }            
+        }
+        if (command.equals("TAG_ALL_PEAKLIST_IDENTITIES")) {
+            PeakList[] selectedPeakLists = tree
+                    .getSelectedObjects(PeakList.class);
+            for (PeakList peakList : selectedPeakLists) {
+                // Delete identities tag for all rows
+                for (final PeakListRow row : peakList.getRows()) {
+                    for (final PeakIdentity id : row.getPeakIdentities()) {
+                        //String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                        //if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.FALSE)) {
+                            if (row.getPreferredPeakIdentity() instanceof SimplePeakIdentity) {
+                                ((SimplePeakIdentity)row.getPreferredPeakIdentity()).setPropertyValue(
+                                        AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
+                            }
+                        //}
+                    }
+                    // Notify MZmine about the change in the project
+                    // TODO: Get the "project" from the instantiator of this class instead.
+                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+                    project.notifyObjectChanged(row, false);
+                }
+            }            
+        }
+        if (command.equals("REMOVE_ALL_TAGGED_PEAKLIST_IDENTITIES")) {
+            PeakList[] selectedPeakLists = tree
+                    .getSelectedObjects(PeakList.class);
+            for (PeakList peakList : selectedPeakLists) {
+                // Delete identities tag for all rows
+                for (final PeakListRow row : peakList.getRows()) {
+                    for (final PeakIdentity id : row.getPeakIdentities()) {
+                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+                            row.removePeakIdentity(id);
+                        }
+                    }
+                    // Notify MZmine about the change in the project
+                    // TODO: Get the "project" from the instantiator of this class instead.
+                    MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+                    project.notifyObjectChanged(row, false);
+                }
+            }            
+        }
+        
+        
         
         if (command.equals("SHOW_PEAKLIST_INFO")) {
             PeakList[] selectedPeakLists = tree

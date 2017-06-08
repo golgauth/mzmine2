@@ -19,6 +19,7 @@
 
 package net.sf.mzmine.util;
 
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -35,8 +36,10 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
 import javax.swing.KeyStroke;
 import javax.swing.border.Border;
@@ -199,7 +202,73 @@ public class GUIUtils {
 	    menu.add(item);
 	return item;
     }
+    
+    // GLG added!
+//    public static JMenuItem addMenuItemToSubMenu(Container menu, 
+//            String subMenuText, String itemText,
+//            ActionListener listener) {
+//        return addMenuItemToSubMenu(menu, subMenuText, itemText, listener, null, 0, false);
+//    }
+    public static JMenuItem addMenuItemToSubMenu(Container menu, 
+            String subMenuText, String itemText,
+            ActionListener listener, String actionCommand) {
+        return addMenuItemToSubMenu(menu, subMenuText, itemText, listener, actionCommand, 0, false);
+    }
+//    public static JMenuItem addMenuItemToSubMenu(Container menu, 
+//            String subMenuText, String itemText,
+//            ActionListener listener, int mnemonic) {
+//        return addMenuItemToSubMenu(menu, subMenuText, itemText, listener, null, mnemonic, false);
+//    }
+//    public static JMenuItem addMenuItemToSubMenu(Container menu, 
+//            String subMenuText, String itemText,
+//            ActionListener listener, int mnemonic, boolean setAccelerator) {
+//        return addMenuItemToSubMenu(menu, subMenuText, itemText, listener, null, mnemonic, setAccelerator);
+//    }
+    public static JMenuItem addMenuItemToSubMenu(Container menu, 
+            String subMenuText, String itemText, 
+            ActionListener listener, String actionCommand, int mnemonic,
+            boolean setAccelerator) {
+        
+        JMenuItem item = null;
+                
+        try {
 
+            item = new JMenuItem(itemText);
+            if (listener != null)
+                item.addActionListener(listener);
+            if (actionCommand != null)
+                item.setActionCommand(actionCommand);
+            if (mnemonic > 0)
+                item.setMnemonic(mnemonic);
+            if (setAccelerator)
+                item.setAccelerator(KeyStroke.getKeyStroke(mnemonic,
+                        ActionEvent.CTRL_MASK));
+
+            // Create section not existing already
+            JMenu subMenu = null;
+            int nb_items = ((JPopupMenu) menu).getComponentCount();
+            for (int i = 0; i < nb_items; i++) {
+                Component a_sub_menu = ((JPopupMenu) menu).getComponent(i);
+                if (a_sub_menu instanceof JMenu && ((JMenu) a_sub_menu).getText().equals(subMenuText)) {
+                    subMenu = (JMenu) a_sub_menu;
+                    break;
+                }
+            }
+            if (subMenu == null) {
+                subMenu = new JMenu(subMenuText);
+            }
+
+            if (menu != null && subMenu != null) {
+                subMenu.add(item);
+                menu.add(subMenu);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return item;
+    }
     /**
      * Add a new button to a given component
      * 
