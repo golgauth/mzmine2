@@ -81,7 +81,7 @@ import com.google.common.collect.Range;
 public class CustomJDXSearchTask extends AbstractTask {
 
     // Logger.
-    private Logger logger = Logger.getLogger(this.getClass().getName());
+    private static Logger logger = Logger.getLogger(CustomJDXSearchTask.class.getName());
 
     private final MZmineProject project;
 
@@ -95,9 +95,12 @@ public class CustomJDXSearchTask extends AbstractTask {
     public static final double MIN_SCORE_ABSOLUTE = 0.0;
 
     // Counters.
-    private int finishedItemsTotal;
-    private int finishedItems;
-    private int numItems;
+    //private int finishedItemsTotal;
+    //private int finishedItems;
+    //private int numItems;
+    //-
+    private int progressItemNumberTotal;
+    private int progressItemNumber;
 
     private final PeakList[] peakLists;
     
@@ -143,8 +146,8 @@ public class CustomJDXSearchTask extends AbstractTask {
         this.project = project;
 
         peakLists = lists;
-        numItems = 0;
-        finishedItems = 0;
+        //numItems = 0;
+        //finishedItems = 0;
         currentRow = null;
 
         searchDir = parameters.getParameter(CustomJDXSearchParameters.JDX_DIR).getValue();
@@ -171,7 +174,8 @@ public class CustomJDXSearchTask extends AbstractTask {
     public double getFinishedPercentage() {
 
         //return numItems == 0 ? 0.0 : (double) finishedItems / (double) numItems;
-        return numItems == 0 ? 0.0 : (double) finishedItemsTotal / (double) (finishedItems * numItems * peakLists.length);
+        //return numItems == 0 ? 0.0 : (double) finishedItemsTotal / (double) (finishedItems * numItems * peakLists.length);
+        return(double) progressItemNumber / (double) progressItemNumberTotal;
     }
 
     @Override
@@ -260,8 +264,16 @@ public class CustomJDXSearchTask extends AbstractTask {
             try {
 
                 setStatus(TaskStatus.PROCESSING);
-                finishedItemsTotal = 0;
+                //finishedItemsTotal = 0;
+                
+                //int nb_rows = 0;
+                progressItemNumberTotal = 0;
+                for (int j=0; j< peakLists.length; ++j) {
+                    progressItemNumberTotal += (1 + jdxCompounds.length) * peakLists[j].getNumberOfRows();
+                }
+                //finishedItemsTotal2 = nb_rows + jdxCompounds.length * ;
 
+                
                 final JDXCompound[] findCompounds = jdxCompounds;
 //                final Range[] findRTranges = { rtSearchRangeC1, rtSearchRangeC2 };
 //
@@ -306,13 +318,13 @@ public class CustomJDXSearchTask extends AbstractTask {
                     Arrays.sort(rows, new PeakListRowSorter(SortingProperty.ID, SortingDirection.Ascending));
 
                     // Initialize counters.
-                    numItems = rows.length;
+                    int numItems = rows.length;
 
                     // Keep score for each std component for each peak/row of the current list.
                     Double[][] scoreMatrix = new Double[numItems][1+findCompounds.length]; // +1: Store row id first
 
                     // Process rows.
-                    for (finishedItems = 0; !isCanceled() && finishedItems < numItems; finishedItems++) {
+                    for (int finishedItems = 0; !isCanceled() && finishedItems < numItems; finishedItems++) {
 
                         PeakListRow a_row = rows[finishedItems];
 
@@ -338,7 +350,8 @@ public class CustomJDXSearchTask extends AbstractTask {
                             }
                         }
 
-                        finishedItemsTotal++;
+                        //finishedItemsTotal++;
+                        progressItemNumber++;
                     }
 
                     // Add piaf to the list and display it in results window.
@@ -399,6 +412,8 @@ public class CustomJDXSearchTask extends AbstractTask {
 
                             }
 
+                            ////progressItemNumber += peakList.getNumberOfRows();
+                            
                         }
                         setAllScores(peakList, findCompounds, scoreMatrix);
 
@@ -525,49 +540,66 @@ public class CustomJDXSearchTask extends AbstractTask {
         }
 
         // If identity is available for change, feel free
-        CustomJDXSearchTask.applyIdentity(peaklist, identity, rowId, score, canTagAsRef);
+        //CustomJDXSearchTask.applyIdentity(peaklist, identity, rowId, score, bruteForce, canTagAsRef);
+        for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
+
+            PeakListRow a_pl_row = peaklist.getRows()[i];
+            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, bruteForce, canTagAsRef);
+            progressItemNumber++;
+        }
     }
     /**
      * Apply an identity (type JDX) to a peak list
      * @param peaklist
      * @param peak
      */
-    public static void applyIdentity(PeakList peaklist, JDXCompound identity, int rowId, double score, boolean canTagAsRef) {
+    public static void applyIdentity(PeakList peaklist, JDXCompound identity, 
+            int rowId, double score, boolean bruteForce, boolean canTagAsRef) {
         
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
+
             PeakListRow a_pl_row = peaklist.getRows()[i];
-
-            // Add possible identities to peaks (need to renew for the sake of unicity)
-            JDXCompound unknownComp = JDXCompound.createUnknownCompound();
-            JDXCompound newIdentity = (JDXCompound) identity.clone();
-            // Remove current (make sure we replace current identity by a copy)
-            a_pl_row.removePeakIdentity(identity);
-            // Add clone and use as preferred
-            a_pl_row.addPeakIdentity(newIdentity, false);
-            a_pl_row.addPeakIdentity(unknownComp, false);
-
-            // Set new identity.
-            if (a_pl_row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
-                a_pl_row.setPreferredPeakIdentity(newIdentity);
-                // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
-                if (canTagAsRef) {
-                    newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
-                }
-                // Save score
-                newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
-            }
-            // Erase / reset identity.
-            else if (a_pl_row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
-                //a_pl_row.removePeakIdentity(unknownComp);
-                unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(0.0));
-                a_pl_row.setPreferredPeakIdentity(unknownComp);
-            }
-
-            // Notify MZmine about the change in the project
-            // TODO: Get the "project" from the instantiator of this class instead.
-            MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-            project.notifyObjectChanged(a_pl_row, false);
+            CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, bruteForce, canTagAsRef);
         }
+    }
+    public static void applyRowIdentity(PeakListRow row, JDXCompound identity, 
+            int rowId, double score, boolean bruteForce, boolean canTagAsRef) {
+
+        // Add possible identities to peaks (need to renew for the sake of unicity)
+        JDXCompound unknownComp = JDXCompound.createUnknownCompound();
+        JDXCompound newIdentity = (JDXCompound) identity.clone();
+        // Remove current (make sure we replace current identity by a copy)
+        logger.info("Removed identity: " + identity + " for row: " + row.getID());
+        row.removePeakIdentity(identity);
+        // Add clone and use as preferred
+        row.addPeakIdentity(newIdentity, false);
+        row.addPeakIdentity(unknownComp, false);
+
+        // Set new identity.
+        if (row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
+            row.setPreferredPeakIdentity(newIdentity);
+            logger.info("Set preferred identity: " + newIdentity + " for row: " + row.getID());
+            // Mark as ref compound (for later use in "JoinAlignerTask(GC)")
+            if (canTagAsRef) {
+                newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
+            }
+            // Save score
+            newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
+        }
+        // Erase / reset identity.
+        else if (bruteForce 
+                || row.getPreferredPeakIdentity().getName().equals(newIdentity.getName())) {
+
+            unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(0.0));
+            row.setPreferredPeakIdentity(unknownComp);
+            logger.info("Set preferred identity: " + unknownComp + " for row: " + row.getID());
+        }
+
+        // Notify MZmine about the change in the project
+        // TODO: Get the "project" from the instantiator of this class instead.
+        MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+        project.notifyObjectChanged(row, false);
+
     }
     public static void setAllScores(PeakList peaklist, JDXCompound[] findCompounds, Double[][] scoreMatrix) {
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
