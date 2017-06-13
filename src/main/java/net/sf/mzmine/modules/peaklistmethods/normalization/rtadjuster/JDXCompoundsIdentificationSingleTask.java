@@ -420,8 +420,10 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             dataPoints = row.getBestPeak().getIsotopePattern().getDataPoints();
         else
             dataPoints = apexScan.getDataPoints();
+        //
+        DataPoint dp;
         for (int j=0; j < dataPoints.length; ++j) {
-            DataPoint dp = dataPoints[j];
+            dp = dataPoints[j];
             vec1[(int) Math.round(dp.getMZ())] = dp.getIntensity();
         }
         // Get std compound vector

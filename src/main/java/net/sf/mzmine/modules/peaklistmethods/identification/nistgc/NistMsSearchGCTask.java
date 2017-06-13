@@ -54,7 +54,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sf.mzmine.datamodel.DataPoint;
-import net.sf.mzmine.datamodel.Feature;
 import net.sf.mzmine.datamodel.IonizationType;
 import net.sf.mzmine.datamodel.PeakIdentity;
 import net.sf.mzmine.datamodel.PeakList;
@@ -141,6 +140,9 @@ public class NistMsSearchGCTask extends AbstractTask {
     // Match factor cut-offs.
     private final int minMatchFactor;
     private final int minReverseMatchFactor;
+    
+    private boolean useDetectedMzOnly;
+    private boolean useAsStdCompound;
 
     // Peak matching parameters.
     private final int maxPeaks;
@@ -188,6 +190,10 @@ public class NistMsSearchGCTask extends AbstractTask {
 	minMatchFactor = params.getParameter(MIN_MATCH_FACTOR).getValue();
 	minReverseMatchFactor = params.getParameter(MIN_REVERSE_MATCH_FACTOR)
 		.getValue();
+
+	useDetectedMzOnly = params.getParameter(NistMsSearchGCParameters.useDetectedMzOnly).getValue();
+        useAsStdCompound = params.getParameter(NistMsSearchGCParameters.USE_AS_STD_COMPOUND).getValue();
+
 	rtTolerance = params.getParameter(SPECTRUM_RT_WIDTH).getValue();
 	maxPeaks = params.getParameter(MAX_NUM_PEAKS).getValue();
 	sameIds = params.getParameter(SAME_IDENTITIES).getValue();
@@ -321,7 +327,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 
 			    // Write spectra file.
 			    final File spectraFile = writeSpectraFile(peakList, 
-			            row, neighbours);
+			            row, neighbours, useDetectedMzOnly);
 
 			    // Write locator file.
 			    writeSecondaryLocatorFile(locatorFile2, spectraFile);
@@ -348,10 +354,10 @@ public class NistMsSearchGCTask extends AbstractTask {
 			for (final PeakIdentity identity : identities) {
 
 			    // Copy the identity.
-			    final PeakIdentity id = new SimplePeakIdentity(
-				    (Hashtable<String, String>) identity
-					    .getAllProperties());
-
+                            final PeakIdentity id = new SimplePeakIdentity(
+                                    (Hashtable<String, String>) identity
+                                            .getAllProperties());
+                            
 			    // Best match factor?
 			    final boolean isPreferred;
 			    final int matchFactor = Integer.parseInt(id
@@ -368,6 +374,14 @@ public class NistMsSearchGCTask extends AbstractTask {
 
 			    // Add peak identity.
 			    row.addPeakIdentity(id, isPreferred);
+			    
+			    
+			    // Tag it as ref compound if required
+//                            if (useAsStdCompound) {
+//                                ((SimplePeakIdentity) id).setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
+//                            }
+                            ((SimplePeakIdentity) id).setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, 
+                                    ((useAsStdCompound) ? AlignedRowProps.TRUE : AlignedRowProps.FALSE));
 			}
 
 			// Notify the GUI about the change in the project
@@ -735,7 +749,7 @@ public class NistMsSearchGCTask extends AbstractTask {
      *             if an i/o problem occurs.
      */
     public static File writeSpectraFile(final PeakList peakList, final PeakListRow peakRow,
-	    final Collection<PeakListRow> neighbourRows) throws IOException {
+	    final Collection<PeakListRow> neighbourRows, boolean useDetectedMzOnly) throws IOException {
 
 	final File spectraFile = File.createTempFile(SPECTRA_FILE_PREFIX,
 		SPECTRA_FILE_SUFFIX);
@@ -766,12 +780,20 @@ public class NistMsSearchGCTask extends AbstractTask {
 //		writer.newLine();
 //	    }
 
-            Scan scan = peakRow.getRawDataFiles()[0].getScan(peakRow.getBestPeak().getRepresentativeScanNumber());
+            Scan apexScan = peakRow.getRawDataFiles()[0].getScan(peakRow.getBestPeak().getRepresentativeScanNumber());
 
-            writer.write("Num Peaks: " + scan.getDataPoints().length);
+            DataPoint[] dataPoints;
+            if (useDetectedMzOnly) {
+                dataPoints = peakRow.getBestPeak().getIsotopePattern().getDataPoints();
+            } else {
+                dataPoints = apexScan.getDataPoints();
+            }
+            writer.write("Num Peaks: " + dataPoints.length);
             writer.newLine();
-
-	    for (final DataPoint dp : scan.getDataPoints()) {
+            //
+            DataPoint dp;
+            for (int j=0; j < dataPoints.length; ++j) {
+                dp = dataPoints[j];
 	        writer.write(dp.getMZ() + "\t" + dp.getIntensity());
 	        writer.newLine();
 	    }

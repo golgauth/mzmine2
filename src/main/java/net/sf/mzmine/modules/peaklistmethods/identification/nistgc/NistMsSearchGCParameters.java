@@ -105,6 +105,18 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
 	    "The minimum reverse match factor (0 .. 1000) that search hits must have",
 	    500, 0, 1000);
 
+    //
+    public static final BooleanParameter useDetectedMzOnly = new BooleanParameter(
+            "Use DETECTED m/z only",
+            "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
+            false);
+
+    public static final BooleanParameter USE_AS_STD_COMPOUND = new BooleanParameter(
+            "Tag as standard compound",
+            " Use as reference/standard compound for later use in 'Join Aligner GC'.", false);
+
+    
+    
     // NIST MS Search executable.
     private static final String NIST_MS_SEARCH_EXE = "nistms$.exe";
 
@@ -114,7 +126,9 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
     public NistMsSearchGCParameters() {
 	super(new Parameter[] { PEAK_LISTS, NIST_MS_SEARCH_DIR,
 		IONIZATION_METHOD, SPECTRUM_RT_WIDTH, MAX_NUM_PEAKS,
-		SAME_IDENTITIES, MIN_MATCH_FACTOR, MIN_REVERSE_MATCH_FACTOR });
+		SAME_IDENTITIES, MIN_MATCH_FACTOR, MIN_REVERSE_MATCH_FACTOR,
+		useDetectedMzOnly, USE_AS_STD_COMPOUND
+		});
     }
 
     @Override
