@@ -372,6 +372,10 @@ public class CustomJDXSearchTask extends AbstractTask {
                             }
                         }
                         
+                        if (!isCanceled()) {
+                            return;
+                        }
+                        
                         Vector<Object> objects = new Vector<Object>(/*columnNames.length*/);
                         for (int i=0; i < findCompounds.length; ++i) {
 
@@ -553,6 +557,10 @@ public class CustomJDXSearchTask extends AbstractTask {
         //CustomJDXSearchTask.applyIdentity(peaklist, identity, rowId, score, bruteForce, canTagAsRef);
         for (int i=0; i < peaklist.getNumberOfRows(); ++i) {
 
+            if (isCanceled()) {
+                return;
+            }
+            
             PeakListRow a_pl_row = peaklist.getRows()[i];
             CustomJDXSearchTask.applyRowIdentity(a_pl_row, identity, rowId, score, /*bruteForce,*/ canTagAsRef);
             progressItemNumber++;
@@ -579,7 +587,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         JDXCompound unknownComp = JDXCompound.createUnknownCompound();
         JDXCompound newIdentity = (JDXCompound) identity.clone();
         // Remove current (make sure we replace current identity by a copy)
-        logger.info("Removed identity: " + identity + " for row: " + row.getID());
+        ////logger.info("Removed identity: " + identity + " for row: " + row.getID());
         row.removePeakIdentity(identity);
         // Add clone and use as preferred
         row.addPeakIdentity(newIdentity, false);
@@ -589,12 +597,13 @@ public class CustomJDXSearchTask extends AbstractTask {
         if (canTagAsRef) {
             newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
         }
+//        newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.TRUE);
         unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_IS_REF, AlignedRowProps.FALSE);
 
         // Set new identity.
         if (row.getID() == rowId && score > MIN_SCORE_ABSOLUTE) {
             row.setPreferredPeakIdentity(newIdentity);
-            logger.info("Set preferred identity: " + newIdentity + " for row: " + row.getID());
+            ////logger.info("Set preferred identity: " + newIdentity + " for row: " + row.getID());
             // Save score
             newIdentity.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(score));
         }
@@ -605,7 +614,7 @@ public class CustomJDXSearchTask extends AbstractTask {
 
             unknownComp.setPropertyValue(AlignedRowProps.PROPERTY_ID_SCORE, String.valueOf(0.0));
             row.setPreferredPeakIdentity(unknownComp);
-            logger.info("Set preferred identity: " + unknownComp + " for row: " + row.getID());
+            ////logger.info("Set preferred identity: " + unknownComp + " for row: " + row.getID());
         }
 
         // Notify MZmine about the change in the project
