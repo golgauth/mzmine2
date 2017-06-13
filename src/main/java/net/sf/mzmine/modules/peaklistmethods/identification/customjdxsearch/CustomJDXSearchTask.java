@@ -372,7 +372,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                             }
                         }
                         
-                        if (!isCanceled()) {
+                        if (isCanceled()) {
                             return;
                         }
                         
