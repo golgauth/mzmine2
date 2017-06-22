@@ -243,8 +243,8 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
                 }
 
                 apexScan = refRDF.getScan(alignedRow.getPeak(rdf).getRepresentativeScanNumber());
-                if (useDetectedMzOnly && peakListRow.getBestPeak().getIsotopePattern() != null)
-                    dataPoints = peakListRow.getBestPeak().getIsotopePattern().getDataPoints();//apexScan.getDataPoints();
+                if (useDetectedMzOnly && alignedRow.getBestPeak().getIsotopePattern() != null)
+                    dataPoints = alignedRow.getBestPeak().getIsotopePattern().getDataPoints();//apexScan.getDataPoints();
                 else
                     dataPoints = apexScan.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
@@ -346,6 +346,15 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
         score = (chemSimScore * mzWeight)
                 + ((1.0d - rtDiff / rtMaxDiff) * rtWeight);
                 //+ idSimScore * idWeight;
+        
+//        if (Math.abs(score - 1.0d) < 0.00000001) {
+//            System.out.println("Found quite a heavy chem. sim. between: " + peakListRow.getBestPeak() + " and " + alignedRow.getBestPeak());
+//            System.out.println("\t chemSimScore => " + chemSimScore);
+//            System.out.println("\t mzWeight => " + mzWeight);
+//            System.out.println("\t rtDiff => " + rtDiff);
+//            System.out.println("\t rtMaxDiff => " + rtMaxDiff);
+//            System.out.println("\t rtWeight => " + rtWeight);
+//        }
 
 //        // If same identity 
 //        if (JDXCompound.isKnownIdentity(alignedRow.getPreferredPeakIdentity()) 
