@@ -260,10 +260,14 @@ public class JoinAlignerGCTask extends AbstractTask {
         logger.info("Running join aligner");
 
         // Remember how many rows we need to process. Each row will be processed
-        // twice, first for score calculation, second for actual alignment.
+        // /*twice*/ three times:
+        //      - first for score calculation
+        //      - second for...
+        //      - third for actual alignment
         for (int i = 0; i < peakLists.length; i++) {
-            totalRows += peakLists[i].getNumberOfRows() * 2;
+            totalRows += peakLists[i].getNumberOfRows();
         }
+        totalRows *= 3;
 
         // Collect all data files
         Vector<RawDataFile> allDataFiles = new Vector<RawDataFile>();
@@ -623,9 +627,10 @@ public class JoinAlignerGCTask extends AbstractTask {
                 PeakListRow row = allRows[j];
 
                 // Each name HAS to be unique
-                //names[x] = newIds[i] + "_" + j + "^" + rtFormat.format(row.getBestPeak().getRT());
-                names[x] = "[" + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true).getName() 
-                        + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+                RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
+                // Avoid exception if ancestor RDFs have been removed...
+                String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
+                names[x] = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
                 row_names_dict.put(names[x], row);
                 rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
 
@@ -1801,15 +1806,44 @@ public class JoinAlignerGCTask extends AbstractTask {
         public Cluster performClustering(double[][] distances,
                 String[] clusterNames, LinkageStrategy linkageStrategy)
         {
-
+            
+            long startTime, endTime;
+            float seconds;
+            
+            startTime = System.currentTimeMillis();
+            //
             checkArguments(distances, clusterNames, linkageStrategy);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> checkArguments (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+
+            
             /* Setup model */
+            startTime = System.currentTimeMillis();
+            //
             List<Cluster> clusters = createClusters(clusterNames);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> createClusters (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            
+            startTime = System.currentTimeMillis();
+            //
             DistanceMap linkages = createLinkages(distances, clusters);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> createLinkages (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
 
             /* Process */
+            startTime = System.currentTimeMillis();
+            //
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
-
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> HierarchyBuilder (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
 
             /** --------------------------------------------------------------*/
             // GLG HACK: update progress bar
@@ -1818,7 +1852,13 @@ public class JoinAlignerGCTask extends AbstractTask {
             //
             while (!builder.isTreeComplete())
             {
+                startTime = System.currentTimeMillis();
+                //
                 builder.agglomerate(linkageStrategy);
+                //
+                endTime = System.currentTimeMillis();
+                seconds = (endTime - startTime);
+                System.out.println("> builder.agglomerate (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
 
                 // GLG HACK: update progress bar
                 processedRows = progress_base + nb_leafs - builder.getClusters().size() + 1;
