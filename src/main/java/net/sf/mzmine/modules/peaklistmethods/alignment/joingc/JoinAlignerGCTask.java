@@ -88,11 +88,24 @@ import com.apporiented.algorithm.clustering.LinkageStrategy;
 import com.apporiented.algorithm.clustering.SingleLinkageStrategy;
 import com.apporiented.algorithm.clustering.WeightedLinkageStrategy;
 import com.apporiented.algorithm.clustering.visualization.DendrogramPanel;
+//import com.carrotsearch.sizeof.RamUsageEstimator;
 import com.google.common.collect.Range;
 import com.lowagie.text.Document;
 import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.PdfWriter;
+
+
+
+//import de.lmu.ifi.dbs.elki.algorithm.AbstractDistanceBasedAlgorithm;
+//import de.lmu.ifi.dbs.elki.data.type.TypeInformation;
+//import de.lmu.ifi.dbs.elki.distance.distancefunction.DistanceFunction;
+//import de.lmu.ifi.dbs.elki.distance.distancevalue.NumberDistance;
+//import de.lmu.ifi.dbs.elki.logging.Logging;
+//import de.lmu.ifi.dbs.elki.result.Result;
+
+
+
 
 public class JoinAlignerGCTask extends AbstractTask {
 
@@ -860,13 +873,16 @@ public class JoinAlignerGCTask extends AbstractTask {
         //          System.out.println(names[i]);
         //      for (int i=0; i<distances.length; i++)
         //          System.out.println(Arrays.toString(distances[i]));
+        
         Cluster clust = alg.performClustering(distances, names, linkageStrategy);
+
         //clust.toConsole(0);
 
         System.out.println("Done clustering");
 
         double max_dist = maximumScore; //Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) / ((RangeUtils.rangeLength(rtRange) / 2.0));
         List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length, max_dist);
+        ////////******List<Cluster> validatedClusters = alg.performFlatClustering(distances, names, linkageStrategy, maximumScore - minScore);
         //
         if (DEBUG) {
             for (Cluster c: validatedClusters) {
@@ -927,24 +943,24 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         //----------------------------------------------------------------------
 
-        try {
-            if (exportDendrogramAsPng && dendrogramPngFilename != null) {          
-                saveDendrogramAsPng(clust, dendrogramPngFilename);
-            } else {
-                
-            }
-        } catch (Exception e) {
-            logger.info("! saveDendrogramAsPng failed...");
-            e.printStackTrace();
-        }
-        try {
-            if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {          
-                saveDendrogramAsTxt(clust, dendrogramTxtFilename);
-            }
-        } catch (Exception e) {
-            logger.info("! saveDendrogramAsTxt failed...");
-            e.printStackTrace();
-        }
+//        try {
+//            if (exportDendrogramAsPng && dendrogramPngFilename != null) {          
+//                saveDendrogramAsPng(clust, dendrogramPngFilename);
+//            } else {
+//                
+//            }
+//        } catch (Exception e) {
+//            logger.info("! saveDendrogramAsPng failed...");
+//            e.printStackTrace();
+//        }
+//        try {
+//            if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {          
+//                saveDendrogramAsTxt(clust, dendrogramTxtFilename);
+//            }
+//        } catch (Exception e) {
+//            logger.info("! saveDendrogramAsTxt failed...");
+//            e.printStackTrace();
+//        }
 
         //----------------------------------------------------------------------
 
@@ -1835,6 +1851,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             endTime = System.currentTimeMillis();
             seconds = (endTime - startTime);
             System.out.println("> createLinkages (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            System.out.println("> Nb Linkages : " + linkages.list().size());
 
             /* Process */
             startTime = System.currentTimeMillis();
@@ -1873,17 +1890,57 @@ public class JoinAlignerGCTask extends AbstractTask {
                 String[] clusterNames, LinkageStrategy linkageStrategy, Double threshold)
                 {
 
+            long startTime, endTime;
+            float seconds;
+
+            startTime = System.currentTimeMillis();
+            //
             checkArguments(distances, clusterNames, linkageStrategy);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> checkArguments (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+
+
             /* Setup model */
+            startTime = System.currentTimeMillis();
+            //
             List<Cluster> clusters = createClusters(clusterNames);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> createClusters (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+
+            startTime = System.currentTimeMillis();
+            //
             DistanceMap linkages = createLinkages(distances, clusters);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> createLinkages (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            System.out.println("> Nb Linkages : " + linkages.list().size());
 
             /* Process */
+            startTime = System.currentTimeMillis();
+            //
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> HierarchyBuilder (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+
+            startTime = System.currentTimeMillis();
+            //
             /** --------------------------------------------------------------*/
             // GLG HACK: update progress bar not possible here, unless we modify 'HierarchyBuilder.flatAgg()'
-            return builder.flatAgg(linkageStrategy, threshold);
+            List<Cluster> aggClusters = builder.flatAgg(linkageStrategy, threshold);
             /** --------------------------------------------------------------*/
+            //
+            endTime = System.currentTimeMillis();
+            seconds = (endTime - startTime);
+            System.out.println("> builder.flatAgg (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            
+            return aggClusters;
                 }
 
         private void checkArguments(double[][] distances, String[] clusterNames,
@@ -1950,19 +2007,23 @@ public class JoinAlignerGCTask extends AbstractTask {
         private DistanceMap createLinkages(double[][] distances,
                 List<Cluster> clusters)
         {
+            
             DistanceMap linkages = new DistanceMap();
             for (int col = 0; col < clusters.size(); col++)
             {
                 for (int row = col + 1; row < clusters.size(); row++)
                 {
-                    ClusterPair link = new ClusterPair();
+                    ClusterPair link = new ClusterPair(); //1
                     Cluster lCluster = clusters.get(col);
                     Cluster rCluster = clusters.get(row);
                     link.setLinkageDistance(distances[col][row]);
                     link.setlCluster(lCluster);
                     link.setrCluster(rCluster);
                     linkages.add(link);
+
+                    link = null; //2
                 }
+//                System.gc(); //3
             }
             return linkages;
         }
@@ -1991,4 +2052,25 @@ public class JoinAlignerGCTask extends AbstractTask {
         }
     }
 
+    
+//    public class NaiveAgglomerativeHierarchicalClustering<O, D extends NumberDistance<D, ?>>
+//    extends AbstractDistanceBasedAlgorithm<O, D, Result> {
+//
+//    protected NaiveAgglomerativeHierarchicalClustering(DistanceFunction<? super O, D> distanceFunction) {
+//      super(distanceFunction);
+//      // TODO Auto-generated constructor stub
+//    }
+//
+//    @Override
+//    public TypeInformation[] getInputTypeRestriction() {
+//      // TODO Auto-generated method stub
+//      return null;
+//    }
+//
+//    @Override
+//    protected Logging getLogger() {
+//      // TODO Auto-generated method stub
+//      return null;
+//    }
+//  }
 }
