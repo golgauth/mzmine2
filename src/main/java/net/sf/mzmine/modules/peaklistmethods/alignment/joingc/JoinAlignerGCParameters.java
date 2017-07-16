@@ -35,6 +35,13 @@ import net.sf.mzmine.parameters.parametertypes.tolerances.RTToleranceParameter;
 
 public class JoinAlignerGCParameters extends SimpleParameterSet {
 
+
+    // Clustering method [0:RAM buggy but cool, 1: OK but poor parser, 2: Good but too many dependencies and may be less comsuming]
+    static int CLUST_METHOD = 1;
+
+    
+	
+	
     public static final PeakListsParameter peakLists = new PeakListsParameter();
 
     public static final StringParameter peakListName = new StringParameter(
@@ -106,6 +113,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             "Ignored if \"Use RT recalibration\" is unchecked. Maximum allowed difference between two RT values after RT recalibration");
     
     
+    // if CLUST_METHOD == 0 !!!
     public static final BooleanParameter exportDendrogramPng = new BooleanParameter(
             "Export dendrogram as PNG",
             "If checked, exports the clustering resulting dendrogram to the given PNG file.",
@@ -127,6 +135,17 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
                     + " If the file already exists, it will be overwritten.",
             "txt");
 
+    // if CLUST_METHOD >= 1 !!!
+    public static final BooleanParameter exportDendrogramNewickTxt = new BooleanParameter(
+            "Export dendrogram as Newick TXT",
+            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
+            false);
+    public static final FileNameParameter dendrogramNewickTxtFilename = new FileNameParameter(
+            "Dendrogram Newick output text filename",
+            " Requires \"Export dendrogram as Newick TXT\" checked."
+                    + " Name of the resulting TXT file to write the clustering resulting dendrogram to."
+                    + " If the file already exists, it will be overwritten.",
+            "txt");
     
     //***
     
@@ -146,27 +165,50 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     **/
     
     
-    
+    static private Parameter[] getParameters(int clust_method) {
+    	
+    	if (clust_method == 0) {
+    		return new Parameter[] { peakLists, 
+        			useOldestRDFAncestor, 
+        			/*comparisonOrder,*/
+        			linkageStartegyType,  peakListName, 
+        			MZTolerance, MZWeight,
+        			RTTolerance, RTWeight,
+        			minScore,
+        			//		IDWeight,
+        			useApex, useKnownCompoundsAsRef, 
+        			useDetectedMzOnly,
+        			RTToleranceAfter, 
+        			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
+        			
+        			// Removed: used only for CLUST_METHOD == 0
+        			exportDendrogramPng, dendrogramPngFilename,
+        			exportDendrogramTxt, dendrogramTxtFilename,
+        	};
+    	} else {
+    		return new Parameter[] { peakLists, 
+        			useOldestRDFAncestor, 
+        			/*comparisonOrder,*/
+        			linkageStartegyType,  peakListName, 
+        			MZTolerance, MZWeight,
+        			RTTolerance, RTWeight,
+        			minScore,
+        			//		IDWeight,
+        			useApex, useKnownCompoundsAsRef, 
+        			useDetectedMzOnly,
+        			RTToleranceAfter, 
+        			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
+        			
+        			// Removed: used only for CLUST_METHOD == 0
+        			exportDendrogramNewickTxt, dendrogramNewickTxtFilename
+        	};
+    	}
+    }
     
 
     // Since clustering is now order independent, option removed!
     public JoinAlignerGCParameters() {
-	super(new Parameter[] { peakLists, 
-	        useOldestRDFAncestor, 
-	        /*comparisonOrder,*/
-	        linkageStartegyType,  peakListName, 
-	        MZTolerance, MZWeight,
-		RTTolerance, RTWeight,
-		minScore,
-//		IDWeight,
-		useApex, useKnownCompoundsAsRef, 
-		useDetectedMzOnly,
-		RTToleranceAfter, 
-		/*SameChargeRequired, SameIDRequired,
-		compareIsotopePattern*/ 
-                exportDendrogramPng, dendrogramPngFilename,
-                exportDendrogramTxt, dendrogramTxtFilename,
-		});
+    	super(getParameters(CLUST_METHOD));
     }
 
 }

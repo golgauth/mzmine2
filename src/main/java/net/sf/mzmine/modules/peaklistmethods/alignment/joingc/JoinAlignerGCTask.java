@@ -24,11 +24,16 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
+import java.math.BigInteger;
 import java.text.Format;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,9 +49,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 import org.apache.commons.collections.CollectionUtils;
 import net.sf.mzmine.datamodel.Feature;
@@ -61,6 +69,11 @@ import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HierarClusterer;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.Tree;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeNode;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeParser;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.ParameterSet;
@@ -74,6 +87,7 @@ import net.sf.mzmine.util.PeakUtils;
 import net.sf.mzmine.util.RangeUtils;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
+import weka.gui.hierarchyvisualizer.HierarchyVisualizer;
 
 import com.apporiented.algorithm.clustering.AverageLinkageStrategy;
 import com.apporiented.algorithm.clustering.Cluster;
@@ -88,6 +102,7 @@ import com.apporiented.algorithm.clustering.LinkageStrategy;
 import com.apporiented.algorithm.clustering.SingleLinkageStrategy;
 import com.apporiented.algorithm.clustering.WeightedLinkageStrategy;
 import com.apporiented.algorithm.clustering.visualization.DendrogramPanel;
+import com.carrotsearch.sizeof.RamUsageEstimator;
 //import com.carrotsearch.sizeof.RamUsageEstimator;
 import com.google.common.collect.Range;
 import com.lowagie.text.Document;
@@ -95,9 +110,14 @@ import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.PdfWriter;
 
+import jebl.evolution.graphs.Node;
+import jebl.evolution.io.ImportException;
+import jebl.evolution.io.NewickImporter;
+import jebl.evolution.trees.RootedTree;
 
 
-//import de.lmu.ifi.dbs.elki.algorithm.AbstractDistanceBasedAlgorithm;
+
+//import de.lmu.ifi.dbs.elki.algorithm.DistanceBasedAlgorithm;
 //import de.lmu.ifi.dbs.elki.data.type.TypeInformation;
 //import de.lmu.ifi.dbs.elki.distance.distancefunction.DistanceFunction;
 //import de.lmu.ifi.dbs.elki.distance.distancevalue.NumberDistance;
@@ -136,9 +156,11 @@ public class JoinAlignerGCTask extends AbstractTask {
     private RTTolerance rtToleranceAfter;
 
     private boolean exportDendrogramAsPng;
-    private File dendrogramTxtFilename;
-    private boolean exportDendrogramAsTxt;
     private File dendrogramPngFilename;
+    private boolean exportDendrogramAsTxt;
+    private File dendrogramTxtFilename;
+    private boolean exportDendrogramNewickTxt;
+    private File dendrogramNewickTxtFilename;
 
 
     /** GLG HACK: temporary removed for clarity
@@ -161,7 +183,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     private static final boolean DEBUG = false;
 
-
+    
 
     JoinAlignerGCTask(MZmineProject project, ParameterSet parameters) {
 
@@ -226,15 +248,22 @@ public class JoinAlignerGCTask extends AbstractTask {
                 JoinAlignerParameters.compareIsotopePattern).getValue();
          **/
 
-        exportDendrogramAsPng = parameters.getParameter(
-                JoinAlignerGCParameters.exportDendrogramPng).getValue();
-        dendrogramPngFilename = parameters.getParameter(
-                JoinAlignerGCParameters.dendrogramPngFilename).getValue();
-        exportDendrogramAsTxt = parameters.getParameter(
-                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
-        dendrogramTxtFilename = parameters.getParameter(
-                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
-
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
+	        exportDendrogramAsPng = parameters.getParameter(
+	                JoinAlignerGCParameters.exportDendrogramPng).getValue();
+	        dendrogramPngFilename = parameters.getParameter(
+	                JoinAlignerGCParameters.dendrogramPngFilename).getValue();
+	        exportDendrogramAsTxt = parameters.getParameter(
+	                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
+	        dendrogramTxtFilename = parameters.getParameter(
+	                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
+        } else {
+        	exportDendrogramNewickTxt = parameters.getParameter(
+        			JoinAlignerGCParameters.exportDendrogramNewickTxt).getValue();
+        	dendrogramNewickTxtFilename = parameters.getParameter(
+        			JoinAlignerGCParameters.dendrogramNewickTxtFilename).getValue();
+        }
+        
         //
         maximumScore = mzWeight + rtWeight;
         veryLongDistance = 10.0d * maximumScore;
@@ -271,17 +300,23 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         setStatus(TaskStatus.PROCESSING);
         logger.info("Running join aligner");
+        
+        
+        long startTime, endTime;
+        float ms;
+        //
+        startTime = System.currentTimeMillis();
+
 
         // Remember how many rows we need to process. Each row will be processed
         // /*twice*/ three times:
         //      - first for score calculation
-        //      - second for...
+        //      - second for creating linkages
         //      - third for actual alignment
         for (int i = 0; i < peakLists.length; i++) {
-            totalRows += peakLists[i].getNumberOfRows();
+            totalRows += peakLists[i].getNumberOfRows() * 3;
         }
-        totalRows *= 3;
-
+        
         // Collect all data files
         Vector<RawDataFile> allDataFiles = new Vector<RawDataFile>();
         for (PeakList peakList : peakLists) {
@@ -610,20 +645,25 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
         double[][] distances;
-        String[] names;
+        String[] short_names;
         int nbPeaks = 0;
         for (int i = 0; i < newIds.length; ++i) {
             PeakList peakList = peakLists[newIds[i]];
             nbPeaks += peakList.getNumberOfRows();
-            System.out.println("> Peaklist '" + peakList.getName() + "' [" + newIds[i] + "] has '" + peakList.getNumberOfRows() + "' rows.");
+            logger.info("> Peaklist '" + peakList.getName() + "' [" + newIds[i] + "] has '" + peakList.getNumberOfRows() + "' rows.");
         }
         distances = new double[nbPeaks][nbPeaks];
-        names = new String[nbPeaks];
+        short_names = new String[nbPeaks];
 
         Map<String, PeakListRow> row_names_dict = new HashMap<>();
+        List<PeakListRow> full_rows_list = new ArrayList<>();
+        Map<String, String> dendro_names_dict = new HashMap<>();
         List<String> rows_list = new ArrayList<>();
 
         int x = 0;
+        //BigInteger short_names_unid = BigInteger.ZERO;
+        long short_names_unid = 0;
+        String long_name;
         for (int i = 0; i < newIds.length; ++i) {
 
 
@@ -640,11 +680,20 @@ public class JoinAlignerGCTask extends AbstractTask {
                 PeakListRow row = allRows[j];
 
                 // Each name HAS to be unique
+                //short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+                short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+                
+                // Produce human readable names
                 RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
                 // Avoid exception if ancestor RDFs have been removed...
                 String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
-                names[x] = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-                row_names_dict.put(names[x], row);
+                long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+                dendro_names_dict.put(short_names[x], long_name);
+                //short_names_unid.add(BigInteger.ONE);
+                short_names_unid++;
+                
+                row_names_dict.put(short_names[x], row);
+                full_rows_list.add(row);
                 rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
 
 
@@ -670,6 +719,10 @@ public class JoinAlignerGCTask extends AbstractTask {
                 //////List<PeakListRow> candidateRows = new ArrayList<>();
                 int y = 0;
                 for (int k = 0; k < newIds.length; ++k) {
+
+                    if (isCanceled())
+                        return;
+
                     PeakList k_peakList = peakLists[newIds[k]];
                     PeakListRow k_allRows[] = k_peakList.getRows();
 
@@ -841,12 +894,12 @@ public class JoinAlignerGCTask extends AbstractTask {
 
                     if (i == 0)
                         for (int j = 0; j < distances[i].length; j++) {
-                            writer.write(names[j] + "\t");
+                            writer.write(short_names[j] + "\t");
                         }
 
                     for (int j = 0; j < distances[i].length; j++) {
                         if (j == 0)
-                            writer.write(names[i] + "\t");
+                            writer.write(short_names[i] + "\t");
                         writer.write(rtFormat.format(distances[i][j]) + "\t");
                     }
                     writer.write("\n");
@@ -864,276 +917,256 @@ public class JoinAlignerGCTask extends AbstractTask {
                 return;
             }
         }
-
-
-        ClusteringAlgorithm alg = new DefaultClusteringAlgorithmWithProgress(); //DefaultClusteringAlgorithm();
-        //      System.out.println(Arrays.toString(names));
-        //      System.out.println(Arrays.deepToString(distances));
-        //      for (int i=0; i<names.length; i++)
-        //          System.out.println(names[i]);
-        //      for (int i=0; i<distances.length; i++)
-        //          System.out.println(Arrays.toString(distances[i]));
         
-        Cluster clust = alg.performClustering(distances, names, linkageStrategy);
+        
+        
+        
+        //////
+    	double max_dist = maximumScore; //Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) / ((RangeUtils.rangeLength(rtRange) / 2.0));
+        
+    	//---
+        List<Cluster> validatedClusters_0 = null;
+        List<Integer> validatedClusters_1 = null;
+        List<Node> validatedClusters_2 = null;
+        // ---
+        Cluster clust = null;
+    	Tree tree_1 = null;
+		jebl.evolution.trees.Tree tree_2 = null;
+		// ---
+        ClusteringResult clusteringResult = null;
+        String newickCluster_clean = null;
 
-        //clust.toConsole(0);
+        // OLD (RAM killer) way!
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {    
 
-        System.out.println("Done clustering");
+        	ClusteringAlgorithm alg = new DefaultClusteringAlgorithmWithProgress(); //DefaultClusteringAlgorithm();        
+        	clust = alg.performClustering(distances, short_names, linkageStrategy);
 
-        double max_dist = maximumScore; //Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) / ((RangeUtils.rangeLength(rtRange) / 2.0));
-        List<Cluster> validatedClusters = getValidatedClusters(clust, newIds.length, max_dist);
-        ////////******List<Cluster> validatedClusters = alg.performFlatClustering(distances, names, linkageStrategy, maximumScore - minScore);
-        //
-        if (DEBUG) {
-            for (Cluster c: validatedClusters) {
-                //System.out.println(c.getName() + " : [" + c.getLeafNames() + "]");
-                System.out.println();
-                c.toConsole(0);
-            }
+        	System.out.println("Done clustering");
+
+        	if (isCanceled())
+        		return;
+
+         	List<Cluster> validatedClusters = getValidatedClusters_0(clust, newIds.length, max_dist);
         }
+        // WEKA way!
+        else {
 
-        // VERIF
-        if (DEBUG) {
-//            //
-//            int missing1 = 0;
-//            for (Cluster c: getClusterLeafs(clust)) {
-//                String name = c.getName();//"[" + DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true).getName() 
-//                        //+ "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-//                if (!row_names_dict.keySet().contains(name))
-//                    missing1++;
-//            }
-//            int missing2 = 0;
-//            for (Cluster c: validatedClusters) {
-//            
-//                for (String name: c.getLeafNames()) {
-//                
-//                    if (!row_names_dict.keySet().contains(name))
-//                        missing2++;
-//                }
-//            }
-//            //System.out.println(Arrays.toString(getClusterLeafNames(clust).toArray()));
-//            int missing3 = 0;
-//            for (String name: row_names_dict.keySet()) {
-//            
-//    //            String name = "[" + DataFileUtils.getAncestorDataFile(project, row.getRawDataFiles()[0], true).getName() 
-//    //                    + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-//                //System.out.println("> Name: " + name);
-//                if (!getClusterLeafNames(clust).contains(name))
-//                    missing3++;
-//            }
-//            int missing4 = 0;
-//            for (String name: row_names_dict.keySet()) {
-//            
-//    //            String name = "[" + DataFileUtils.getAncestorDataFile(project, row.getRawDataFiles()[0], true).getName() 
-//    //                    + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-//    
-//                boolean found_in_v_clusters = false;
-//                for (Cluster c: validatedClusters) {
-//                    for (String n: getClusterLeafNames(c)) {
-//                        if (n.equals(name)) {
-//                            found_in_v_clusters = true;
-//                        }
-//                    }
-//                }
-//                if (!found_in_v_clusters)
-//                    missing4++;
-//            }
-//            System.out.println("Missing summary: " + missing1 + " | " + missing2 + " | " + missing3 + " | " + missing4);
+        	// WEKA hierarchical clustering
+        	HierarClusterer hierarClusterer = new HierarClusterer(distances);
+
+
+        	long startTime2, endTime2;
+        	float ms2;
+        	//
+        	startTime2 = System.currentTimeMillis();
+        	//
+        	clusteringResult = hierarClusterer.performClustering();
+        	//
+        	endTime2 = System.currentTimeMillis();
+        	ms2 = (endTime2 - startTime2);
+        	System.out.println("Done clustering: " + clusteringResult);
+
+        	System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+
+        	if (isCanceled())
+        		return;
+
+ 
+        	// Getting the result of the clustering in Newick format
+        	String newickCluster = clusteringResult.getHiearchicalCluster();
+
+
+        	//////
+
+
+        	// 1st parsing method
+        	if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+        		
+	        	int current_depth = 0;
+	
+	        	// Make string really Newick standard
+	        	newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+	
+	
+	        	//void setup() {
+	        	BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+	        	//      BufferedReader r = null;
+	        	//		try {
+	        	//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
+	        	//		} catch (Exception e) {
+	        	//			// TODO Auto-generated catch block
+	        	//			e.printStackTrace();
+	        	//		}
+	        	//        BufferedReader r = null;
+	        	//		try {
+	        	//			r = new BufferedReader(new FileReader(nwk_ok));
+	        	//		} catch (FileNotFoundException e) {
+	        	//			// TODO Auto-generated catch block
+	        	//			e.printStackTrace();
+	        	//		}
+	        	if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+
+	        		TreeParser tp = new TreeParser(r);
+	        		tree_1 = tp.tokenize(1, "tree", null);
+	        		int tree_height = tree_1.getHeight();
+	        		System.out.println("# Largest tree height is: " + tree_height);
+	        		//
+	        		System.out.println("####" + recursive_print(tree_1, 0, 0));
+	        		//}
+
+	        		//            TreeNode rootNode = tree.getRoot();
+	        		//            //nodeLengthsToHeights(tree, rootNode, rootNode.getWeight());
+	        		//            nodeHeightsToLengths(tree, rootNode, rootNode.getWeight());
+	        		//            //
+	        		//            System.out.println("####" + recursive_print(tree, 0, 0));
+
+	        		//        void recursive_print (int currkey, int currdepth) {
+	        		//            TreeNode currNode = treeoflife.getNodeByKey(currkey);
+	        		//            int numChildren = currNode.numberChildren();
+	        		//            for (int i = 0; i < numChildren; i++) {
+	        		//                int childkey = currNode.getChild(i).key;
+	        		//                TreeNode childnode = treeoflife.getNodeByKey(childkey);
+	        		//                System.out.println("child name is: " + childnode.getName()
+	        		//                                     + " depth is: " + currdepth);
+	        		//                recursive_print(childkey, currdepth+1);
+	        		//            }
+	        		//        }
+
+	        	// 2nd parsing method
+	        	} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+
+	        		// Parse Newick formatted string
+	        		BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
+
+	        		NewickImporter importer = new NewickImporter(r2, true);
+
+	        		try {
+	        			while (importer.hasTree()) {
+	        				tree_2 = importer.importNextTree();
+	        			}
+	        		} catch (IOException | ImportException e) {
+	        			// TODO Auto-generated catch block
+	        			e.printStackTrace();
+	        		}
+
+	        	}
+        	
+        	} 
         }
+            
+        ////// Arrange row clustered list with method 0,1,2
+    	List<List<PeakListRow>> clustersList = new ArrayList<>();
+    	//
+    	int finalNbPeaks = 0;
+    	Set<String> leaf_names = new HashSet<>();
+       
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
+        	//List<Cluster> validatedClusters = getValidatedClusters(clusteringResult, newIds.length, max_dist);
+        	//...
+ 
 
-        //----------------------------------------------------------------------
+        	for (Cluster c: validatedClusters_0) {
 
-//        try {
-//            if (exportDendrogramAsPng && dendrogramPngFilename != null) {          
-//                saveDendrogramAsPng(clust, dendrogramPngFilename);
-//            } else {
-//                
-//            }
-//        } catch (Exception e) {
-//            logger.info("! saveDendrogramAsPng failed...");
-//            e.printStackTrace();
-//        }
-//        try {
-//            if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {          
-//                saveDendrogramAsTxt(clust, dendrogramTxtFilename);
-//            }
-//        } catch (Exception e) {
-//            logger.info("! saveDendrogramAsTxt failed...");
-//            e.printStackTrace();
-//        }
+        		if (isCanceled())
+        			return;
 
-        //----------------------------------------------------------------------
+        		List<Cluster> c_leafs = getClusterLeafs_0(c);
+        		List<PeakListRow> rows_cluster = new ArrayList<>();
+        		RawDataFile rdf = null;
+        		for (Cluster l: c_leafs) {
+        			// Recover related PeakListRow
+        			rows_cluster.add(row_names_dict.get(l.getName()));
+        			leaf_names.add(l.getName());
 
+        		}
+        		clustersList.add(rows_cluster);
+        		finalNbPeaks += rows_cluster.size();
+        	}
+        }
+        else if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+        	
+        	tot = 0;
+        	tot2 = 0;
+	            
+        	List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist);
 
-
-        // Create a table of mappings for best scores
-        Hashtable<PeakListRow, PeakListRow> alignmentMapping = new Hashtable<PeakListRow, PeakListRow>();
-
-        //        // Iterate scores by descending order
-        //        Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
-        //        //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
-        //        while (scoreIterator.hasNext()) {
-        //
-        //            RowVsRowScoreGC score = scoreIterator.next();
-        //
-        //            // Check if the row is already mapped
-        //            if (alignmentMapping.containsKey(score.getPeakListRow()))
-        //                continue;
-        //
-        //            // Check if the aligned row is already filled
-        //            if (alignmentMapping.containsValue(score.getAlignedRow()))
-        //                continue;
-        //
-        //            alignmentMapping.put(score.getPeakListRow(),
-        //                    score.getAlignedRow());
-        //            //scoresMapping.put(score.getPeakListRow(), score);
-        //            //scoresMapping.put(score.getAlignedRow(), score);
-        //
-        //            //...
-        //            alignmentMapping.put(score.getAlignedRow(),
-        //                    score.getPeakListRow());
-        //        }
-
-        //        logger.info("AAAAAAAAAAAAAAAAAAA: alignmentMapping list " + alignmentMapping + " / NB entries: " + alignmentMapping.size());
-        //        logger.info("BBBBBBBBBBBBBBBBBBB: scoreSet list " + scoreSet + " / NB entries: " + scoreSet.size());
-
-        //        // First clustering pass: try to find the N best matching buddies (from the N raw data files)
-        //        for (RawDataFile dataFile : alignedPeakList.getRawDataFiles()) {
-        //            
-        //            
-        //        }
+        	int nbLeaves = 0;
+        	for (Integer nodekey: validatedClusters) {
+        		nbLeaves += tree_1.getNodeByKey(nodekey).numberLeaves;
+        	}
+        	System.out.println("NbLeaves = " + nbLeaves);
+        	System.out.println("tot = " + tot + " | tot2 = " + tot2);
+        	//            if (nbLeaves != 752)
+        	//            	return;
 
 
-        List<List<PeakListRow>> clustersList = new ArrayList<>();
+        	List<String> leaf_names_flat = new ArrayList<>();
+        	List<Integer> leaf_names_keys = new ArrayList<>();
+        	for (Integer nodekey: validatedClusters) {
 
-        /**
-        // Iterate scores by descending order
-        Iterator<RowVsRowScoreGC> scoreIterator = scoreSet.iterator();
-        //Hashtable<PeakListRow, RowVsRowScore> scoresMapping = new Hashtable<PeakListRow, RowVsRowScore>();
-        //
-        // A score must be used once, at most!
-        List<RowVsRowScoreGC> consumedScores = new ArrayList<>();
-        // A peak must be clustered once, at most!
-        List<PeakListRow> clusteredPeaks = new ArrayList<>();
-        //
-        ////int n = -1, nn = -1;
-        while (scoreIterator.hasNext()) {
+        		if (isCanceled())
+        			return;
 
-            ////n++;
+        		TreeNode node = tree_1.getNodeByKey(nodekey);
 
-            RowVsRowScoreGC score = scoreIterator.next();
+        		List<Integer> leafs_nodekeys = getClusterLeafs_1(node);
+        		List<PeakListRow> rows_cluster = new ArrayList<>();
+        		RawDataFile rdf = null;
+        		for (Integer l_nodekey: leafs_nodekeys) {
 
-            if (consumedScores.contains(score)) { continue; }
+        			TreeNode leaf = tree_1.getNodeByKey(l_nodekey);
 
+        			// Recover related PeakListRow
+        			//                    rows_cluster.add(row_names_dict.get(leaf.getName()));
+        			int leaf_id = Integer.valueOf(leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+        			rows_cluster.add(full_rows_list.get(leaf_id));
+        			leaf_names.add(leaf.getName());
 
-//            // Check if the row is already mapped
-//            if (alignmentMapping.containsKey(score.getPeakListRow()))
-//                continue;
-//
-//            // Check if the aligned row is already filled
-//            if (alignmentMapping.containsValue(score.getAlignedRow()))
-//                continue;
-//
-//            alignmentMapping.put(score.getPeakListRow(),
-//                    score.getAlignedRow());
-//            //scoresMapping.put(score.getPeakListRow(), score);
-//            //scoresMapping.put(score.getAlignedRow(), score);
+        		}
+        		clustersList.add(rows_cluster);
+        		finalNbPeaks += rows_cluster.size();
+        	}
 
-            // Consume score
-            consumedScores.add(score);
+        } else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+        	
+        	tot = 0;
+        	tot2 = 0;
+        	
+        	List<Node> validatedClusters = getValidatedClusters_2(clusteringResult, newIds.length, max_dist);
 
-            //int nb_buddies = 1;
-            List<PeakListRow> cluster = new ArrayList<>();
-            // Add current pair
-            cluster.add(score.getPeakListRow());
-            cluster.add(score.getAlignedRow());
-            clusteredPeaks.add(score.getPeakListRow());
-            clusteredPeaks.add(score.getAlignedRow());
-            //-
-
-            // Try find the (N-2) potential other buddies 
-            Iterator<RowVsRowScoreGC> scoreIterator_2 = scoreSet.iterator();
-            while (scoreIterator_2.hasNext()) {
-
-                ////nn++;
-                ////if (nn <= n) { continue; };
-
-                RowVsRowScoreGC score_2 = scoreIterator_2.next();
-
-                if (score_2 == score) { continue; }
-
-                // Already clustered?
-                if (clusteredPeaks.contains(score_2.getPeakListRow()) || clusteredPeaks.contains(score_2.getAlignedRow())) { continue; }
+        	int nbLeaves = 0;
+        	for (Node node: validatedClusters) {
+        		nbLeaves += getClusterLeafs_2((RootedTree) tree_2, node).size();
+        	}
+        	System.out.println("NbLeaves = " + nbLeaves);
+        	System.out.println("tot = " + tot + " | tot2 = " + tot2);
+        	//            if (nbLeaves != 752)
+        	//            	return;
 
 
-                // If score_2 is referencing one of the rows of interest
-                if (!consumedScores.contains(score_2) 
-                        // Already clustered?
-                        //&& (!(cluster.contains(score_2.getPeakListRow()) && cluster.contains(score_2.getAlignedRow())))
-                        // Match?
-                        && (cluster.contains(score_2.getPeakListRow()) || cluster.contains(score_2.getAlignedRow()))
-                        ) {
+        	List<String> leaf_names_flat = new ArrayList<>();
+        	List<Integer> leaf_names_keys = new ArrayList<>();
+        	for (Node node: validatedClusters) {
 
-                    if (cluster.contains(score_2.getPeakListRow()) /\*&& !clusteredPeaks.contains(score_2.getAlignedRow())*\/) {
-                        cluster.add(score_2.getAlignedRow());
-                        // Consume score
-                        //consumedScores.add(score_2);
-                        clusteredPeaks.add(score_2.getAlignedRow());
-                    } else /\*if (!clusteredPeaks.contains(score_2.getPeakListRow()))*\/ {
-                        cluster.add(score_2.getPeakListRow());
-                        // Consume score
-                        //consumedScores.add(score_2);
-                        clusteredPeaks.add(score_2.getPeakListRow());
-                    }
+        		if (isCanceled())
+        			return;
 
 
-                    // Consume score
-                    consumedScores.add(score_2);
-                }
+        		List<Node> leafs_nodes = getClusterLeafs_2((RootedTree) tree_2, node);
+        		List<PeakListRow> rows_cluster = new ArrayList<>();
+        		RawDataFile rdf = null;
+        		for (Node leaf: leafs_nodes) {
 
-                // If maximum number of buddies in cluster is reached, stop looking
-                // Otherwise, keep going
-                if (cluster.size() == alignedPeakList.getRawDataFiles().length) { break; }
-            }
+        			// Recover related PeakListRow
+        			int leaf_id = Integer.valueOf(leaf.getAttribute("name").toString().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+        			rows_cluster.add(full_rows_list.get(leaf_id));
+        			leaf_names.add(leaf.getAttribute("name").toString());
 
-            // Store cluster
-            clustersList.add(cluster);
-
-            // Clear non-single (=clustered) from list
-            for (PeakListRow c_plr: cluster) {
-                singleRowsList.remove(c_plr);
-                // Cluster is full => lock contained peaks
-//                if (cluster.size() == alignedPeakList.getRawDataFiles().length)
-//                    clusteredPeaks.add(c_plr);
-            }
-
-
-        } 
-         **/
-
-        int finalNbPeaks = 0;
-        Set<String> leaf_names = new HashSet<>();
-        for (Cluster c: validatedClusters) {
-
-            List<Cluster> c_leafs = getClusterLeafs(c);
-            List<PeakListRow> rows_cluster = new ArrayList<>();
-            RawDataFile rdf = null;
-            for (Cluster l: c_leafs) {
-                // Recover related PeakListRow
-                rows_cluster.add(row_names_dict.get(l.getName()));
-                leaf_names.add(l.getName());
-
-                if (DEBUG) {
-                    RawDataFile a_rdf = row_names_dict.get(l.getName()).getBestPeak().getDataFile();
-                    if (a_rdf == rdf) {
-                        logger.info("RDF duplicate for row: " + row_names_dict.get(l.getName()) 
-                                + " [Peak: " + row_names_dict.get(l.getName()).getBestPeak() + "]");
-                    }
-                    rdf = a_rdf;
-                }
-            }
-            clustersList.add(rows_cluster);
-            finalNbPeaks += rows_cluster.size();
+        		}
+        		clustersList.add(rows_cluster);
+        		finalNbPeaks += rows_cluster.size();
+        	}
         }
 
 
@@ -1148,6 +1181,9 @@ public class JoinAlignerGCTask extends AbstractTask {
         int nbAddedRows = 0;
         // Fill alignment table: One row per cluster
         for (List<PeakListRow> cluster: clustersList) {
+
+            if (isCanceled())
+                return;
 
             PeakListRow targetRow = new SimplePeakListRow(newRowID);
             newRowID++;
@@ -1340,6 +1376,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         // Process
         for (PeakListRow targetRow: infoRowsBackup.keySet()) {
+
+            if (isCanceled())
+                return;
 
             // Refresh averaged RTs...
             ((SimplePeakListRow) targetRow).update();
@@ -1550,8 +1589,75 @@ public class JoinAlignerGCTask extends AbstractTask {
                     
                         logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
                         //logger.info("Nb peaks ...: bip = " + bip);
-                        logger.info("Nb peaks treated: " + names.length + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2);
+                        logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2);
         //}
+                        if (JoinAlignerGCParameters.CLUST_METHOD == 0)
+                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + clust.countLeafs() + " | " + full_rows_list.size()); 
+                        else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
+                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + tree_1.getLeafCount() + " | " + full_rows_list.size());                    
+                        else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
+                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + getClusterLeafs_2((RootedTree) tree_2, ((RootedTree) tree_2).getRootNode()) + " | " + full_rows_list.size());                    
+                        
+
+        //
+        endTime = System.currentTimeMillis();
+        ms = (endTime - startTime);
+        logger.info("## >> Whole JoinAlignerGCTask processing took " + Float.toString(ms) + " ms.");
+        
+        
+        //System.out.println("globalInfo: " + hierarClusterer.getClusterer().globalInfo());
+
+        //----------------------------------------------------------------------
+
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
+        	try {
+        		if (exportDendrogramAsPng && dendrogramPngFilename != null) {          
+        			saveDendrogramAsPng(clust, dendrogramPngFilename, dendro_names_dict);
+        		} else {
+
+        		}
+        	} catch (Exception e) {
+        		logger.info("! saveDendrogramAsPng failed...");
+        		e.printStackTrace();
+        	}
+        	try {
+        		if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {          
+        			saveDendrogramAsTxt(clust, dendrogramTxtFilename, dendro_names_dict);
+        		}
+        	} catch (Exception e) {
+        		logger.info("! saveDendrogramAsTxt failed...");
+        		e.printStackTrace();
+        	}
+
+        } else {
+
+        	// Use long names instead of short default ones
+        	boolean USE_EXPLICIT_NAMES = true;
+        	
+        	if (exportDendrogramNewickTxt && dendrogramNewickTxtFilename != null) {
+	        	PrintWriter out;
+	        	try {
+	        		out = new PrintWriter(dendrogramNewickTxtFilename);
+	        		if (USE_EXPLICIT_NAMES) {
+	        			for (String short_n : dendro_names_dict.keySet()) {
+	        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+	        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+	        				newickCluster_clean = newickCluster_clean.replaceAll(short_nn + ":", long_nn + ":");
+	        			}
+	        		}
+	        		out.println(newickCluster_clean);
+	        		out.close();
+	        	} catch (FileNotFoundException e) {
+	        		// TODO Auto-generated catch block
+	        		e.printStackTrace();
+	        	}
+        	}
+
+        }
+
+        //----------------------------------------------------------------------
+
+
     }
 
 
@@ -1563,13 +1669,63 @@ public class JoinAlignerGCTask extends AbstractTask {
     //        return new int[] { combinedIds >> 8, combinedIds & 0x00FF };
     //    }
 
+    
 
-    /**
+	String recursive_print(Tree tree, int currkey, int currdepth) {
+        
+    	TreeNode currNode = tree.getNodeByKey(currkey);
+    	int numChildren = currNode.numberChildren();
+    	
+		
+        String str = "";
+        for (int i = 0; i < currdepth; i++)
+        {
+            str += "  ";
+        }
+        str += currNode.getName() + "[" + currkey + "], depth: " + currdepth + " > " + currNode.height + " > " + currNode.weight + " > " + currNode.getBcnScore() + "\n";
+
+    	for (int i = 0; i < numChildren; i++) {
+    		
+    		int childkey = currNode.getChild(i).key;
+    		TreeNode childnode = tree.getNodeByKey(childkey);
+    		//System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+    		str += recursive_print(tree, childkey, currdepth + 1);
+    	}
+    	
+    	return str;
+    }
+	
+//    public String toConsole(Cluster clust, int indent)
+//    {
+//        String str = "";
+//
+//        for (int i = 0; i < indent; i++)
+//        {
+//            str += "  ";
+//
+//        }
+//        String name = clust.getName() 
+//                + (clust.isLeaf() ? " (leaf)" : "") 
+//                + (clust.getDistanceValue() != null ? "  distance: " + clust.getDistanceValue() : "")
+//                + (clust.getDistanceValue() != null ? "  t-distance: " + clust.getTotalDistance() : "")
+//                ;
+//        str += name + "\n";
+//        for (Cluster child : clust.getChildren())
+//        {
+//            str += toConsole(child, indent + 1);
+//        }
+//
+//        return str;
+//    }
+//
+    
+
+	/**
      * Two clusters can be merged if and only if:
      *  - The resulting merged cluster: (their parent) doesn't exceed 'level' leaves
      *  - The distance between them two is acceptable (close enough)
      */
-    private List<Cluster> getValidatedClusters(Cluster clust, int level, double max_dist) {
+    private List<Cluster> getValidatedClusters_0(Cluster clust, int level, double max_dist) {
 
         List<Cluster> validatedClusters = new ArrayList<>();
         if (!clust.isLeaf()) {
@@ -1581,19 +1737,236 @@ public class JoinAlignerGCTask extends AbstractTask {
                 //if (child.countLeafs() <= level) {
                 if (child.getWeightValue() < level + EPSILON && child.getDistanceValue() < max_dist + EPSILON) {
                     validatedClusters.add(child);
-                    if (child.isLeaf()) {
-                        System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
-                    }
+                    //if (child.isLeaf()) {
+                    //    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
+                    //}
                 } else {
-                    validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
+                    validatedClusters.addAll(getValidatedClusters_0(child, level, max_dist));
                 }
             }
         }
 
         return validatedClusters;
     }
+    //
+    private List<Integer> getValidatedClusters_1(ClusteringResult clusteringResult, int level, double max_dist) {
 
-    private List<Cluster> getClusterLeafs(Cluster clust) {
+    	List<Cluster> validatedClusters = new ArrayList<>();
+
+    	String newickCluster = clusteringResult.getHiearchicalCluster();
+    	// Make string really Newick standard
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+
+    	// Parse Newick formatted string
+        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+		TreeParser tp = new TreeParser(r);
+        Tree tree = tp.tokenize(1, "tree", null);
+
+        
+//        // clusteringResult.
+//        if (!clust.isLeaf()) {
+//            for (Cluster child : clust.getChildren())
+//            {
+//                // Trick to get number of leafs without browsing the whole tree (unlike how it's done in ".countLeafs()")
+//                //      => Weight gives the number of leafs
+//                //if (child.countLeafs() <= level) {
+//                if (child.getWeightValue() < level + EPSILON && child.getDistanceValue() < max_dist + EPSILON) {
+//                    validatedClusters.add(child);
+//                    //if (child.isLeaf()) {
+//                    //    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
+//                    //}
+//                } else {
+//                    validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
+//                }
+//            }
+//        }
+//
+//        return validatedClusters;
+        
+        return recursive_validate_clusters_1(tree, level, max_dist, 0, 0);
+	}
+
+    static int tot = 0;
+    static int tot2 = 0;
+    List<Integer> recursive_validate_clusters_1(Tree tree, int level, double max_dist, int currkey, int currdepth) {
+    	
+    	List<Integer> validatedClusters = new ArrayList<>();
+
+    	TreeNode currNode = tree.getNodeByKey(currkey);
+    	
+    	//if (!clust.isLeaf()) {
+    	if (!currNode.isLeaf()) {
+    		
+    		int numChildren = currNode.numberChildren();
+    		
+    		//for (Cluster child : clust.getChildren())
+    		for (int i = 0; i < numChildren; i++) {
+    			
+    			TreeNode child = currNode.getChild(i);
+    		
+    			//System.out.println("Study child '" + child.key + "' > " + child.weight + " | " + child.height + " (" + level + " | " + max_dist + ")");
+    			
+//    			//if (child.getWeightValue() < level + EPSILON && child.getDistanceValue() < max_dist + EPSILON) {
+//    			//////if (child.weight < level + EPSILON && child.height < max_dist + EPSILON) {
+//    			if (tree.getHeight() - child.height < level) {
+//    				validatedClusters.add(child.key);
+//    				tot++;
+//    				//if (child.isLeaf()) {
+//    				//    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
+//    				//}
+//    				tot2 += child.numberLeaves;
+//    			} else {
+//    				//validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
+//    				validatedClusters.addAll(recursive_validate_clusters(tree, level, max_dist, child.key, currdepth + 1));
+//    			}
+    			
+    			//if (child.numberLeaves <= level && child.height < level) {
+    			
+    			boolean node_is_cluster = true;
+    			for (int j = 0; j < child.numberChildren(); j++) {
+    				if (child.getChild(j).getWeight() > max_dist/*veryLongDistance*/) {
+    					node_is_cluster = false;
+    					break;
+    				}
+    			}
+    			if (child.numberLeaves <= level && node_is_cluster) {
+//    			if (child.numberLeaves <= level && child.weight < /*max_dist*/10d + EPSILON) {
+    				validatedClusters.add(child.key);
+    				tot++;
+    				//if (child.isLeaf()) {
+    				//    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
+    				//}
+    				tot2 += child.numberLeaves;
+    			} else {
+    				//validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
+    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.key, currdepth + 1));
+    			}
+    		}
+    	} else {
+    		validatedClusters.add(currNode.key);
+    	}
+
+//    	for (int i = 0; i < numChildren; i++) {
+//    	
+//    		int childkey = currNode.getChild(i).key;
+//    		TreeNode childnode = tree.getNodeByKey(childkey);
+//    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+//    		recursive_print(tree, childkey, currdepth+1);
+//    	}
+    	
+    	return validatedClusters;	
+    }
+    
+//    /**
+//     * Set the node heights from the current node branch lengths. Actually
+//     * sets distance from root so the heights then need to be reversed.
+//     */
+//    private void nodeLengthsToHeights(Tree tree, TreeNode node, double height) {
+//
+//        double newHeight = height;
+//
+//        if (node.getWeight() > 0.0) {
+//            newHeight += node.getWeight();
+//        }
+//
+//        node.setWeight(newHeight);
+//
+//        for (int i=0; i < node.numberChildren(); i++) {
+//        	
+//        	TreeNode child = node.getChild(i);
+//            nodeLengthsToHeights(tree, child, newHeight);
+//        }
+//    }
+//    /**
+//     * Calculate branch lengths from the current node heights.
+//     */
+//    private void nodeHeightsToLengths(Tree tree, TreeNode node, double height) {
+//    	
+//        final double h = node.getWeight();
+//        
+//        node.setWeight(h >= 0 ? height - h : 1);
+//
+//        for (int i=0; i < node.numberChildren(); i++) {
+//        	
+//        	TreeNode child = node.getChild(i);
+//            nodeHeightsToLengths(tree, child, node.getWeight());
+//        }
+//
+//    }
+
+    private List<Node> getValidatedClusters_2(ClusteringResult clusteringResult, int level, double max_dist) {
+
+    	//List<Node> validatedClusters = new ArrayList<>();
+
+    	String newickCluster = clusteringResult.getHiearchicalCluster();
+    	// Make string really Newick standard
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+
+    	// Parse Newick formatted string
+        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));
+
+        NewickImporter importer = new NewickImporter(r, true);
+        jebl.evolution.trees.Tree tree = null;
+        try {
+        	while (importer.hasTree()) {
+        		tree = importer.importNextTree();
+        	}
+        } catch (IOException | ImportException e) {
+        	// TODO Auto-generated catch block
+        	e.printStackTrace();
+        }
+        
+        return recursive_validate_clusters_2(((RootedTree) tree), ((RootedTree) tree).getRootNode(), level, max_dist);
+	}
+
+    //tot = 0;
+    //tot2 = 0;
+    List<Node> recursive_validate_clusters_2(jebl.evolution.trees.RootedTree tree, Node node, int level, double max_dist) {
+    	
+    	List<Node> validatedClusters = new ArrayList<>();
+
+    	Node currNode = node;
+    	
+    	//if (!clust.isLeaf()) {
+    	//if (!(currNode.getDegree() == 0)) {
+    	if (!(tree.getExternalNodes().contains(currNode))) {
+    		
+    		//int numChildren = currNode.numberChildren();
+    		
+    		//for (Cluster child : clust.getChildren())
+    		for (Node child : tree.getChildren(currNode)) {
+    			
+    			int nbLeaves = getClusterLeafs_2(tree, currNode).size();
+    			
+    			if (nbLeaves <= level && tree.getHeight(child) < max_dist + EPSILON) {
+    				
+    				validatedClusters.add(child);
+    				tot++;
+    				//if (child.isLeaf()) {
+    				//    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
+    				//}
+    				tot2 += nbLeaves;
+    			} else {
+    				//validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
+    				validatedClusters.addAll(recursive_validate_clusters_2(tree, child, level, max_dist));
+    			}
+    		}
+    	} else {
+    		validatedClusters.add(currNode);
+    	}
+
+//    	for (int i = 0; i < numChildren; i++) {
+//    	
+//    		int childkey = currNode.getChild(i).key;
+//    		TreeNode childnode = tree.getNodeByKey(childkey);
+//    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+//    		recursive_print(tree, childkey, currdepth+1);
+//    	}
+    	
+    	return validatedClusters;	
+    }
+
+    private List<Cluster> getClusterLeafs_0(Cluster clust) {
 
         List<Cluster> leafs = new ArrayList<>();
 
@@ -1607,7 +1980,54 @@ public class JoinAlignerGCTask extends AbstractTask {
                 if (child.isLeaf()) {
                     leafs.add(child);
                 } else {
-                    leafs.addAll(getClusterLeafs(child));
+                    leafs.addAll(getClusterLeafs_0(child));
+                }
+            }
+        }
+
+        return leafs;
+    }
+    
+    private List<Integer> getClusterLeafs_1(TreeNode node) {
+
+        List<Integer> leafs_nodekeys = new ArrayList<>();
+		
+        if (node.isLeaf()) {
+        	leafs_nodekeys = new ArrayList<>();
+        	leafs_nodekeys.add(node.getKey());
+        } else {
+        	
+        	
+            for (int i = 0; i < node.numberChildren(); i++) {
+            
+            	TreeNode child = node.getChild(i);
+            	
+                if (child.isLeaf()) {
+                	leafs_nodekeys.add(child.getKey());
+                } else {
+                	leafs_nodekeys.addAll(getClusterLeafs_1(child));
+                }
+            }
+        }
+        
+		return leafs_nodekeys;
+	}
+
+    private List<Node> getClusterLeafs_2(RootedTree tree, Node node) {
+
+        List<Node> leafs = new ArrayList<>();
+
+        if (tree.getExternalNodes().contains(node)) {
+            leafs = new ArrayList<>();
+            leafs.add(node);
+        } else {
+
+            for (Node child : tree.getChildren(node))
+            {
+                if (tree.getExternalNodes().contains(child)) {
+                    leafs.add(child);
+                } else {
+                    leafs.addAll(getClusterLeafs_2(tree, child));
                 }
             }
         }
@@ -1615,6 +2035,19 @@ public class JoinAlignerGCTask extends AbstractTask {
         return leafs;
     }
 
+
+    private void swapClusterNames(Cluster clust, Map<String, String> swap_names_dict) {
+
+        List<Cluster> leafs = getClusterLeafs_0(clust);
+
+        for (Cluster leaf : leafs)
+        {
+            leaf.setName(swap_names_dict.get(leaf.getName()));
+        }
+    }
+
+    
+    
 //    private List<String> getClusterLeafNames(Cluster clust) {
 //
 //        List<String> leafNames = new ArrayList<>();
@@ -1637,8 +2070,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 //        return leafNames;
 //    }
 
-    private void saveDendrogramAsPng(Cluster clust, File dendrogramPngFilename) {
+    private void saveDendrogramAsPng(Cluster clust, File dendrogramPngFilename, Map<String, String> swap_names_dict) {
 
+        // Swap to human readable names
+        swapClusterNames(clust, swap_names_dict);
+        
         JPanel content = new JPanel();
         DendrogramPanel dp = new DendrogramPanel();
 
@@ -1687,7 +2123,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         try {
             PdfWriter writer;
             
-            System.out.println("Writing PDF: " + "/home/golgauth/my_jtable_shapes.pdf");
+            logger.info("Writing PDF: " + "/home/golgauth/my_jtable_shapes.pdf");
             
             if (shapes)
                 writer = PdfWriter.getInstance(document,
@@ -1712,8 +2148,11 @@ public class JoinAlignerGCTask extends AbstractTask {
         document.close();
     }
 
-    private void saveDendrogramAsTxt(Cluster clust, File dendrogramTxtFilename) {
+    private void saveDendrogramAsTxt(Cluster clust, File dendrogramTxtFilename, Map<String, String> swap_names_dict) {
 
+        // Swap to human readable names
+        swapClusterNames(clust, swap_names_dict);
+        
         try{
             FileWriter writer = new FileWriter(dendrogramTxtFilename);
             writer.write(toConsole(clust, 0));
@@ -1745,7 +2184,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         return str;
     }
-
+    
+    
+    
 
 
     public static double getAdjustedRT(double rt, double b_offset, double a_scale) {
@@ -1823,16 +2264,23 @@ public class JoinAlignerGCTask extends AbstractTask {
                 String[] clusterNames, LinkageStrategy linkageStrategy)
         {
             
+            if (isCanceled())
+                return null;
+
             long startTime, endTime;
-            float seconds;
+            float ms;
             
             startTime = System.currentTimeMillis();
             //
             checkArguments(distances, clusterNames, linkageStrategy);
             //
             endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> checkArguments (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            ms = (endTime - startTime);
+            logger.info("> checkArguments (" + processedRows + " | elapsed time: " + Float.toString(ms) + " ms.)");
+
+
+            if (isCanceled())
+                return null;
 
             
             /* Setup model */
@@ -1841,17 +2289,25 @@ public class JoinAlignerGCTask extends AbstractTask {
             List<Cluster> clusters = createClusters(clusterNames);
             //
             endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> createClusters (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            ms = (endTime - startTime);
+            logger.info("> createClusters (elapsed time: " + Float.toString(ms) + " ms.)");
             
+
+            if (isCanceled())
+                return null;
+
             startTime = System.currentTimeMillis();
             //
             DistanceMap linkages = createLinkages(distances, clusters);
             //
             endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> createLinkages (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
-            System.out.println("> Nb Linkages : " + linkages.list().size());
+            ms = (endTime - startTime);
+            logger.info("> createLinkages (elapsed time: " + Float.toString(ms) + " ms.)");
+            //logger.info("> Nb Linkages : " + linkages.list().size());
+
+
+            if (isCanceled())
+                return null;
 
             /* Process */
             startTime = System.currentTimeMillis();
@@ -1859,8 +2315,8 @@ public class JoinAlignerGCTask extends AbstractTask {
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
             //
             endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> HierarchyBuilder (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            ms = (endTime - startTime);
+            logger.info("> HierarchyBuilder (elapsed time: " + Float.toString(ms) + " ms.)");
 
             /** --------------------------------------------------------------*/
             // GLG HACK: update progress bar
@@ -1869,13 +2325,17 @@ public class JoinAlignerGCTask extends AbstractTask {
             //
             while (!builder.isTreeComplete())
             {
+
+                if (isCanceled())
+                    return null;
+
                 startTime = System.currentTimeMillis();
                 //
                 builder.agglomerate(linkageStrategy);
                 //
                 endTime = System.currentTimeMillis();
-                seconds = (endTime - startTime);
-                System.out.println("> builder.agglomerate (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+                ms = (endTime - startTime);
+                //logger.info("> builder.agglomerate (elapsed time: " + Float.toString(ms) + " ms.)");
 
                 // GLG HACK: update progress bar
                 processedRows = progress_base + nb_leafs - builder.getClusters().size() + 1;
@@ -1890,55 +2350,40 @@ public class JoinAlignerGCTask extends AbstractTask {
                 String[] clusterNames, LinkageStrategy linkageStrategy, Double threshold)
                 {
 
-            long startTime, endTime;
-            float seconds;
+            
+            if (isCanceled())
+                return null;
 
-            startTime = System.currentTimeMillis();
-            //
             checkArguments(distances, clusterNames, linkageStrategy);
-            //
-            endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> checkArguments (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
 
+            
+            if (isCanceled())
+                return null;
 
             /* Setup model */
-            startTime = System.currentTimeMillis();
-            //
             List<Cluster> clusters = createClusters(clusterNames);
-            //
-            endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> createClusters (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            
+            
+            if (isCanceled())
+                return null;
 
-            startTime = System.currentTimeMillis();
-            //
             DistanceMap linkages = createLinkages(distances, clusters);
-            //
-            endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> createLinkages (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
-            System.out.println("> Nb Linkages : " + linkages.list().size());
+
+            
+            if (isCanceled())
+                return null;
 
             /* Process */
-            startTime = System.currentTimeMillis();
-            //
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
-            //
-            endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> HierarchyBuilder (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
+            
+            
+            if (isCanceled())
+                return null;
 
-            startTime = System.currentTimeMillis();
-            //
             /** --------------------------------------------------------------*/
             // GLG HACK: update progress bar not possible here, unless we modify 'HierarchyBuilder.flatAgg()'
             List<Cluster> aggClusters = builder.flatAgg(linkageStrategy, threshold);
             /** --------------------------------------------------------------*/
-            //
-            endTime = System.currentTimeMillis();
-            seconds = (endTime - startTime);
-            System.out.println("> builder.flatAgg (" + processedRows + " | elapsed time: " + Float.toString(seconds) + " ms.)");
             
             return aggClusters;
                 }
@@ -1971,6 +2416,10 @@ public class JoinAlignerGCTask extends AbstractTask {
                 double[] weights, LinkageStrategy linkageStrategy)
         {
 
+            
+            if (isCanceled())
+                return null;
+
             checkArguments(distances, clusterNames, linkageStrategy);
 
             if (weights.length != clusterNames.length)
@@ -1978,9 +2427,21 @@ public class JoinAlignerGCTask extends AbstractTask {
                 throw new IllegalArgumentException("Invalid weights array");
             }
 
+            
+            if (isCanceled())
+                return null;
+
             /* Setup model */
             List<Cluster> clusters = createClusters(clusterNames, weights);
+            
+            if (isCanceled())
+                return null;
+
             DistanceMap linkages = createLinkages(distances, clusters);
+
+            
+            if (isCanceled())
+                return null;
 
             /* Process */
             HierarchyBuilder builder = new HierarchyBuilder(clusters, linkages);
@@ -1993,6 +2454,10 @@ public class JoinAlignerGCTask extends AbstractTask {
             //
             while (!builder.isTreeComplete())
             {
+                
+                if (isCanceled())
+                    return null;
+
                 builder.agglomerate(linkageStrategy);
 
                 // GLG HACK: update progress bar
@@ -2009,21 +2474,47 @@ public class JoinAlignerGCTask extends AbstractTask {
         {
             
             DistanceMap linkages = new DistanceMap();
+            //ClusterPair link;
             for (int col = 0; col < clusters.size(); col++)
             {
                 for (int row = col + 1; row < clusters.size(); row++)
                 {
-                    ClusterPair link = new ClusterPair(); //1
-                    Cluster lCluster = clusters.get(col);
-                    Cluster rCluster = clusters.get(row);
-                    link.setLinkageDistance(distances[col][row]);
-                    link.setlCluster(lCluster);
-                    link.setrCluster(rCluster);
-                    linkages.add(link);
+                    
+                    // GLG HACK: Stop processing if user cancelled
+                    if (isCanceled())
+                        return null;
 
-                    link = null; //2
+                    ClusterPair link = new ClusterPair(); //1
+                    //Cluster lCluster = clusters.get(col);
+                    //Cluster rCluster = clusters.get(row);
+                    link.setLinkageDistance(distances[col][row]);
+//                    link.setlCluster(lCluster);
+//                    link.setrCluster(rCluster);
+                    link.setlCluster(clusters.get(col));
+                    link.setrCluster(clusters.get(row));
+                    linkages.add(link);
+                    
+//                    // GLG HACK: Help GC to free memory!
+                    link = null; //2 -> Help Garbage collector here! //System.gc(); //3
+
+       /*         
+                    linkages.add(new ClusterPair());
+                    linkages.list().get(linkages.list().size()-1).setLinkageDistance(distances[col][row]);
+                    linkages.list().get(linkages.list().size()-1).setlCluster(clusters.get(col));
+                    linkages.list().get(linkages.list().size()-1).setrCluster(clusters.get(row));
+        */
                 }
-//                System.gc(); //3
+                
+//                System.out.println(">>>>>>> FULL: DistanceMap linkages size: " + RamUsageEstimator.shallowSizeOf(linkages));
+//                System.out.println(">>>>>>> FULL: DistanceMap linkages size: " + RamUsageEstimator.sizeOf(linkages));
+                // GLG HACK: Help GC to free memory! 
+                //              >> Guess this line is not mandatory if run outside of Eclipse
+                //System.gc(); //3
+                
+                // GLG HACK: update progress bar
+                processedRows++;
+                //logger.info("\t - createLinkages (" + (col+1) + " / " + clusters.size() + ").");
+                System.out.println("\t - createLinkages (" + (col+1) + " / " + clusters.size() + ").");
             }
             return linkages;
         }
@@ -2033,6 +2524,10 @@ public class JoinAlignerGCTask extends AbstractTask {
             List<Cluster> clusters = new ArrayList<Cluster>();
             for (String clusterName : clusterNames)
             {
+                
+                if (isCanceled())
+                    return null;
+
                 Cluster cluster = new Cluster(clusterName);
                 clusters.add(cluster);
             }
@@ -2044,6 +2539,10 @@ public class JoinAlignerGCTask extends AbstractTask {
             List<Cluster> clusters = new ArrayList<Cluster>();
             for (int i = 0; i < weights.length; i++)
             {
+                
+                if (isCanceled())
+                    return null;
+
                 Cluster cluster = new Cluster(clusterNames[i]);
                 cluster.setDistance(new Distance(0.0, weights[i]));
                 clusters.add(cluster);
