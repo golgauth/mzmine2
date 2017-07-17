@@ -159,7 +159,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 
 
 	//@Override
-	public ClusteringResult performClustering(/*Instances dataset, ParameterSet parameters*/) {
+	public ClusteringResult performClustering(LinkType link/*Instances dataset, ParameterSet parameters*/) {
 
 		List<Integer> clusters = new ArrayList<Integer>();
 		/*HierarchicalClusterer*/ clusterer = new HierarchicalClusterer();
@@ -179,7 +179,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 		//	DistanceType distanceType = parameters.getParameter(
 		//		HierarClustererParameters.distanceType).getValue();
 
-		LinkType link = LinkType.AVERAGE;
+		//LinkType link = LinkType.AVERAGE;
 		DistanceType distanceType = DistanceType.EUCLIDIAN;
 		
 		options[0] = "-L";
@@ -234,7 +234,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 			Enumeration<?> e2 = dataSet.enumerateInstances();
 			while (e2.hasMoreElements()) {
 				clusters.add(clusterer.clusterInstance((Instance) e2.nextElement()));
-				//System.out.println("\t- " + clusters.get(clusters.size()-1));
+				System.out.println("\t-> " + clusters.get(clusters.size()-1));
 			}
 			
 			ClusteringResult result = new ClusteringResult(

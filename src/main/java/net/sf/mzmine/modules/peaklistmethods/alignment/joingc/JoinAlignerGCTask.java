@@ -70,6 +70,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HierarClusterer;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.LinkType;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.Tree;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeNode;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeParser;
@@ -143,7 +144,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     private String peakListName;
     //private RowVsRowOrderType comparisonOrder;
-    private ClusteringLinkageStrategyType linkageStartegyType;
+    private ClusteringLinkageStrategyType linkageStartegyType_0;
+    private LinkType linkageStartegyType_12;
     private boolean useOldestRDFAncestor;
     private MZTolerance mzTolerance;
     private RTTolerance rtTolerance;
@@ -201,9 +203,14 @@ public class JoinAlignerGCTask extends AbstractTask {
         comparisonOrder = parameters.getParameter(
                 JoinAlignerGCParameters.comparisonOrder).getValue();
          */
-        linkageStartegyType = parameters.getParameter(
-                JoinAlignerGCParameters.linkageStartegyType).getValue();
-
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
+        	linkageStartegyType_0 = parameters.getParameter(
+        			JoinAlignerGCParameters.linkageStartegyType_0).getValue();
+        } else {
+        	linkageStartegyType_12 = parameters.getParameter(
+        			JoinAlignerGCParameters.linkageStartegyType_12).getValue();
+        }
+        
         useOldestRDFAncestor = parameters.getParameter(
                 JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
 
@@ -622,24 +629,27 @@ public class JoinAlignerGCTask extends AbstractTask {
         Integer[] newIds = orderIds.toArray(new Integer[orderIds.size()]);
         //
 
-        LinkageStrategy linkageStrategy;
+        LinkageStrategy linkageStrategy = null;
         //
-        switch (linkageStartegyType) {
-        case AVERAGE:
-            linkageStrategy = new AverageLinkageStrategy();
-            break;
-        case COMPLETE:
-            linkageStrategy = new CompleteLinkageStrategy();
-            break;
-        case SINGLE:
-            linkageStrategy = new SingleLinkageStrategy();
-            break;
-        case WEIGHTED:
-            linkageStrategy = new WeightedLinkageStrategy();
-            break;
-        default:
-            linkageStrategy = new AverageLinkageStrategy();
-            break;
+        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
+        	
+        	switch (linkageStartegyType_0) {
+        	case AVERAGE:
+        		linkageStrategy = new AverageLinkageStrategy();
+        		break;
+        	case COMPLETE:
+        		linkageStrategy = new CompleteLinkageStrategy();
+        		break;
+        	case SINGLE:
+        		linkageStrategy = new SingleLinkageStrategy();
+        		break;
+        	case WEIGHTED:
+        		linkageStrategy = new WeightedLinkageStrategy();
+        		break;
+        	default:
+        		linkageStrategy = new AverageLinkageStrategy();
+        		break;
+        	}
         }
 
 
@@ -961,7 +971,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         	//
         	startTime2 = System.currentTimeMillis();
         	//
-        	clusteringResult = hierarClusterer.performClustering();
+        	clusteringResult = hierarClusterer.performClustering(linkageStartegyType_12);
         	//
         	endTime2 = System.currentTimeMillis();
         	ms2 = (endTime2 - startTime2);

@@ -21,6 +21,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
 import java.text.NumberFormat;
 
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.LinkType;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
@@ -58,11 +59,18 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     
     
     // Clustering linkage strategy
-    public static final ComboParameter<ClusteringLinkageStrategyType> linkageStartegyType = new ComboParameter<ClusteringLinkageStrategyType>(
+    public static final ComboParameter<ClusteringLinkageStrategyType> linkageStartegyType_0 = new ComboParameter<ClusteringLinkageStrategyType>(
             "Clustering strategy", 
             "What strategy shall be used for the clustering algorithm decision making (See: \"Hierarchical clustering\" algorithms in general).", 
             ClusteringLinkageStrategyType.values(),
             ClusteringLinkageStrategyType.AVERAGE
+            );
+    // Clustering linkage strategy
+    public static final ComboParameter<LinkType> linkageStartegyType_12 = new ComboParameter<LinkType>(
+            "Clustering strategy", 
+            "What strategy shall be used for the clustering algorithm decision making (See: \"Hierarchical clustering\" algorithms in general).", 
+            LinkType.values(),
+            LinkType.AVERAGE
             );
     
     
@@ -171,7 +179,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
-        			linkageStartegyType,  peakListName, 
+        			linkageStartegyType_0,  peakListName, 
         			MZTolerance, MZWeight,
         			RTTolerance, RTWeight,
         			minScore,
@@ -189,7 +197,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
-        			linkageStartegyType,  peakListName, 
+        			linkageStartegyType_12,  peakListName, 
         			MZTolerance, MZWeight,
         			RTTolerance, RTWeight,
         			minScore,
