@@ -1017,8 +1017,31 @@ public class JoinAlignerGCTask extends AbstractTask {
 	        	int current_depth = 0;
 	
 	        	// Make string really Newick standard
-	        	newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
-	
+	        	String line_sep = "\n";//System.getProperty("line.separator");
+//	        	System.out.println("Line sep = '" + line_sep + "'.");
+//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
+	        	newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
+	        	
+//	        	PrintWriter out;
+//	        	try {
+//	        		out = new PrintWriter("newick_check.txt");
+//	        		
+//        			String output_str = newickCluster_clean ;
+//        			
+//        			for (String short_n : dendro_names_dict.keySet()) {
+//        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+//        			}
+//	        		
+//	        		out.println(output_str);
+//	        		
+//	        		out.close();
+//	        	} catch (FileNotFoundException e) {
+//	        		// TODO Auto-generated catch block
+//	        		e.printStackTrace();
+//	        	}
+
 	
 	        	//void setup() {
 	        	BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
@@ -1783,7 +1806,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     	String newickCluster = clusteringResult.getHiearchicalCluster();
     	// Make string really Newick standard
-    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
 
     	// Parse Newick formatted string
         BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
@@ -1928,7 +1952,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     	String newickCluster = clusteringResult.getHiearchicalCluster();
     	// Make string really Newick standard
-    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
 
     	// Parse Newick formatted string
         BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));
