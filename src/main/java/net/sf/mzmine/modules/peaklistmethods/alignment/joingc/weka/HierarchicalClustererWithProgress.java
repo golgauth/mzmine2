@@ -294,6 +294,12 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 	 * @param clusterNodes
 	 */
 	void neighborJoining(int nClusters, Vector<Integer>[] nClusterID, Node [] clusterNodes) {
+
+		// GLG HACK: progress stuff
+		clustProgress.setProgress(0d);
+		int totalClusters = nClusters;
+		
+		
 		int n = m_instances.numInstances();
 
 		double [][] fDist = new double[nClusters][nClusters];
@@ -368,6 +374,11 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 			// record distance
 			double fMinDistance = fDist[iMin1][iMin2];
 			nClusters--;
+			
+			//
+			// GLG HACK: progress stuff
+			clustProgress.setProgress(1d - (double) nClusters / (double) totalClusters);
+			
 			double fSep1 = fSeparations[iMin1];
 			double fSep2 = fSeparations[iMin2];
 			double fDist1 = (0.5 * fMinDistance) + (0.5 * (fSep1 - fSep2));
@@ -440,6 +451,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		clustProgress.setProgress(0d);
 		int totalClusters = nClusters;
 
+		
 		int nInstances = m_instances.numInstances();
 		PriorityQueue<Tuple> queue = new PriorityQueue<Tuple>(nClusters*nClusters/2, new TupleComparator());
 		double [][] fDistance0 = new double[nClusters][nClusters];
