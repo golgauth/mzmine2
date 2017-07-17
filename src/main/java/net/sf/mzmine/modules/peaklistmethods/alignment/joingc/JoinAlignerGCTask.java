@@ -113,6 +113,7 @@ import com.lowagie.text.pdf.PdfWriter;
 
 import jebl.evolution.graphs.Node;
 import jebl.evolution.io.ImportException;
+import jebl.evolution.io.NewickExporter;
 import jebl.evolution.io.NewickImporter;
 import jebl.evolution.trees.RootedTree;
 
@@ -161,6 +162,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     private File dendrogramPngFilename;
     private boolean exportDendrogramAsTxt;
     private File dendrogramTxtFilename;
+    DendrogramFormatType dendrogramFormatType;
     private boolean exportDendrogramNewickTxt;
     private File dendrogramNewickTxtFilename;
 
@@ -185,6 +187,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     private static final boolean DEBUG = false;
 
+    
+    
+    private ClusteringProgression clustProgress; 
     
 
     JoinAlignerGCTask(MZmineProject project, ParameterSet parameters) {
@@ -260,20 +265,33 @@ public class JoinAlignerGCTask extends AbstractTask {
 	                JoinAlignerGCParameters.exportDendrogramPng).getValue();
 	        dendrogramPngFilename = parameters.getParameter(
 	                JoinAlignerGCParameters.dendrogramPngFilename).getValue();
-	        exportDendrogramAsTxt = parameters.getParameter(
-	                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
-	        dendrogramTxtFilename = parameters.getParameter(
-	                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
+//	        exportDendrogramAsTxt = parameters.getParameter(
+//	                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
+//	        dendrogramTxtFilename = parameters.getParameter(
+//	                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
         } else {
-        	exportDendrogramNewickTxt = parameters.getParameter(
-        			JoinAlignerGCParameters.exportDendrogramNewickTxt).getValue();
-        	dendrogramNewickTxtFilename = parameters.getParameter(
-        			JoinAlignerGCParameters.dendrogramNewickTxtFilename).getValue();
+//        	exportDendrogramNewickTxt = parameters.getParameter(
+//        			JoinAlignerGCParameters.exportDendrogramNewickTxt).getValue();
+//        	dendrogramNewickTxtFilename = parameters.getParameter(
+//        			JoinAlignerGCParameters.dendrogramNewickTxtFilename).getValue();
+        }
+        exportDendrogramAsTxt = parameters.getParameter(
+                JoinAlignerGCParameters.exportDendrogramTxt).getValue();
+        dendrogramTxtFilename = parameters.getParameter(
+                JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
+        //
+        if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+        	dendrogramFormatType = parameters.getParameter(
+                    JoinAlignerGCParameters.dendrogramFormatType).getValue();
         }
         
         //
         maximumScore = mzWeight + rtWeight;
         veryLongDistance = 10.0d * maximumScore;
+        
+        
+        //
+        clustProgress = new ClusteringProgression();
     }
 
     /**
@@ -291,7 +309,10 @@ public class JoinAlignerGCTask extends AbstractTask {
         if (totalRows == 0)
             return 0f;
         //return (double) processedRows / (double) totalRows;
-        return (double) processedRows / (double) totalRows;
+        double progress = (double) (processedRows + (clustProgress.getProgress() * (double) totalRows / 3.0d)) / (double) totalRows;
+//        System.out.println(">> THE progress: " + progress);
+//        System.out.println("Caught progress: " + clustProgress.getProgress());
+        return progress;
     }
 
     /**
@@ -963,7 +984,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         else {
 
         	// WEKA hierarchical clustering
-        	HierarClusterer hierarClusterer = new HierarClusterer(distances);
+        	HierarClusterer hierarClusterer = new HierarClusterer(clustProgress, distances);
 
 
         	long startTime2, endTime2;
@@ -1022,26 +1043,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 	        		int tree_height = tree_1.getHeight();
 	        		System.out.println("# Largest tree height is: " + tree_height);
 	        		//
-	        		System.out.println("####" + recursive_print(tree_1, 0, 0));
-	        		//}
-
-	        		//            TreeNode rootNode = tree.getRoot();
-	        		//            //nodeLengthsToHeights(tree, rootNode, rootNode.getWeight());
-	        		//            nodeHeightsToLengths(tree, rootNode, rootNode.getWeight());
-	        		//            //
-	        		//            System.out.println("####" + recursive_print(tree, 0, 0));
-
-	        		//        void recursive_print (int currkey, int currdepth) {
-	        		//            TreeNode currNode = treeoflife.getNodeByKey(currkey);
-	        		//            int numChildren = currNode.numberChildren();
-	        		//            for (int i = 0; i < numChildren; i++) {
-	        		//                int childkey = currNode.getChild(i).key;
-	        		//                TreeNode childnode = treeoflife.getNodeByKey(childkey);
-	        		//                System.out.println("child name is: " + childnode.getName()
-	        		//                                     + " depth is: " + currdepth);
-	        		//                recursive_print(childkey, currdepth+1);
-	        		//            }
-	        		//        }
+	        		if (DEBUG)
+	        			System.out.println("####" + recursive_print(tree_1, 0, 0));
 
 	        	// 2nd parsing method
 	        	} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
@@ -1136,6 +1139,8 @@ public class JoinAlignerGCTask extends AbstractTask {
         		}
         		clustersList.add(rows_cluster);
         		finalNbPeaks += rows_cluster.size();
+        		
+        		processedRows += rows_cluster.size();
         	}
 
         } else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
@@ -1255,7 +1260,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                                 */
                                 double[] row_offset_scale = JoinAlignerGCTask.getOffsetScaleForRow(
                                         row.getRawDataFiles()[0], row.getAverageRT(), rtAdjustementMapping);
-                                logger.info("{" + row_offset_scale[0] + ", " + row_offset_scale[1] + "}");
+//                                logger.info("{" + row_offset_scale[0] + ", " + row_offset_scale[1] + "}");
                                 double b_offset = row_offset_scale[0];
                                 double a_scale = row_offset_scale[1];
                                 //
@@ -1264,7 +1269,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                                 SimpleFeature adjustedPeak = new SimpleFeature(originalPeak);
                                 PeakUtils.copyPeakProperties(originalPeak, adjustedPeak);
                                 adjustedPeak.setRT(adjustedRT);
-                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
+//                                logger.info("adjusted Peak/RT = " + originalPeak + ", " + adjustedPeak + " / " + originalPeak.getRT() + ", " + adjustedPeak.getRT());
 
                                 targetRow.addPeak(file, adjustedPeak);
                                 nbAddedPeaks++;
@@ -1272,6 +1277,8 @@ public class JoinAlignerGCTask extends AbstractTask {
                                 rtPeaksBackup.put(adjustedPeak, originalPeak.getRT());
                                 ((HashMap<RawDataFile, Double[]>) infoRowsBackup.get(targetRow)[0]).put(file, new Double[] { adjustedRT, b_offset, a_scale });//originalPeak.getRT());
 
+//                                processedRows++;
+                                
                             } else {
 
                                 // HELP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1279,7 +1286,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 
                                 targetRow.addPeak(file, originalPeak);
                                 nbAddedPeaks++;
-                                logger.info("Added peak: " + originalPeak);
+//                                logger.info("Added peak: " + originalPeak);
+
+//                                processedRows++;
+                                
                                 ////}
 
                                 if (DEBUG) {
@@ -1310,9 +1320,10 @@ public class JoinAlignerGCTask extends AbstractTask {
                             else
                                 ((HashMap<RawDataFile, Double>) infoRowsBackup.get(targetRow)[2]).put(file, 0.0);
 
-                            logger.info("targetRow >>> Added Peak @" + originalPeak.getClass().getName() + '@' + Integer.toHexString(originalPeak.hashCode()) 
-                                    + ",  RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + targetRow.getID());
-                            logger.info(".");
+//                            logger.info("targetRow >>> Added Peak @" + originalPeak.getClass().getName() + '@' + Integer.toHexString(originalPeak.hashCode()) 
+//                                    + ",  RT=" + targetRow.getPeaks()[targetRow.getPeaks().length-1].getRT() + " / ID: " + targetRow.getID());
+//                            logger.info(".");
+                            
                         }
                         else {
                             setStatus(TaskStatus.ERROR);
@@ -1527,7 +1538,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
             //
             if (recalibrateRT) {
-                logger.info(">> found max for: " + mainIdentity);
+                //logger.info(">> found max for: " + mainIdentity);
                 ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_RTS, strAdjustedRTs);
                 ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_OFFSETS, strOffsets);
                 ((SimplePeakIdentity) mainIdentity).setPropertyValue(AlignedRowProps.PROPERTY_SCALES, strScales);
@@ -1644,18 +1655,25 @@ public class JoinAlignerGCTask extends AbstractTask {
         	// Use long names instead of short default ones
         	boolean USE_EXPLICIT_NAMES = true;
         	
-        	if (exportDendrogramNewickTxt && dendrogramNewickTxtFilename != null) {
+        	
+        	if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {
 	        	PrintWriter out;
 	        	try {
-	        		out = new PrintWriter(dendrogramNewickTxtFilename);
+	        		out = new PrintWriter(dendrogramTxtFilename);
+	        		
+        			String output_str = (dendrogramFormatType == DendrogramFormatType.NEWICK) 
+        					? newickCluster_clean : recursive_print(tree_1, 0, 0);
+        			
 	        		if (USE_EXPLICIT_NAMES) {
 	        			for (String short_n : dendro_names_dict.keySet()) {
 	        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
 	        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
-	        				newickCluster_clean = newickCluster_clean.replaceAll(short_nn + ":", long_nn + ":");
+	        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
 	        			}
 	        		}
-	        		out.println(newickCluster_clean);
+	        		
+	        		out.println(output_str);
+	        		
 	        		out.close();
 	        	} catch (FileNotFoundException e) {
 	        		// TODO Auto-generated catch block

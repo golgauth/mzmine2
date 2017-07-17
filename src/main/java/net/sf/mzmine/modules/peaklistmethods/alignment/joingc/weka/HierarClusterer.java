@@ -29,10 +29,12 @@ import java.util.logging.Logger;
 
 import javax.annotation.Nonnull;
 
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.ClusteringProgression;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.VisualizationType;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.hierarchical.DistanceType;
 import net.sf.mzmine.parameters.ParameterSet;
+import weka.clusterers.AbstractClusterer;
 import weka.clusterers.HierarchicalClusterer;
 import weka.core.Attribute;
 import weka.core.BinarySparseInstance;
@@ -45,6 +47,36 @@ import weka.core.Option;
 import weka.core.SparseInstance;
 import weka.core.neighboursearch.PerformanceStats;
 
+
+
+// ---
+import java.io.Serializable;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.Locale;
+import java.util.PriorityQueue;
+import java.util.Vector;
+//
+import weka.core.Capabilities;
+import weka.core.CapabilitiesHandler;
+import weka.core.DistanceFunction;
+import weka.core.Drawable;
+import weka.core.EuclideanDistance;
+import weka.core.Instance;
+import weka.core.Instances;
+import weka.core.Option;
+import weka.core.OptionHandler;
+import weka.core.RevisionUtils;
+import weka.core.SelectedTag;
+import weka.core.Tag;
+import weka.core.Utils;
+import weka.core.Capabilities.Capability;
+
+
+
+
 public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
@@ -54,7 +86,9 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 	private double[][] distMtx;
 	Instances dataSet;
 
-	private HierarchicalClusterer clusterer;
+	private HierarchicalClustererWithProgress clusterer;
+	
+	private ClusteringProgression clustProgress;
 	
 	
 	public static String NEWICK_LEAF_NAME_PREFIX = "n"; //"node_" // "TreeParser" need a String as name (cannot go with only number Id) 
@@ -64,10 +98,12 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 	//	return MODULE_NAME;
 	//    }
 
-	public HierarClusterer(double[][] rawData) {
+	public HierarClusterer(ClusteringProgression clustProgress, double[][] rawData) {
 		
-		distMtx = rawData;
-		dataSet = createSampleWekaDataset(rawData);
+		this.distMtx = rawData;
+		this.dataSet = createSampleWekaDataset(rawData);
+		
+		this.clustProgress = clustProgress;
 	}
 
 	//    public void setDistancesMatrix(double[][] distMtx) {
@@ -162,7 +198,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 	public ClusteringResult performClustering(LinkType link/*Instances dataset, ParameterSet parameters*/) {
 
 		List<Integer> clusters = new ArrayList<Integer>();
-		/*HierarchicalClusterer*/ clusterer = new HierarchicalClusterer();
+		/*HierarchicalClusterer*/ clusterer = new HierarchicalClustererWithProgress();
 		
 		//System.out.println(java.util.Arrays.asList(clusterer.listOptions()..values()));
 		Enumeration e = clusterer.listOptions();
@@ -223,18 +259,16 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 			System.out.println(Arrays.toString(clusterer.getOptions()));
 			//clusterer.setPrintNewick(true);
 			
+			/*clustProgress.setProgress(0d);*/
+			
 			//System.out.println("Trying to bulid clusterer from:" + this.dataSet.numAttributes());
-			clusterer.buildClusterer(this.dataSet);//dataset);
-			// clusterer.graph() gives only the first cluster and in the case
-			// there
-			// are more than one cluster the variables in the second cluster are
-			// missing.
-			// I'm using clusterer.toString() which contains all the clusters in
-			// Newick format.
+			clusterer.setClusteringProgression(clustProgress);
+			clusterer.buildClusterer(this.dataSet);
+			//
 			Enumeration<?> e2 = dataSet.enumerateInstances();
 			while (e2.hasMoreElements()) {
 				clusters.add(clusterer.clusterInstance((Instance) e2.nextElement()));
-				System.out.println("\t-> " + clusters.get(clusters.size()-1));
+				//System.out.println("\t-> " + clusters.get(clusters.size()-1));
 			}
 			
 			ClusteringResult result = new ClusteringResult(
@@ -253,17 +287,14 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 		}
 	}
 
-	//    @Override
-	//    public @Nonnull Class<? extends ParameterSet> getParameterSetClass() {
-	//	return HierarClustererParameters.class;
-	//    }
-
-	public HierarchicalClusterer getClusterer() {
+	
+	public HierarchicalClustererWithProgress getClusterer() {
 		return clusterer;
 	}
 
 	class HierarDistanceFunction extends NormalizableDistance /*implements DistanceFunction*/ {
 
+		private static final long serialVersionUID = 1L;
 
 		@Override
 		public double distance(Instance inst1, Instance inst2) {

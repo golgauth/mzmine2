@@ -142,18 +142,26 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
                     + " Name of the resulting TXT file to write the clustering resulting dendrogram to."
                     + " If the file already exists, it will be overwritten.",
             "txt");
+    
+    // Export type for dendrogram
+    public static final ComboParameter<DendrogramFormatType> dendrogramFormatType = new ComboParameter<DendrogramFormatType>(
+            "Dendrogram text format", 
+            "Ignored if \"Export dendrogram as TXT\" is unchecked. NEWICK (standard printing), or RAW (flat human readable non-standard printing).", 
+            DendrogramFormatType.values(),
+            DendrogramFormatType.NEWICK
+            );
 
-    // if CLUST_METHOD >= 1 !!!
-    public static final BooleanParameter exportDendrogramNewickTxt = new BooleanParameter(
-            "Export dendrogram as Newick TXT",
-            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
-            false);
-    public static final FileNameParameter dendrogramNewickTxtFilename = new FileNameParameter(
-            "Dendrogram Newick output text filename",
-            " Requires \"Export dendrogram as Newick TXT\" checked."
-                    + " Name of the resulting TXT file to write the clustering resulting dendrogram to."
-                    + " If the file already exists, it will be overwritten.",
-            "txt");
+//    // if CLUST_METHOD >= 1 !!!
+//    public static final BooleanParameter exportDendrogramNewickTxt = new BooleanParameter(
+//            "Export dendrogram as Newick TXT",
+//            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
+//            false);
+//    public static final FileNameParameter dendrogramNewickTxtFilename = new FileNameParameter(
+//            "Dendrogram Newick output text filename",
+//            " Requires \"Export dendrogram as Newick TXT\" checked."
+//                    + " Name of the resulting TXT file to write the clustering resulting dendrogram to."
+//                    + " If the file already exists, it will be overwritten.",
+//            "txt");
     
     //***
     
@@ -191,7 +199,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			
         			// Removed: used only for CLUST_METHOD == 0
         			exportDendrogramPng, dendrogramPngFilename,
-        			exportDendrogramTxt, dendrogramTxtFilename,
+        			exportDendrogramTxt, dendrogramTxtFilename
         	};
     	} else {
     		return new Parameter[] { peakLists, 
@@ -208,7 +216,9 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
         			
         			// Removed: used only for CLUST_METHOD == 0
-        			exportDendrogramNewickTxt, dendrogramNewickTxtFilename
+//        			exportDendrogramNewickTxt, dendrogramNewickTxtFilename
+        			dendrogramFormatType,
+        			exportDendrogramTxt, dendrogramTxtFilename,
         	};
     	}
     }
