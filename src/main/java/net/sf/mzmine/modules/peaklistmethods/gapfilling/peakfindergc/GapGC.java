@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
+import java.util.logging.Logger;
 
 import javax.annotation.Nonnull;
 
@@ -69,6 +70,13 @@ import com.sun.tools.xjc.model.CNonElement;
 
 class GapGC {
 
+
+	static private boolean DEBUG = false;
+	
+
+    private Logger logger = Logger.getLogger(this.getClass().getName());
+
+    
     private PeakListRow peakListRow;
     private RawDataFile rawDataFile;
 
@@ -82,11 +90,16 @@ class GapGC {
     private double bestChemSimScore;
     private double minChemSimScore;
     
-    private int peak_cnt = 1; 
+    private int peak_cnt = 1;
+    
     private ParameterSet parameters;
+    private final Range<Double> peakDuration;
+    private final double searchRTRange;
+    
     private PeakList sourcePeakList;
     private PeakListRow sourceRow;
     private int sourceRowNum;
+
 
     /**
      * Constructor: Initializes an empty gap
@@ -96,7 +109,7 @@ class GapGC {
      * @param rt
      *            RT coordinate of this empty gap
      */
-    GapGC(ParameterSet parameters, PeakList peakList, int row, PeakListRow peakListRow, RawDataFile rawDataFile,
+    GapGC(ParameterSet gap_parameters, PeakList peakList, int row, PeakListRow peakListRow, RawDataFile rawDataFile,
 	    Range<Double> mzRange, Range<Double> rtRange, double intTolerance, double minChemSimScore) {
 
 	this.peakListRow = peakListRow;
@@ -107,16 +120,14 @@ class GapGC {
 
 	this.minChemSimScore = minChemSimScore;
 	
-	this.parameters = parameters;
+	this.parameters = gap_parameters;
 	this.sourcePeakList = peakList;
 	this.sourceRow = peakList.getRow(row);
 	this.sourceRowNum = row;
 	
 	//
-        final Range<Double> peakDuration = parameters.getParameter(
-                PEAK_DURATION).getValue();
-        final double searchRTRange = parameters.getParameter(SEARCH_RT_RANGE)
-                .getValue();
+        peakDuration = gap_parameters.getParameter(PEAK_DURATION).getValue();
+        searchRTRange = gap_parameters.getParameter(SEARCH_RT_RANGE).getValue();
 //        final double minRatio = parameters.getParameter(MIN_RATIO).getValue();
 //        final double minAbsHeight = parameters.getParameter(MIN_ABSOLUTE_HEIGHT).getValue();
 //        final double minRelHeight = parameters.getParameter(MIN_RELATIVE_HEIGHT).getValue();
@@ -124,13 +135,14 @@ class GapGC {
         final double minAbsHeight = MIN_ABSOLUTE_HEIGHT.getValue();
         final double minRelHeight = MIN_RELATIVE_HEIGHT.getValue();
         //
-        System.out.println("New gap GC :");
-        System.out.println("\t peakDuration=" + peakDuration);
-        System.out.println("\t searchRTRange=" + searchRTRange);
-        System.out.println("\t minRatio=" + minRatio);
-        System.out.println("\t minAbsHeight=" + minAbsHeight);
-        System.out.println("\t minRelHeight=" + minRelHeight);
-        
+        if (DEBUG) {
+	        System.out.println("New gap GC :");
+	        System.out.println("\t peakDuration=" + peakDuration);
+	        System.out.println("\t searchRTRange=" + searchRTRange);
+	        System.out.println("\t minRatio=" + minRatio);
+	        System.out.println("\t minAbsHeight=" + minAbsHeight);
+	        System.out.println("\t minRelHeight=" + minRelHeight);
+        }
     }
     
     private Feature detectBestMatchingPeak() {
@@ -138,13 +150,28 @@ class GapGC {
         Feature bestPeak = null;
         
         // Abort if rtRange (once corrected or not) does not share any values with
-        // the working RDF (rtRnage and RDF range do not overlap!)
+        // the working RDF (rtRange and RDF range do not overlap each other!)
         if (!rtRange.isConnected(rawDataFile.getDataRTRange())) {
             
-            System.out.println("DIFF:: " + rtRange + "-" + rawDataFile.getDataRTRange());
+            if (DEBUG) {
+            	System.out.println("DIFF:: " + rtRange + "-" + rawDataFile.getDataRTRange());
+            }
             return null;
         }
-        
+//        // Make sure to have candidate range for peak large enough
+//        if (Math.abs(rtRange.upperEndpoint() - rtRange.lowerEndpoint()) < peakDuration.lowerEndpoint()) {
+//            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
+//                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")" +
+//                                "\n\t=> Range too SMALL!");
+//            return null;
+//        }
+//        // Make sure to have candidate range for peak small enough
+//        if (Math.abs(rtRange.upperEndpoint() - rtRange.lowerEndpoint()) > peakDuration.upperEndpoint()) {
+//            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
+//                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")" +
+//                                "\n\t=> Range too SMALL!");
+//            return null;
+//        }
         
         //-- Deconvolve TIC signal in RT direction (in rtRange) from rawDataFile
         //Feature[] candidatePeaks = new SimpleFeature();
@@ -152,17 +179,65 @@ class GapGC {
         // Build TIC signal (as chromatographic peak into a peaklist)
         Double mz = (mzRange.upperEndpoint() - mzRange.lowerEndpoint()) / 2.0;
         ArrayList<DataPoint> peakDps = new ArrayList<DataPoint>();
+        int nb_scans = 0;//, nb_scans2 = 0;
         for (int i = 0; i < rawDataFile.getNumOfScans(); ++i) {
             int scan_num = rawDataFile.getScanNumbers()[i];
             Scan scan = rawDataFile.getScan(scan_num);
             //peakDps.add(new SimpleDataPoint(mzRange.lowerEndpoint(), scan.getTIC()));//ScanUtils.calculateTIC(scan, mzRange)));
-            if (rtRange.contains(scan.getRetentionTime()))
+            if (rtRange.contains(scan.getRetentionTime())) {
                 newPeak.addMzPeak(scan_num, new SimpleDataPoint(mz, scan.getTIC()));
+                nb_scans++;
+            }
+//            nb_scans2++;
         }
         newPeak.finishMergedPeak();
-        PeakList peakList = new SimplePeakList(
-                "PL" + rtRange + " [#" + newPeak.getScanNumbers()[0] + ", #" + newPeak.getScanNumbers()[newPeak.getScanNumbers().length-1] + "]", 
-                rawDataFile);
+        
+        // Make sure the peak is sized properly
+        if (DEBUG) {
+	
+	        System.out.println("### newPeak - 2!! : " + newPeak + " > nbScans: " + newPeak.getScanNumbers().length + " > Range: " + newPeak.getRawDataPointsRTRange());
+	//        for (int i = 0; i < newPeak.getScanNumbers().length; i++) {
+	//        	DataPoint mzPeak = newPeak.getDataPoint(newPeak.getScanNumbers()[i]);
+	//        	Scan scan = rawDataFile.getScan(rawDataFile.getScanNumbers()[i]);
+	//        	System.out.println("\t* " + mzPeak + " guessing RT = " + scan.getRetentionTime());
+	//        }
+        }
+        Range<Double> r = newPeak.getRawDataPointsRTRange();
+        double peak_duration = Math.abs(r.upperEndpoint() - r.lowerEndpoint());
+        double min_duration = peakDuration.lowerEndpoint();
+        double max_duration = peakDuration.upperEndpoint();
+        if (peak_duration < min_duration || peak_duration > max_duration) {
+            if (DEBUG) {
+	            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
+	                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")" +
+	                                "\n\t=> Peak is BAD SIZED! (duration: " + peak_duration + ", nb_scans: " + nb_scans + ")");
+            }
+            return null;
+        }
+        // Make sure to have at least 3 scans (for a peak)
+        if (nb_scans < 3) {
+            if (DEBUG) {
+	            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
+	                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")" +
+	                                "\n\t=> Range too SMALL!");
+            }
+            return null;
+        }
+        //
+            if (DEBUG) {
+		        System.out.println("!! PEAK DECONVOLUTED! -> in range " + rtRange 
+		                + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")");
+            }
+        
+//        logger.info("newPeak.getScanNumbers().length:" + newPeak.getScanNumbers().length + " [nb_scans: " + nb_scans + " / " + nb_scans2 + "]");
+        PeakList peakList = null;
+        try {
+            String pl_name = "PL" + rtRange + " [#" + newPeak.getScanNumbers()[0] + ", #" + newPeak.getScanNumbers()[newPeak.getScanNumbers().length-1] + "]";
+            peakList = new SimplePeakList(pl_name, rawDataFile);
+        } catch (Exception e) {
+            logger.severe("Could not create PeakList because: ");
+            e.printStackTrace();
+        }
         PeakListRow plRow = new SimplePeakListRow(1);
         plRow.addPeak(rawDataFile, newPeak);
         peakList.addRow(plRow);
@@ -174,8 +249,11 @@ class GapGC {
 //        project.addPeakList(peakList);
         
         if (peakList.getNumberOfRows() == 0) {
-            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
-                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")");
+            if (DEBUG) {
+	            System.out.println("NO PEAK WAS DECONVOLUTED in range " + rtRange 
+	                    + " (for file '" + rawDataFile.getName() + "' - " + rawDataFile.getDataRTRange() + ")" +
+	                    		"\n\t=> Deconvolution couldn't get one peak!");
+            }
             return null;
         }
         
@@ -218,11 +296,20 @@ class GapGC {
                 bestScore = simScore;
                 bestPeak = a_peak;
             }
+            
+            if (simScore > bestScore)
+            	bestScore = simScore;
         }
         
-        if (bestPeak == null) {
-            System.out.println("NO PEAK SCORED ENOUGH");
-        }
+        if (DEBUG) {
+	        if (bestPeak == null) {
+	            System.out.println("NO PEAK SCORED ENOUGH "
+	            		+ "(best score so far: " + bestScore + " | expected at least: " + minChemSimScore + ")");
+	        } else {
+	        	System.out.println("!! SOME PEAK SCORED ENOUGH !! > " + bestPeak 
+	        			+ " (best score so far: " + bestScore + " | expected at least: " + minChemSimScore + ")");
+	        }
+        }        	
         
         return bestPeak;
     }
@@ -494,7 +581,7 @@ class GapGC {
         }
     }
 
-    public void fillTheGap() {
+    public Feature fillTheGap() {
         
         Feature bestPeak = detectBestMatchingPeak();
         if (bestPeak != null) {
@@ -593,10 +680,20 @@ class GapGC {
 
         
             Feature newPeak = new SimpleFeature(bestPeak);
-            // Fill the gap
-            peakListRow.addPeak(rawDataFile, newPeak);
+//            // Fill the gap
+//            peakListRow.addPeak(rawDataFile, newPeak);
+            //-
+            // Add the peak if and only if this is not a "known" one
+            boolean alreadyKnown = PeakFinderGCTask.checkPeak(newPeak, this.sourcePeakList);
+            if (!alreadyKnown) {
+            	peakListRow.addPeak(rawDataFile, newPeak);
+            }
+            else {
+	        	logger.info("...[DUPLICATE peak found and SKIPPED!] Peak: " + bestPeak + ".");
+            }
         }
         
+        return bestPeak;
     }
 
     

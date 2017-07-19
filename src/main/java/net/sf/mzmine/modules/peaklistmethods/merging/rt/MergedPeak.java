@@ -250,19 +250,13 @@ public class MergedPeak implements Feature {
             dataPointsMap.put(allScanNumbers[i], newDataPoint);
 
             if (i == 0) {
-//                rawDataPointsIntensityRange = new Range(mzPeak.getIntensity());
-//                rawDataPointsMZRange = new Range(mzPeak.getMZ());
-//                rawDataPointsRTRange = new Range(aScan.getRetentionTime());
                 rawDataPointsIntensityRange = Range.singleton(mzPeak.getIntensity());
                 rawDataPointsMZRange = Range.singleton(mzPeak.getMZ());
                 rawDataPointsRTRange = Range.singleton(aScan.getRetentionTime());
             } else {
-//                rawDataPointsIntensityRange.extendRange(mzPeak.getIntensity());
-//                rawDataPointsMZRange.extendRange(mzPeak.getMZ());
-//                rawDataPointsRTRange.extendRange(aScan.getRetentionTime());
-                rawDataPointsIntensityRange.span(Range.singleton(mzPeak.getIntensity()));
-                rawDataPointsMZRange.span(Range.singleton(mzPeak.getMZ()));
-                rawDataPointsRTRange.span(Range.singleton(aScan.getRetentionTime()));
+            	rawDataPointsIntensityRange = rawDataPointsIntensityRange.span(Range.singleton(mzPeak.getIntensity()));
+            	rawDataPointsMZRange = rawDataPointsMZRange.span(Range.singleton(mzPeak.getMZ()));
+            	rawDataPointsRTRange = rawDataPointsRTRange.span(Range.singleton(aScan.getRetentionTime()));
             }
 
             if (height < mzPeak.getIntensity()) {
@@ -270,6 +264,7 @@ public class MergedPeak implements Feature {
                 rt = aScan.getRetentionTime();
                 representativeScan = allScanNumbers[i];
             }
+            
         }
 
         // TODO: Change it to be cumulative and according to option

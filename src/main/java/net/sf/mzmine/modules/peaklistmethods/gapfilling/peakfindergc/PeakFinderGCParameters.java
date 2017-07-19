@@ -60,12 +60,12 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
             0.0);
     
     public static final DoubleParameter minSimScore = new DoubleParameter(
-            "Minimum similary score",
+            "Minimum similarity score",
             "Minimum chemical similarity score to allow a peak to run for candidate to fill the gap.",
             MZmineCore.getConfiguration().getRTFormat(), 
             0.0);
 
-    public static final BooleanParameter RTCorrection = new BooleanParameter(
+    public static final BooleanParameter rtCorrection = new BooleanParameter(
             "RT correction",
             "If checked, correction of the retention time will be applied to avoid the"
                 +"\nproblems caused by the deviation of the retention time between the samples.");
@@ -127,7 +127,7 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
     public PeakFinderGCParameters() {
 	super(new Parameter[] { peakLists, suffix, intTolerance, MZTolerance,
 		/*RTTolerance,*/RTColumnTolerance, minSimScore,  
-		RTCorrection, useRegression,
+		rtCorrection, useRegression,
 		SEARCH_RT_RANGE, PEAK_DURATION, 
 		autoRemove });
     }

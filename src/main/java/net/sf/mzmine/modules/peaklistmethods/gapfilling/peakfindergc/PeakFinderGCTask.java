@@ -19,9 +19,13 @@
 
 package net.sf.mzmine.modules.peaklistmethods.gapfilling.peakfindergc;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Vector;
 import java.util.logging.Logger;
+
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -55,7 +59,10 @@ import com.google.common.collect.Range;
 
 class PeakFinderGCTask extends AbstractTask {
 
-    private Logger logger = Logger.getLogger(this.getClass().getName());
+	// For comparing small differences.
+    private static final double EPSILON = 0.0000001d;
+
+	private Logger logger = Logger.getLogger(this.getClass().getName());
 
     private final MZmineProject project;
     private PeakList peakList, processedPeakList;
@@ -69,6 +76,7 @@ class PeakFinderGCTask extends AbstractTask {
     private boolean useRegression;
     private ParameterSet parameters;
     private int processedScans, totalScans;
+    private int processedGaps, totalGaps;
     private boolean MASTERLIST = true, removeOriginal;
     private int masterSample = 0;
 
@@ -92,7 +100,7 @@ class PeakFinderGCTask extends AbstractTask {
 	minChemSimScore = parameters.getParameter(PeakFinderGCParameters.minSimScore)
 	              .getValue();
 	rtCorrection = parameters.getParameter(
-		PeakFinderGCParameters.RTCorrection).getValue();
+		PeakFinderGCParameters.rtCorrection).getValue();
 	useRegression = parameters.getParameter(
                 PeakFinderGCParameters.useRegression).getValue();
 	removeOriginal = parameters.getParameter(
@@ -163,7 +171,25 @@ class PeakFinderGCTask extends AbstractTask {
 
         // Cases "No RT correction" or "RT correction using existing offset/scale"
         boolean switchCorrectionMode = (useRegression);
+        
         if (!switchCorrectionMode) {
+        	
+
+        	// Progress: Count overall number of gaps
+        	totalGaps = 0;
+        	for (RawDataFile dataFile0 : peakList.getRawDataFiles()) {
+                for (int row = 0; row < peakListRows.length; row++) {
+                    
+                    PeakListRow sourceRow = peakListRows[row];
+                    Feature sourcePeak = sourceRow.getPeak(dataFile0);
+                    if (sourcePeak == null) {
+	                	totalGaps ++;
+                    }
+                }
+        	}
+            
+            // Process
+            List<Feature> recoveredPeaks = new ArrayList<>(); 
             // Process all raw data files
             for (RawDataFile dataFile : peakList.getRawDataFiles()) {
     
@@ -177,7 +203,6 @@ class PeakFinderGCTask extends AbstractTask {
       
                 
                 Vector<GapGC> gaps = new Vector<GapGC>();
-    
                 // Fill each row of this raw data file column, create new empty gaps if necessary
                 for (int row = 0; row < peakListRows.length/*peakList.getNumberOfRows()*/; row++) {
                     
@@ -221,7 +246,7 @@ class PeakFinderGCTask extends AbstractTask {
     
     
                         // Adjust rtRange search window if requested
-                        System.out.println("> Run deconvolution in range: " + rtRange);
+                        //System.out.println("> Run deconvolution in range: " + rtRange);
                         int rdf_idx = Arrays.asList(rdf_sorted).indexOf(dataFile);
                         if (rtCorrection) {
     
@@ -325,9 +350,40 @@ class PeakFinderGCTask extends AbstractTask {
     
                 // Do fill the gap with proper peak
                 for (GapGC gap : gaps) {
-                    gap.fillTheGap();
+                	
+                    Feature peak = gap.fillTheGap();
+                    
+                    if (peak != null) {
+                        recoveredPeaks.add(peak);
+                    }
+                    
+                    processedGaps++;
                 }
+             }
+            
+            // List filled gaps (recovered peaks)
+            logger.info(">>> RECOVERED '" + recoveredPeaks.size() + "' PEAKS (over all '" + peakList.getName() + "' peak list):");
+            for (final Feature peak : recoveredPeaks) {
+            	
+            	boolean alreadyKnown = checkPeak(peak, peakList);
+            	
+//            	// Fix duplicate
+//            	if (alreadyKnown) {
+//            		SwingUtilities.invokeLater(new Runnable() {
+//            			public void run() {
+//            				fixDuplicatePeak(peak, processedPeakList);
+//            			}
+//            		});
+//
+//            	}
+            	
+            	String status = (alreadyKnown) ? "DUPLICATE" : "REAL NEW";
+            	logger.info("\t + [" + status + "] Peak: " + peak);
+            	
             }
+            
+            logger.info(">>> RECOVERED '" + recoveredPeaks.size() + "' PEAKS (over all '" + peakList.getName() + "' peak list):");
+            
         }
         
         // 3) and 2B)
@@ -367,8 +423,62 @@ class PeakFinderGCTask extends AbstractTask {
 
     }
 
+
+	public static boolean checkPeak(Feature peak, PeakList peakList) {
+
+    	boolean peak_is_known = false;
+    	
+    	for (PeakListRow row : peakList.getRows()) {
+    		
+//    		for (Feature a_p : row.getPeaks()) {
+//    			
+//    			if (a_p.getDataFile() != peak.getDataFile()) { continue; }
+//    			
+//    			if (Math.abs(a_p.getRT() - peak.getRT()) < EPSILON) {
+//    				peak_is_known = true;
+//    				break;
+//    			}
+//    		}
+    		
+    		Feature a_p = row.getPeak(peak.getDataFile());
+    		if (a_p != null && Math.abs(a_p.getRT() - peak.getRT()) < EPSILON) {
+    			peak_is_known = true;
+    			break;
+    		}
+
+    		//if (peak_is_known) { break; }
+    	}
+    	
+    	return peak_is_known;
+	}
     
-    public void fillTheGapsInTheLists(boolean masterList, PeakListRow[] peakListRows) {
+    private void fixDuplicatePeak(Feature duplicatePeak, PeakList processedPeakList) {
+
+    	for (PeakListRow row : processedPeakList.getRows()) {
+    		for (Feature a_p : row.getPeaks()) {
+    			
+    			if (Math.abs(a_p.getRT() - duplicatePeak.getRT()) < EPSILON) {
+    				
+    				processedPeakList.removeRow(row);
+    				PeakListRow newRow = new SimplePeakListRow(row.getID());
+    				
+    				for (Feature a_p2 : row.getPeaks()) {
+    					
+    					// Copy all peaks but the duplicate one
+    					if (a_p != a_p2) {
+    						newRow.addPeak(a_p.getDataFile(), a_p);
+    					}
+    				}
+    				return;
+    			}
+    		}
+    	}
+    	
+	}
+
+    
+    
+	public void fillTheGapsInTheLists(boolean masterList, PeakListRow[] peakListRows) {
         
         // Build reference RDFs index
         RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
@@ -642,13 +752,18 @@ class PeakFinderGCTask extends AbstractTask {
 //	}
 //    }
 
-    public double getFinishedPercentage() {
-	if (totalScans == 0) {
-	    return 0;
-	}
-	return (double) processedScans / (double) totalScans;
+	public double getFinishedPercentage() {
+		
+//		if (totalScans == 0) {
+//			return 0;
+//		}
+//		return (double) processedScans / (double) totalScans;
+		if (totalGaps == 0) {
+			return 0;
+		}
+		return (double) processedGaps / (double) totalGaps;
 
-    }
+	}
 
     public String getTaskDescription() {
 	return "Gap filling " + peakList;
