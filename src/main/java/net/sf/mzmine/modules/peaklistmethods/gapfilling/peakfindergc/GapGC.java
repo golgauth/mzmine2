@@ -28,7 +28,12 @@ import static net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.mi
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 import java.util.logging.Logger;
 
@@ -266,6 +271,7 @@ class GapGC {
         //Scan avgApexScan = avgRDF.getScan(1);
         Scan avgApexScan =  PeakListTable.getAverageScanAt(this.sourcePeakList, this.sourceRowNum, avgRT);
         //-
+        Map<Feature, Double> allScoringPeaks = new LinkedHashMap<>();
         double bestScore = Double.MIN_VALUE;
         for (PeakListRow a_row : peakList.getRows()) {
             Feature a_peak = a_row.getBestPeak();
@@ -299,6 +305,10 @@ class GapGC {
             
             if (simScore > bestScore)
             	bestScore = simScore;
+            
+            if (simScore > minChemSimScore) {
+            	allScoringPeaks.put(a_peak, simScore);
+            }
         }
         
         if (DEBUG) {
@@ -310,6 +320,38 @@ class GapGC {
 	        			+ " (best score so far: " + bestScore + " | expected at least: " + minChemSimScore + ")");
 	        }
         }        	
+        
+    	// Rollback bestPeak if "already known"
+        if (bestPeak != null) {
+            
+            // Add the peak if and only if this is not a "known" one
+            boolean alreadyKnown = PeakFinderGCTask.checkPeak(bestPeak, this.sourcePeakList);
+            if (alreadyKnown) {
+            	
+            	if (DEBUG)
+            		logger.info("...[DUPLICATE peak found and SKIPPED!] Peak: " + bestPeak + ".");// + " (score: " + bestScore + ").");
+            	allScoringPeaks = sortByValue(allScoringPeaks, false);
+            	
+            	if (allScoringPeaks.size() > 1) {
+	            	// Rollback
+	            	for (Map.Entry<Feature, Double> kv : allScoringPeaks.entrySet()) {
+	            		
+	            		Feature a_peak = kv.getKey();
+	               		//logger.info("....... rollback: " + a_peak + " (score: " + kv.getValue() + ").");
+	               		if (a_peak != bestPeak && PeakFinderGCTask.checkPeak(a_peak, this.sourcePeakList)) {
+	            			bestPeak = a_peak;
+	            			if (DEBUG)
+	            				logger.info("...[LESS SCORING peak found and USED!] Peak: " + bestPeak + ".");// + " (score: " + kv.getValue() + ").");
+	            			break;
+	            		}
+	             	}
+            	}
+            }
+            else {
+            	// Do nothing: bestPeak is just fine.
+            }
+        }
+
         
         return bestPeak;
     }
@@ -680,17 +722,27 @@ class GapGC {
 
         
             Feature newPeak = new SimpleFeature(bestPeak);
-//            // Fill the gap
-//            peakListRow.addPeak(rawDataFile, newPeak);
-            //-
-            // Add the peak if and only if this is not a "known" one
-            boolean alreadyKnown = PeakFinderGCTask.checkPeak(newPeak, this.sourcePeakList);
-            if (!alreadyKnown) {
-            	peakListRow.addPeak(rawDataFile, newPeak);
-            }
-            else {
-	        	logger.info("...[DUPLICATE peak found and SKIPPED!] Peak: " + bestPeak + ".");
-            }
+            // Fill the gap
+            peakListRow.addPeak(rawDataFile, newPeak);
+//            //-
+//            // Add the peak if and only if this is not a "known" one
+//            boolean alreadyKnown = PeakFinderGCTask.checkPeak(newPeak, this.sourcePeakList);
+//            if (!alreadyKnown) {
+//            	peakListRow.addPeak(rawDataFile, newPeak);
+//            }
+//            else {
+//	        	logger.info("...[DUPLICATE peak found and SKIPPED!] Peak: " + bestPeak + ".");
+//            }
+//            logger.info("Added peak '" + newPeak 
+//            		+ "' to row '" + peakListRow + "' (avg rt:" + peakListRow.getAverageRT() + " | id:" + peakListRow.getID() + ")"
+//            				+ " ~~~ RDF: " + rawDataFile.getName());
+            System.out.println("# !!! Filled a gap   =>   Added peak '" + newPeak 
+            		+ "' to row '" + peakListRow /*+ "' (avg rt:" + peakListRow.getAverageRT() + " | id:" + peakListRow.getID() + ")"*/
+            				+ " ~~~ RDF: " + rawDataFile.getName());
+        } else {
+            System.out.println("FAILED a gap   =>   " 
+            		+ "for row '" + peakListRow /*+ "' (avg rt:" + peakListRow.getAverageRT() + " | id:" + peakListRow.getID() + ")"*/
+            				+ " ~~~ RDF: " + rawDataFile.getName());
         }
         
         return bestPeak;
@@ -984,4 +1036,28 @@ class GapGC {
 
     }
 
+    public static <K, V extends Comparable<? super V>> Map<K, V> 
+    sortByValue( Map<K, V> map, final boolean ascending )
+    {
+    	List<Map.Entry<K, V>> list =
+    			new LinkedList<Map.Entry<K, V>>( map.entrySet() );
+    	Collections.sort( list, new Comparator<Map.Entry<K, V>>()
+    	{
+    		public int compare( Map.Entry<K, V> o1, Map.Entry<K, V> o2 )
+    		{
+    			if (ascending)
+    				return (o1.getValue()).compareTo( o2.getValue() );
+    			else
+    				return (o2.getValue()).compareTo( o1.getValue() );
+    		}
+    	} );
+
+    	Map<K, V> result = new LinkedHashMap<K, V>();
+    	for (Map.Entry<K, V> entry : list)
+    	{
+    		result.put( entry.getKey(), entry.getValue() );
+    	}
+    	return result;
+    }
+    
 }

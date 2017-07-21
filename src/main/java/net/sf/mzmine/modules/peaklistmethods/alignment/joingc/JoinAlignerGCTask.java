@@ -323,10 +323,10 @@ public class JoinAlignerGCTask extends AbstractTask {
     	// Check options validity
         if ((Math.abs(mzWeight) < EPSILON) && (Math.abs(rtWeight) < EPSILON)) {
             setStatus(TaskStatus.ERROR);
-            setErrorMessage("Cannot run alignment, all the weight parameters are zero.");
+            setErrorMessage("Cannot run alignment, all the weight parameters are zero!");
             return;
         }
-
+        
         setStatus(TaskStatus.PROCESSING);
         logger.info("Running join aligner");
         
