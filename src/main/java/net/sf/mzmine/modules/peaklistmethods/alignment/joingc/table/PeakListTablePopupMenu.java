@@ -806,17 +806,17 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                     DataPoint dp = dataPoints[j];
                     vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
-                logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
+                //logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
                 //-
                 dataPoints = peak2.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
-                logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
+                //logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
                 //-
                 double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
-                logger.info("PEAK_1 VS PEAK_2 score: " + score);
+                //logger.info("PEAK_1 VS PEAK_2 score: " + score);
                 
                 // Display
                 //JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);
@@ -1159,17 +1159,17 @@ public class PeakListTablePopupMenu extends JPopupMenu implements
                     DataPoint dp = dataPoints[j];
                     vec1[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
-                logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
+                //logger.info("PEAK_1: " + peak1 + "\n\t- vec_1: " + Arrays.toString(vec1));
                 //-
                 dataPoints = peak2.getIsotopePattern().getDataPoints();//peak2.getDataPoints();
                 for (int j=0; j < dataPoints.length; ++j) {
                     DataPoint dp = dataPoints[j];
                     vec2[(int) Math.round(dp.getMZ())] += dp.getIntensity();
                 }
-                logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
+                //logger.info("PEAK_2: " + peak2 + "\n\t- vec_2: " + Arrays.toString(vec2));
                 //-
                 double score = RowVsRowScoreGC.computeSimilarityScore(vec1, vec2, SimilarityMethodType.DOT);
-                logger.info("PEAK_1 VS PEAK_2 score: " + score);
+                //logger.info("PEAK_1 VS PEAK_2 score: " + score);
                 
                 // Display
                 //JOptionPane.showMessageDialog(this, "Method: \t <" + SimilarityMethodType.DOT + ">" + "\nScore: \t" + score, msg_title, info);

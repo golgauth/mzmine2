@@ -471,6 +471,12 @@
             <version>1.5.0</version>
         </dependency>
         <!-- END - JCamp-DX -->
+        
+        <dependency>
+            <groupId>phyutility</groupId>
+            <artifactId>phyutility-lib</artifactId>
+            <version>2_2_6</version>
+        </dependency>
 
 
 		<!-- Bash Maven Plugin (for running bash scripts) -->
@@ -480,6 +486,14 @@
             <version>1.0-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+
+
+<!-- https://mvnrepository.com/artifact/org.prefuse/prefuse -->
+<dependency>
+    <groupId>org.prefuse</groupId>
+    <artifactId>prefuse</artifactId>
+    <version>beta-20071021</version>
+</dependency>
 
 
 	</dependencies>

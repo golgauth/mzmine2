@@ -59,6 +59,9 @@ import com.google.common.collect.Range;
 
 class PeakFinderGCTask extends AbstractTask {
 
+	
+	private static boolean DEBUG_0 = false;
+	
 	// For comparing small differences.
 	private static final double EPSILON = 0.0000001d;
 
@@ -308,6 +311,7 @@ class PeakFinderGCTask extends AbstractTask {
 								logger.info("RT correction: Couldn't find 'offset/scale' info from previous 'Join Aligner GC' task! \n\t" + 
 										"Trying to use the 'Regression approach' instead...");
 								switchCorrectionMode = true;
+								//break;
 							}
 
 							//                        // Otherwise apply RT correction using regular regression (See regular MZmine "PeakFinderTask")
@@ -490,14 +494,16 @@ class PeakFinderGCTask extends AbstractTask {
 		RawDataFile[] rdf_sorted = peakList.getRawDataFiles().clone();
 		Arrays.sort(rdf_sorted, new RawDataFileSorter(SortingDirection.Ascending));
 		
-		System.out.println("Doing master list: '" + masterList + "' (masterSample:" + masterSample + ").");
+		if (DEBUG_0)
+			System.out.println("Doing master list: '" + masterList + "' (masterSample:" + masterSample + ").");
 
 		// Process all raw data files
 		for (int i = 0; i < peakList.getNumberOfRawDataFiles(); i++) {
 			//for (RawDataFile dataFile : peakList.getRawDataFiles()) {
 			if (i != masterSample) {
 				
-				System.out.println("Master sample: " + masterSample + " (i:" + i + ").");
+				if (DEBUG_0)
+					System.out.println("Master sample: " + masterSample + " (i:" + i + ").");
 				
 				RawDataFile datafile1;
 				RawDataFile datafile2;
@@ -511,9 +517,11 @@ class PeakFinderGCTask extends AbstractTask {
 				}
 				RegressionInfo info = new RegressionInfo();
 				
-				System.out.println("datafile1: " + datafile1);
-				System.out.println("datafile2: " + datafile2);
-
+				if (DEBUG_0) {	
+					System.out.println("datafile1: " + datafile1);
+					System.out.println("datafile2: " + datafile2);
+				}
+				
 				for (PeakListRow row : peakList.getRows()) {
 					Feature peaki = row.getPeak(datafile1);
 					Feature peake = row.getPeak(datafile2);
@@ -533,9 +541,14 @@ class PeakFinderGCTask extends AbstractTask {
 
 				// Fill each row of this raw data file column, create new empty gaps if necessary
 				for (int row = 0; row < peakListRows.length/*peakList.getNumberOfRows()*/; row++) {
+					
 					PeakListRow sourceRow = peakListRows[row]; ////**peakList.getRow(row);
 					PeakListRow newRow = processedPeakList.getRow(row);
 
+					if (DEBUG_0)
+						System.out.println("### row: " + row + ", row_id" + sourceRow.getID() 
+									+ ", n_row: " + Arrays.asList(peakList.getRows()).indexOf(sourceRow) + ", n_row_id: " + newRow.getID());
+					
 					Feature sourcePeak = sourceRow.getPeak(datafile1);
 
 					if (sourcePeak == null) {
@@ -545,15 +558,12 @@ class PeakFinderGCTask extends AbstractTask {
 						double mz = sourceRow.getAverageMZ();
 						double rt2 = -1;
 						if (!masterList) {
-							if (processedPeakList.getRow(row)
-									.getPeak(datafile2) != null) {
-								rt2 = processedPeakList.getRow(row)
-										.getPeak(datafile2).getRT();
+							if (newRow.getPeak(datafile2) != null) {
+								rt2 = newRow.getPeak(datafile2).getRT();
 							}
 						} else {
-							if (peakList.getRow(row).getPeak(datafile2) != null) {
-								rt2 = peakList.getRow(row).getPeak(datafile2)
-										.getRT();
+							if (sourceRow.getPeak(datafile2) != null) {
+								rt2 = sourceRow.getPeak(datafile2).getRT();
 							}
 						}
 
@@ -620,7 +630,13 @@ class PeakFinderGCTask extends AbstractTask {
 										rtRange, intTolerance, minChemSimScore);
 
 								gaps.add(newGap);
-								System.out.println("New gap GC (row: " + newRow + ", datafile: " + datafile1.getName() + ", rtRange: " + rtRange + ").");
+								
+								if (DEBUG_0) {
+									System.out.println(">> rt2=" + rt2 + ", rt(adjustedSrcRT)=" + rt + ", searchWindowHalfWidthRT=" + searchWindowHalfWidthRT 
+											+ " => Range[" + (adjustedSrcRT - searchWindowHalfWidthRT) + "-" + (adjustedSrcRT + searchWindowHalfWidthRT) + "].");
+									System.out.println("New gap GC (for row: " + newRow + " on range " + rtRange + ", datafile: " + datafile1.getName() + ")."
+											+ " => Source row was [" + sourceRow + "].");
+								}
 							}
 						}
 
