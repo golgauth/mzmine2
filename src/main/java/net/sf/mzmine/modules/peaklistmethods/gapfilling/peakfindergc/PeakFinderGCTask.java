@@ -440,28 +440,17 @@ class PeakFinderGCTask extends AbstractTask {
 
 		for (PeakListRow row : peakList.getRows()) {
 
-			//    		for (Feature a_p : row.getPeaks()) {
-			//    			
-			//    			if (a_p.getDataFile() != peak.getDataFile()) { continue; }
-			//    			
-			//    			if (Math.abs(a_p.getRT() - peak.getRT()) < EPSILON) {
-			//    				peak_is_known = true;
-			//    				break;
-			//    			}
-			//    		}
-
 			Feature a_p = row.getPeak(peak.getDataFile());
 			if (a_p != null && Math.abs(a_p.getRT() - peak.getRT()) < EPSILON) {
 				peak_is_known = true;
 				break;
 			}
 
-			//if (peak_is_known) { break; }
 		}
 
 		return peak_is_known;
 	}
-
+	//-
 	private void fixDuplicatePeak(Feature duplicatePeak, PeakList processedPeakList) {
 
 		for (PeakListRow row : processedPeakList.getRows()) {

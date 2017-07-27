@@ -328,12 +328,15 @@ class GapGC {
             boolean alreadyKnown = PeakFinderGCTask.checkPeak(bestPeak, this.sourcePeakList);
             if (alreadyKnown) {
             	
+            	// Forbid to use the already known peak
+            	bestPeak = null;
+            	
             	if (DEBUG)
             		logger.info("...[DUPLICATE peak found and SKIPPED!] Peak: " + bestPeak + ".");// + " (score: " + bestScore + ").");
             	allScoringPeaks = sortByValue(allScoringPeaks, false);
             	
             	if (allScoringPeaks.size() > 1) {
-	            	// Rollback
+	            	// Rollback: Try to find a replacement peak
 	            	for (Map.Entry<Feature, Double> kv : allScoringPeaks.entrySet()) {
 	            		
 	            		Feature a_peak = kv.getKey();
