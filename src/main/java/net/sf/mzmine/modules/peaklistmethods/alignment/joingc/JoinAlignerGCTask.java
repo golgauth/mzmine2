@@ -454,7 +454,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             //---------------------------------------------------  
             // Going on with (2)
             /** Find ref compound names 'over all' lists */
-            List<PeakListRow> allIdentified_all_rows = new ArrayList<>();
+            //List<PeakListRow> allIdentified_all_rows = new ArrayList<>();
             List<String> allIdentified_all_ident = new ArrayList<>();
             //Set<String> allIdentified_unique_ident = new HashSet<>();
             Map<String, ArrayList<PeakListRow>> identRowsMap = new HashMap<>();
@@ -468,7 +468,7 @@ public class JoinAlignerGCTask extends AbstractTask {
             			if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
             				//allIdentified_all_ident.add(a_pl_row.getPreferredPeakIdentity().getName());
             				//allIdentified_unique_ident.add(a_pl_row.getPreferredPeakIdentity().getName());
-            				allIdentified_all_rows.add(a_pl_row);
+            				//allIdentified_all_rows.add(a_pl_row);
             				
             				String key = a_pl_row.getPreferredPeakIdentity().getName();
             				
@@ -476,27 +476,37 @@ public class JoinAlignerGCTask extends AbstractTask {
             					identRowsMap.put(key, new ArrayList<PeakListRow>());
             				}
         					identRowsMap.get(key).add(a_pl_row);
-        					allIdentified_all_rows.add(a_pl_row);
+        					//allIdentified_all_rows.add(a_pl_row);
         					allIdentified_all_ident.add(key);
+        					
+        					//System.out.println("Found ident: " + key + " for row: " + a_pl_row + "(PL: " + peakLists[i].getRawDataFile(0).getName() + ")");
             			}
             		}
             	}
             }
             /** Find ref compound names 'common' to all lists */
             //Collections.frequency(animals, "bat");
-            for (Map.Entry<String, ArrayList<PeakListRow>> entry : identRowsMap.entrySet()) {
+            ////for (Map.Entry<String, ArrayList<PeakListRow>> entry : identRowsMap.entrySet()) {
+            Iterator< Map.Entry<String, ArrayList<PeakListRow>> > iter = identRowsMap.entrySet().iterator();
+            while (iter.hasNext()) {
+            	Map.Entry<String, ArrayList<PeakListRow>> entry = iter.next();
 
             	String name = entry.getKey();
             	
             	// This identity wasn't found in all lists
             	if (Collections.frequency(allIdentified_all_ident, name) != peakLists.length) {
-            		// Remove all related row entries
-            		for (PeakListRow a_pl_row : entry.getValue()) {
-            			allIdentified_all_rows.remove(a_pl_row);
-            		}
-            		identRowsMap.remove(name);
+            		// Remove all row entries related to this missing identity
+//            		for (PeakListRow a_pl_row : entry.getValue()) {
+//            			allIdentified_all_rows.remove(a_pl_row);
+//            		}
+            		////identRowsMap.remove(name);
+        			iter.remove();
+        			
+        			//System.out.println("Removed ident: " + name + "(found only '" + Collections.frequency(allIdentified_all_ident, name) + "' / " + peakLists.length + ")");
             	}
+                //System.out.println(Arrays.toString(allIdentified_all_rows.toArray()));
             }
+            //System.out.println("Final left ident: \n\t => " + Arrays.toString(allIdentified_all_rows.toArray()));
             
 //            // 
 //            for (ArrayList<PeakListRow> identified_rows : identRowsMap.values()) {
@@ -511,7 +521,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                 //double offset, scale;
                 PeakList a_pl = peakLists[i];
                 
-                logger.info("# Search identities for list: " + a_pl.getRawDataFile(0) + " (nb peakLits = " + peakLists.length + ")");
+                logger.info("# Search identities for list: " + a_pl.getRawDataFile(0) + " (nb peakLists = " + peakLists.length + ")");
                 
                 // Get ref RT1 and RT2
                 // Sort peaks by ascending RT
@@ -519,7 +529,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                 Arrays.sort(a_pl_rows, new PeakListRowSorter(SortingProperty.RT, SortingDirection.Ascending));
                 //
                 ArrayList<PeakListRow> allIdentified = new ArrayList<>();
-                ArrayList<String> allIdentified_i = new ArrayList<>();
+                //ArrayList<String> allIdentified_i = new ArrayList<>();
                 List<Double> rtList = new ArrayList<>();
                 //
                 for (int j=0; j < a_pl_rows.length; ++j) {
@@ -552,9 +562,22 @@ public class JoinAlignerGCTask extends AbstractTask {
 ////                            logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
 ////                            logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF));                       
 //                    }
+                    
+                    /**
                     if (allIdentified_all_rows.contains(row)) {
                     	allIdentified.add(row);
+                    	System.out.println("## Found identified for row: " + row);
                     }
+                    */
+//                    for (Map.Entry<String, ArrayList<PeakListRow>> entry : identRowsMap.entrySet()) {
+                    for (ArrayList<PeakListRow> rows : identRowsMap.values()) {
+                    	if (rows.contains(row)) {
+                    		allIdentified.add(row);
+                        	//System.out.println("## Found identified for row: " + row);
+                    	}
+                    }
+                   
+                    
                 }
 //                //
 //                logger.info("> allIdentified: NB found compounds: " + allIdentified.size());
@@ -1778,7 +1801,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         	// Use long names instead of short default ones
         	boolean USE_EXPLICIT_NAMES = true;
-        	boolean SHOW_NODE_KEY = true;
+        	// Prefix explicit names with short names (debugging purpose)
+        	boolean SHOW_NODE_KEY = (USE_EXPLICIT_NAMES && false);
         	
         	
         	if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {
