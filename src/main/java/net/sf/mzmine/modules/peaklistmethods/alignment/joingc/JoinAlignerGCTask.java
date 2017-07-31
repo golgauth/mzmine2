@@ -186,7 +186,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
     private static final boolean DEBUG = false;
-
+    List<PeakListRow> full_rows_list;
     
     
     private ClusteringProgression clustProgress; 
@@ -372,7 +372,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         /** RTAdjustement mapping **/
         boolean recalibrateRT = useKnownCompoundsAsRef;
-        ///boolean useOffsetOnly = false;
 
         //Hashtable<RawDataFile, double[]> rtAdjustementMapping = new Hashtable<>();
         Hashtable<RawDataFile, List<double[]>> rtAdjustementMapping = new Hashtable<>();
@@ -385,11 +384,129 @@ public class JoinAlignerGCTask extends AbstractTask {
             //            double rt1 = -1.0;
             //            double rt2 = -1.0;
 
-            // Need all list to have AT LEAST all identities of reference list (first list in selection = peakLists[0])
-            // TODO: Smarter way: Allow having less ref identities in other lists and fill the gap!
-            // TODO: Smarter way: Or, at least use compounds found in all selected lists!
+            // (0): Need all list to have AT LEAST all identities of reference list (first list in selection = peakLists[0])
+            // TODO: Smarter way (1): Allow having less ref identities in other lists and fill the gap!
+            // TODO: Smarter way (2): Or, at least use compounds found in all selected lists!
             ArrayList<String> allIdentified_0 = new ArrayList<>();
             
+            // (0)
+//            for (int i=0; i < peakLists.length; ++i) {
+//                //double offset, scale;
+//                PeakList a_pl = peakLists[i];
+//                
+//                logger.info("# Search identities for list: " + a_pl.getRawDataFile(0) + " (nb peakLits = " + peakLists.length + ")");
+//                
+//                // Get ref RT1 and RT2
+//                // Sort peaks by ascending RT
+//                PeakListRow a_pl_rows[] = a_pl.getRows().clone(); 
+//                Arrays.sort(a_pl_rows, new PeakListRowSorter(SortingProperty.RT, SortingDirection.Ascending));
+//                //
+//                ArrayList<PeakListRow> allIdentified = new ArrayList<>();
+//                ArrayList<String> allIdentified_i = new ArrayList<>();
+//                List<Double> rtList = new ArrayList<>();
+//                //
+//                for (int j=0; j < a_pl_rows.length; ++j) {
+//                	
+//                    PeakListRow row = a_pl_rows[j];
+//                    // If row actually was identified AND is a "reference compound"
+//                    if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
+//                        
+//                        logger.info("\t* Trying with identity: " + row.getPreferredPeakIdentity().getName());
+//                        
+//                        // Is a "reference compound"
+//                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+//                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+//                            
+//                            logger.info("\t\t !! OK with identity: " + row.getPreferredPeakIdentity().getName());
+//                            
+//                            if (i == 0) {
+//                                allIdentified.add(row);
+//                                allIdentified_0.add(row.getPreferredPeakIdentity().getName());
+//                            } else if (allIdentified_0.contains(row.getPreferredPeakIdentity().getName())) {
+//                                allIdentified.add(row);
+//                                allIdentified_i.add(row.getPreferredPeakIdentity().getName());
+//                            }
+//                                
+//                        }
+//                    } else {
+////                        logger.info("aFailed 0: " + (row.getPreferredPeakIdentity().getName() != JDXCompound.UNKNOWN_JDX_COMP.getName()));
+////                        logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
+////                        logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF));                       
+//                    }
+//                }
+//                //
+//                logger.info("> allIdentified: NB found compounds: " + allIdentified.size());
+//                boolean allRefsFound = true;
+//                for (String name : allIdentified_0) {
+//                    
+//                    if (i > 0 && !allIdentified_i.contains(name)) {
+//                        allRefsFound = false;
+//                        logger.info("\t> Ref compound '" + name + "' not found for list '" + peakLists[i].getRawDataFile(0) + "'!");
+//                    }
+//                }
+//                //
+//                if (!allRefsFound) {
+//                    //logger.info("> Compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
+//                    setStatus(TaskStatus.ERROR);
+//                    setErrorMessage("> Ref compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
+//                    return;
+//                }
+            //---------------------------------------------------  
+            // Going on with (2)
+            /** Find ref compound names 'over all' lists */
+            List<PeakListRow> allIdentified_all_rows = new ArrayList<>();
+            List<String> allIdentified_all_ident = new ArrayList<>();
+            //Set<String> allIdentified_unique_ident = new HashSet<>();
+            Map<String, ArrayList<PeakListRow>> identRowsMap = new HashMap<>();
+            //List<PeakListRow> allIdentified = new ArrayList<>();
+            for (int i=0; i < peakLists.length; ++i) {
+            	for (PeakListRow a_pl_row : peakLists[i].getRows()) {
+
+            		// If row actually was identified AND is a "reference compound"
+            		if (JDXCompound.isKnownIdentity(a_pl_row.getPreferredPeakIdentity())) {
+            			String isRefCompound = a_pl_row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+            			if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+            				//allIdentified_all_ident.add(a_pl_row.getPreferredPeakIdentity().getName());
+            				//allIdentified_unique_ident.add(a_pl_row.getPreferredPeakIdentity().getName());
+            				allIdentified_all_rows.add(a_pl_row);
+            				
+            				String key = a_pl_row.getPreferredPeakIdentity().getName();
+            				
+            				if (!identRowsMap.containsKey(key)) {
+            					identRowsMap.put(key, new ArrayList<PeakListRow>());
+            				}
+        					identRowsMap.get(key).add(a_pl_row);
+        					allIdentified_all_rows.add(a_pl_row);
+        					allIdentified_all_ident.add(key);
+            			}
+            		}
+            	}
+            }
+            /** Find ref compound names 'common' to all lists */
+            //Collections.frequency(animals, "bat");
+            for (Map.Entry<String, ArrayList<PeakListRow>> entry : identRowsMap.entrySet()) {
+
+            	String name = entry.getKey();
+            	
+            	// This identity wasn't found in all lists
+            	if (Collections.frequency(allIdentified_all_ident, name) != peakLists.length) {
+            		// Remove all related row entries
+            		for (PeakListRow a_pl_row : entry.getValue()) {
+            			allIdentified_all_rows.remove(a_pl_row);
+            		}
+            		identRowsMap.remove(name);
+            	}
+            }
+            
+//            // 
+//            for (ArrayList<PeakListRow> identified_rows : identRowsMap.values()) {
+//            	
+//            	for (PeakListRow a_pl_row : identified_rows) {
+//            		
+//            	}
+//            }
+            
+            //
             for (int i=0; i < peakLists.length; ++i) {
                 //double offset, scale;
                 PeakList a_pl = peakLists[i];
@@ -406,90 +523,57 @@ public class JoinAlignerGCTask extends AbstractTask {
                 List<Double> rtList = new ArrayList<>();
                 //
                 for (int j=0; j < a_pl_rows.length; ++j) {
+                	
                     PeakListRow row = a_pl_rows[j];
-                    //                    // If row actually was identified
-                    //                    if (row.getPreferredPeakIdentity() != null 
-                    //                            && !row.getPreferredPeakIdentity().getName().equals(JDXCompound.UNKNOWN_JDX_COMP.getName())) {
-                    //                        allIdentified.add(row);
-                    //                    }
+                    
                     // If row actually was identified AND is a "reference compound"
-                    //**if (row.getPreferredPeakIdentity() != null) {
-                    if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
-                        
-                        logger.info("\t* Trying with identity: " + row.getPreferredPeakIdentity().getName());
-                        
-                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
-                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
-                            
-                            logger.info("\t\t !! OK with identity: " + row.getPreferredPeakIdentity().getName());
-                            
-                            if (i == 0) {
-                                allIdentified.add(row);
-                                allIdentified_0.add(row.getPreferredPeakIdentity().getName());
-                            } else if (allIdentified_0.contains(row.getPreferredPeakIdentity().getName())) {
-                                allIdentified.add(row);
-                                allIdentified_i.add(row.getPreferredPeakIdentity().getName());
-                            }
-                                
-                        }
-                    } else {
-//                        logger.info("aFailed 0: " + (row.getPreferredPeakIdentity().getName() != JDXCompound.UNKNOWN_JDX_COMP.getName()));
-//                        logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
-//                        logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF));                       
+                    
+//                    if (JDXCompound.isKnownIdentity(row.getPreferredPeakIdentity())) {
+//                        
+//                        logger.info("\t* Trying with identity: " + row.getPreferredPeakIdentity().getName());
+//                        
+//                        // Is a "reference compound"
+//                        String isRefCompound = row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF);
+//                        if (isRefCompound != null && isRefCompound.equals(AlignedRowProps.TRUE)) {
+//                            
+//                            logger.info("\t\t !! OK with identity: " + row.getPreferredPeakIdentity().getName());
+//                            
+//                            if (i == 0) {
+//                                allIdentified.add(row);
+//                                allIdentified_0.add(row.getPreferredPeakIdentity().getName());
+//                            } else if (allIdentified_0.contains(row.getPreferredPeakIdentity().getName())) {
+//                                allIdentified.add(row);
+//                                allIdentified_i.add(row.getPreferredPeakIdentity().getName());
+//                            }
+//                                
+//                        }
+//                    } else {
+////                            logger.info("aFailed 0: " + (row.getPreferredPeakIdentity().getName() != JDXCompound.UNKNOWN_JDX_COMP.getName()));
+////                            logger.info("aFailed 1: " + row.getPreferredPeakIdentity());
+////                            logger.info("aFailed 2: " + row.getPreferredPeakIdentity().getPropertyValue(AlignedRowProps.PROPERTY_IS_REF));                       
+//                    }
+                    if (allIdentified_all_rows.contains(row)) {
+                    	allIdentified.add(row);
                     }
                 }
-                //
-                logger.info("> allIdentified: NB found compounds: " + allIdentified.size());
-                boolean allRefsFound = true;
-//                for (PeakListRow r : allIdentified) {
+//                //
+//                logger.info("> allIdentified: NB found compounds: " + allIdentified.size());
+//                boolean allRefsFound = true;
+//                for (String name : allIdentified_0) {
 //                    
-//                    String peakIdentityName = r.getPreferredPeakIdentity().toString();
-//                    logger.info(peakIdentityName);
-//                    
-//                    if (i > 0 && !allIdentified_0.contains(peakIdentityName)) {
+//                    if (i > 0 && !allIdentified_i.contains(name)) {
 //                        allRefsFound = false;
-//                        logger.info("\t> Compound '" + peakIdentityName + "' not found for list '" + peakLists[i].getRawDataFile(0) + "'!");
+//                        logger.info("\t> Ref compound '" + name + "' not found for list '" + peakLists[i].getRawDataFile(0) + "'!");
 //                    }
 //                }
-                for (String name : allIdentified_0) {
-                    
-                    if (i > 0 && !allIdentified_i.contains(name)) {
-                        allRefsFound = false;
-                        logger.info("\t> Ref compound '" + name + "' not found for list '" + peakLists[i].getRawDataFile(0) + "'!");
-                    }
-                }
-                //
-                if (!allRefsFound) {
-                    //logger.info("> Compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
-                    setStatus(TaskStatus.ERROR);
-                    setErrorMessage("> Ref compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
-                    return;
-                }
-                    
 //                //
-//                if (i > 0 && allIdentified.size() != allIdentified_0.size()) {
-//                    
-//                    //logger.info("> Found '" + allIdentified.size() + "' compounds in list '" + allIdentified.size() 
-//                    //        + "', Expected: '" + allIdentified_0.size() + "' => ABORT!!");
+//                if (!allRefsFound) {
+//                    //logger.info("> Compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
 //                    setStatus(TaskStatus.ERROR);
-//                    setErrorMessage("> Found '" + allIdentified.size() + "' compounds in list '" + peakLists[i].getRawDataFile(0) 
-//                            + "', Expected: '" + allIdentified_0.size() + "' => ABORT!!");
+//                    setErrorMessage("> Ref compound(s) missing for list '" + peakLists[i].getRawDataFile(0) + "' => ABORT!!");
 //                    return;
 //                }
-                
-                
-                //                // Two ref compounds max, for now...
-                //                if (allIdentified.size() == 2) {
-                //                    // TODO: Or even better: duplicate the Peaklists involved and update the peaks RT
-                //                    //          using "Feature.setRT()", as planned some time ago via button "Apply & Adjust RT"
-                //                    //          from RTAdjuster module's result table !!!
-                //                    rt1 = allIdentified.get(0).getAverageRT();
-                //                    rt2 = allIdentified.get(1).getAverageRT();
-                //                } else {
-                //                    logger.info("Error => Couldn't identify the 2 required ref compounds for peaklist: " + a_pl);
-                //                    rtAdjustOk = false;
-                //                    continue;
-                //                }
+                    
 
                 if (allIdentified.size() > 0) {
 
@@ -510,10 +594,6 @@ public class JoinAlignerGCTask extends AbstractTask {
                             + " => No RT recalibration (not gonna apply any offset, nor scale) !");
                     rtAdjustOk = false;
                     continue;
-//                    setStatus(TaskStatus.ERROR);
-//                    setErrorMessage("! Warn: Couldn't identify at least 1 ref compound for peaklist: " + a_pl
-//                            + " => No RT recalibration (not gonna apply any offset, nor scale) !");
-//                    return;
 
                 }
                 
@@ -688,7 +768,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         short_names = new String[nbPeaks];
 
         Map<String, PeakListRow> row_names_dict = new HashMap<>();
-        List<PeakListRow> full_rows_list = new ArrayList<>();
+        full_rows_list = new ArrayList<>();
         Map<String, String> dendro_names_dict = new HashMap<>();
         List<String> rows_list = new ArrayList<>();
 
@@ -1126,7 +1206,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         	tot = 0;
         	tot2 = 0;
 	            
-        	List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist);
+        	List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist, distances);
 
         	int nbLeaves = 0;
         	for (Integer nodekey: validatedClusters) {
@@ -1162,6 +1242,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         		}
         		clustersList.add(rows_cluster);
+        		
         		finalNbPeaks += rows_cluster.size();
         		
         		processedRows += rows_cluster.size();
@@ -1217,6 +1298,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
         int nbAddedPeaks = 0;
+        int nbUniquePeaks = 0;
         int nbAddedRows = 0;
         // Fill alignment table: One row per cluster
         for (List<PeakListRow> cluster: clustersList) {
@@ -1224,6 +1306,24 @@ public class JoinAlignerGCTask extends AbstractTask {
             if (isCanceled())
                 return;
 
+    		
+            if (DEBUG) {
+	    		// Check cluster integrity
+	    		Set<String> rdf_names = new HashSet<>();
+	    		List<String> rdf_names_flat = new ArrayList<>();
+	    		for (PeakListRow row: cluster) {
+					rdf_names.add(row.getBestPeak().getDataFile().getName());
+					rdf_names_flat.add(row.getBestPeak().getDataFile().getName());
+	    		}
+	    		System.out.println("rdf_names.size() = " + rdf_names.size());
+	    		nbUniquePeaks += rdf_names.size();
+	    		if (rdf_names.size() != rdf_names_flat.size()) {
+	    			System.out.println(">> Found RDF duplicate: ");
+	    			System.out.println("\t * " + Arrays.toString(rdf_names_flat.toArray()));
+	    		}
+            }
+    		
+            
             PeakListRow targetRow = new SimplePeakListRow(newRowID);
             newRowID++;
             alignedPeakList.addRow(targetRow);
@@ -1634,7 +1734,7 @@ public class JoinAlignerGCTask extends AbstractTask {
                     
                         logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
                         //logger.info("Nb peaks ...: bip = " + bip);
-                        logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2);
+                        logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
         //}
                         if (JoinAlignerGCParameters.CLUST_METHOD == 0)
                         	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + clust.countLeafs() + " | " + full_rows_list.size()); 
@@ -1678,6 +1778,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         	// Use long names instead of short default ones
         	boolean USE_EXPLICIT_NAMES = true;
+        	boolean SHOW_NODE_KEY = true;
         	
         	
         	if (exportDendrogramAsTxt && dendrogramTxtFilename != null) {
@@ -1692,7 +1793,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 	        			for (String short_n : dendro_names_dict.keySet()) {
 	        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
 	        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
-	        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+	        				output_str = output_str.replaceAll(short_nn + ":", ((SHOW_NODE_KEY) ? short_nn + "-" : "") + long_nn + ":");
 	        			}
 	        		}
 	        		
@@ -1801,7 +1902,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         return validatedClusters;
     }
     //
-    private List<Integer> getValidatedClusters_1(ClusteringResult clusteringResult, int level, double max_dist) {
+    private List<Integer> getValidatedClusters_1(ClusteringResult clusteringResult, int level, double max_dist, double[][] distMtx) {
 
     	List<Cluster> validatedClusters = new ArrayList<>();
 
@@ -1836,12 +1937,12 @@ public class JoinAlignerGCTask extends AbstractTask {
 //
 //        return validatedClusters;
         
-        return recursive_validate_clusters_1(tree, level, max_dist, 0, 0);
+        return recursive_validate_clusters_1(tree, level, max_dist, 0, 0, distMtx);
 	}
 
     static int tot = 0;
     static int tot2 = 0;
-    List<Integer> recursive_validate_clusters_1(Tree tree, int level, double max_dist, int currkey, int currdepth) {
+    List<Integer> recursive_validate_clusters_1(Tree tree, int level, double max_dist, int currkey, int currdepth, double[][] distMtx) {
     	
     	List<Integer> validatedClusters = new ArrayList<>();
 
@@ -1875,28 +1976,140 @@ public class JoinAlignerGCTask extends AbstractTask {
     			
     			//if (child.numberLeaves <= level && child.height < level) {
     			
-    			boolean node_is_cluster = true;
-    			for (int j = 0; j < child.numberChildren(); j++) {
-    				if (child.getChild(j).getWeight() > max_dist/*veryLongDistance*/) {
-    					node_is_cluster = false;
-    					break;
-    				}
-    			}
-    			if (child.numberLeaves <= level && node_is_cluster) {
-//    			if (child.numberLeaves <= level && child.weight < /*max_dist*/10d + EPSILON) {
+    			
+    			if (child.isLeaf()) {
     				validatedClusters.add(child.key);
     				tot++;
-    				//if (child.isLeaf()) {
-    				//    System.out.println(">>> Found shity leaf: '" + child.getName() + "' => " + child.getParent().getDistanceValue() + " | " + child.getParent().getTotalDistance());
-    				//}
+    				tot2++;
+    				continue;
+    			}
+    			
+    			
+    			boolean node_is_cluster = true;
+//    			//- Mod 1 (works only with "AVERAGE linkage mode")
+//    			for (int j = 0; j < child.numberChildren(); j++) {
+//    				if (child.getChild(j).getWeight() > max_dist/*veryLongDistance*/) {
+//    					node_is_cluster = false;
+//    					break;
+//    				}
+//    			}
+    			//- Mod 2 (general case - works all the time - recover max_dist on the fly - can have time computing impact)
+    			double max_dist_2 = -1d;
+    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
+    				
+//    				System.out.println("child.numberChildren()= " + child.numberChildren());
+//    				List<Integer> leafs_nodekeys_left = getClusterLeafs_1(child.getChild(0));
+//        			List<Integer> leafs_nodekeys_right = getClusterLeafs_1(child.getChild(1));
+    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
+        			
+//        			List<Integer> allLeaves = getClusterLeafs_1(child);
+//	    			for (int k = 0; k < allLeaves.size(); k++) {
+//	    				
+//	    				System.out.println("leaf_" + k + " = " + tree.getNodeByKey(allLeaves.get(k)));
+//	    			}
+//	    			for (int k = 0; k < leafs_nodekeys_left.size(); k++) {
+//	    				
+//	    				System.out.println("left_leaf_" + k + " = " + tree.getNodeByKey(leafs_nodekeys_left.get(k)).getName());
+//	    				if (!tree.getNodeByKey(leafs_nodekeys_left.get(k)).isLeaf())
+//	    					System.out.println("\t => '" + tree.getNodeByKey(leafs_nodekeys_left.get(k)).getName() + "' NOT A LEAF!!!");
+//	    			}
+        			
+//        			// For each left leaf
+//	    			for (int k = 0; k < leafs_nodekeys_left.size(); k++) {
+//	    				
+//	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys_left.get(k));
+//	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+//	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//
+//	        			// For each right leaf
+//		    			for (int l = 0; l < leafs_nodekeys_right.size(); l++) {
+//		    				
+//		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys_right.get(l));
+//		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+//		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//
+//		        			// Get distance between left and right leafs
+//		    				double dist = distMtx[left_leaf_id][right_leaf_id];
+//		    				
+//		    				if (max_dist_2 < dist) {
+//		    					max_dist_2 = dist;
+//		    				}
+//		    			}
+//	    			}
+    				
+    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
+        			// For each leaf
+	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
+	    				
+	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
+	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+
+	        			// For each leaf
+		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
+		    				
+		    				//if (l == k) { continue; }
+		    				
+		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
+		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+
+		        			// Get distance between left and right leafs
+		    				double dist = distMtx[left_leaf_id][right_leaf_id];
+		    				
+		    				if (max_dist_2 < dist) {
+		    					max_dist_2 = dist;
+		    				}
+		    			}
+	    			}
+
+//	    			node_is_cluster = (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON);
+//	    			if (!node_is_cluster) {
+//		    			System.out.println("Separating clusters at node [left: n" + child.getChild(0).key + ", right: n" + child.getChild(1).key + "': " + max_dist_2 + " <= " + max_dist);
+//		    			System.out.println("\tLeft:");
+//		    			for (int k = 0; k < leafs_nodekeys_left.size(); k++) {
+//	//	    				
+//	//	    				    				
+//	//	        			int leaf_id = Integer.valueOf(tree.getNodeByKey(leafs_nodekeys_left.get(k)).getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//	//	        			rows_cluster.add(full_rows_list.get(leaf_id));
+//	//	    				String row_name = ;
+//	//	    				System.out.println("\t\t - " + full_rows_list.get(leaf_id)tree.getNodeByKey(leafs_nodekeys_left.get(k)).getName());
+//		    				System.out.println("\t\t - " + tree.getNodeByKey(leafs_nodekeys_left.get(k)).getName());
+//		    			}
+//		    			System.out.println("\tRight:");
+//		    			for (int k = 0; k < leafs_nodekeys_right.size(); k++) {
+//		    				System.out.println("\t\t - " + tree.getNodeByKey(leafs_nodekeys_right.get(k)).getName());
+//		    			}
+//	    			}
+
+    			}
+    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
+    			
+    			///////boolean is_cluster_node = (child.numberLeaves <= level && node_is_cluster);
+    			///////if (child.numberLeaves <= level && node_is_cluster) {
+//    			if (child.numberLeaves <= level && child.weight < /*max_dist*/10d + EPSILON) {
+    			if (node_is_cluster) {//is_cluster_node) {
+    				validatedClusters.add(child.key);
+    				tot++;
     				tot2 += child.numberLeaves;
+//    				tot += 2;
+//    				tot2 += child.getChild(0).numberLeaves + child.getChild(1).numberLeaves;
+//    				validatedClusters.add(child.getChild(0).key);
+//    				validatedClusters.add(child.getChild(1).key);
+//    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.getChild(0).key, currdepth + 1, distMtx));
+//    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.getChild(1).key, currdepth + 1, distMtx));
     			} else {
     				//validatedClusters.addAll(getValidatedClusters(child, level, max_dist));
-    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.key, currdepth + 1));
+    				///////validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.key, currdepth + 1, distMtx));
+//    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.getChild(0).key, currdepth + 1, distMtx));
+//    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.getChild(1).key, currdepth + 1, distMtx));
+    				validatedClusters.addAll(recursive_validate_clusters_1(tree, level, max_dist, child.key, currdepth + 1, distMtx));
     			}
     		}
     	} else {
     		validatedClusters.add(currNode.key);
+			tot++;
+			tot2++;
     	}
 
 //    	for (int i = 0; i < numChildren; i++) {
@@ -1906,6 +2119,18 @@ public class JoinAlignerGCTask extends AbstractTask {
 //    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
 //    		recursive_print(tree, childkey, currdepth+1);
 //    	}
+    	
+    	if (DEBUG) {
+	    	// Check integrity
+	    	Set<Integer> leafs = new HashSet<>();
+	    	for (int clust_key : validatedClusters) {
+	    		
+	    		TreeNode clust = tree.getNodeByKey(clust_key);
+	    		leafs.addAll(getClusterLeafs_1(clust));
+	    	}
+	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
+	    	System.out.println(Arrays.toString(leafs.toArray()));
+    	}
     	
     	return validatedClusters;	
     }
@@ -2047,7 +2272,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         List<Integer> leafs_nodekeys = new ArrayList<>();
 		
         if (node.isLeaf()) {
-        	leafs_nodekeys = new ArrayList<>();
+        	//leafs_nodekeys = new ArrayList<>();
         	leafs_nodekeys.add(node.getKey());
         } else {
         	
