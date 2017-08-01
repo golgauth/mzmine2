@@ -78,7 +78,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     //-- Use unaltered RDF...
     public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
             "Use original raw data file", 
-            "Chemical similarity is computed using unaleterd m/z profile at given scan from the very oldest Raw Data File ancestor (if it has not been removed). "
+            "Chemical similarity is computed using unaltered m/z profile at given scan from the very oldest Raw Data File ancestor (if it has not been removed). "
                             + "Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from).",
                             false
             );
@@ -134,7 +134,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             "png");
     public static final BooleanParameter exportDendrogramTxt = new BooleanParameter(
             "Export dendrogram as TXT",
-            "If checked, exports the clustering resulting dendrogram to the given PNG file.",
+            "If checked, exports the clustering resulting dendrogram to the given TXT file.",
             false);
     public static final FileNameParameter dendrogramTxtFilename = new FileNameParameter(
             "Dendrogram output text filename",

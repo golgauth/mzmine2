@@ -579,6 +579,12 @@ public class JoinAlignerGCTask extends AbstractTask {
                    
                     
                 }
+                
+                // Free mem
+                allIdentified_all_ident = null;
+                identRowsMap = null;
+
+                
 //                //
 //                logger.info("> allIdentified: NB found compounds: " + allIdentified.size());
 //                boolean allRefsFound = true;
@@ -1009,7 +1015,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         }
 
-
+        
         // DEBUG: save distances matrix as CSV
         if (DEBUG) {
             // Open file
@@ -1511,6 +1517,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 
             }
         }
+        
+        // Free mem
+        rtAdjustementMapping = null;
+
 
         int finalNbPeaks_0 = 0;
 
@@ -1733,39 +1743,41 @@ public class JoinAlignerGCTask extends AbstractTask {
         setStatus(TaskStatus.FINISHED);
 
 
-        //if (DEBUG) {
-                        int finalNbPeaks2 = 0;
-                        
-                        for (PeakListRow plr: alignedPeakList.getRows()) {
-                            finalNbPeaks2 += plr.getNumberOfPeaks();
-                            
-                            for (int i=0; i <  plr.getNumberOfPeaks(); i++) {
-                                
-                                Feature peak = plr.getPeaks()[i];
-                                
-                                String str = peak.getDataFile() + ", @" + peak.getRT();
-                                
-                                //if (!rows_list.contains(str))
-                                    //logger.info("# MISSING Peak: " + str);
-                                    rows_list.remove(str);
-                //                else
-                //                    logger.info("> OK Peak: " + str);
-                            }
-                        }
-                        for (String str: rows_list)
-                            logger.info("# MISSING Peak: " + str);
-                    
-                        logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
-                        //logger.info("Nb peaks ...: bip = " + bip);
-                        logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
-        //}
-                        if (JoinAlignerGCParameters.CLUST_METHOD == 0)
-                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + clust.countLeafs() + " | " + full_rows_list.size()); 
-                        else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
-                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + tree_1.getLeafCount() + " | " + full_rows_list.size());                    
-                        else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
-                        	logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + getClusterLeafs_2((RootedTree) tree_2, ((RootedTree) tree_2).getRootNode()) + " | " + full_rows_list.size());                    
-                        
+//        if (DEBUG) {
+        	int finalNbPeaks2 = 0;
+
+        	for (PeakListRow plr: alignedPeakList.getRows()) {
+        		finalNbPeaks2 += plr.getNumberOfPeaks();
+
+        		for (int i=0; i <  plr.getNumberOfPeaks(); i++) {
+
+        			Feature peak = plr.getPeaks()[i];
+
+        			String str = peak.getDataFile() + ", @" + peak.getRT();
+
+        			//if (!rows_list.contains(str))
+        			//logger.info("# MISSING Peak: " + str);
+        			rows_list.remove(str);
+        			//                else
+        			//                    logger.info("> OK Peak: " + str);
+        		}
+        	}
+        	for (String str: rows_list)
+        		logger.info("# MISSING Peak: " + str);
+
+        	logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
+        	//logger.info("Nb peaks ...: bip = " + bip);
+        	logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
+
+        	if (JoinAlignerGCParameters.CLUST_METHOD == 0)
+        		logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + clust.countLeafs() + " | " + full_rows_list.size()); 
+        	else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
+        		logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + tree_1.getLeafCount() + " | " + full_rows_list.size());                    
+        	else if (JoinAlignerGCParameters.CLUST_METHOD == 1)
+        		logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + getClusterLeafs_2((RootedTree) tree_2, ((RootedTree) tree_2).getRootNode()) + " | " + full_rows_list.size());                    
+
+//        }
+
 
         //
         endTime = System.currentTimeMillis();
