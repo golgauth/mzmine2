@@ -23,8 +23,7 @@
         <em>How 
   They Work</em></font><font face="Times New Roman, Times, serif"><br>
   Given a set of N items to be clustered, and an N*N distance (or similarity) 
-  matrix, the basic process of hierarchical clustering (defined by <a href="https://home.deib.polimi.it/matteucc/Clustering/tutorial_html/hierarchical.html#johnson">S.C. 
-  Johnson in 1967</a>) is this: </font></p>
+  matrix, the basic process of hierarchical clustering (defined by S.C. Johnson in 1967 - <a href="#">https://home.deib.polimi.it/matteucc/Clustering/tutorial_html/hierarchical.html#johnson</a>) is this: </font></p>
 <ol>
   <li><font align="justify" face="Times New Roman, Times, serif">Start by assigning 
     each item to a cluster, so that if you have N items, you now have N clusters, 
@@ -55,8 +54,8 @@
   In <em>average-linkage</em> clustering, we consider the distance between one 
   cluster and another cluster to be equal to the <u>average</u> distance from 
   any member of one cluster to any member of the other cluster.<br>
-  A variation on average-link clustering is the UCLUS method of <a href="https://home.deib.polimi.it/matteucc/Clustering/tutorial_html/hierarchical.html#dandrade">R. 
-  D'Andrade (1978)</a> which uses the <u>median</u> distance, which is much more 
+  A variation on average-link clustering is the UCLUS method of R. 
+  D'Andrade (1978) - <a href="#">https://home.deib.polimi.it/matteucc/Clustering/tutorial_html/hierarchical.html#dandrade</a> - which uses the <u>median</u> distance, which is much more 
   outlier-proof than the average distance.</font></p>
 <p align="justify"><font face="Times New Roman, Times, serif">This kind of hierarchical 
   clustering is called <em>agglomerative</em> because it merges clusters iteratively. 
@@ -91,7 +90,7 @@
 			<p>where <i>d</i> is the chosen metric. Other linkage criteria include:</p>
 			<ul>
 			<li>The sum of all intra-cluster variance.</li>
-			<li>The decrease in variance for the cluster being merged (<a href="https://en.wikipedia.org/wiki/Ward%27s_method" title="Ward's method">Ward's criterion</a>).</li>
+			<li>The decrease in variance for the cluster being merged (<i>Ward's criterion</i> - <a href="#" title="Ward's method">https://en.wikipedia.org/wiki/Ward%27s_method</a>).</li>
 			<li>The probability that candidate clusters spawn from the same distribution function (V-linkage).</li>
 			<li>The product of in-degree and out-degree on a k-nearest-neighbour graph (graph degree linkage).</li>
 			<li>The increment of some cluster descriptor (i.e., a quantity defined for measuring the quality of a cluster) after merging two clusters.</li>
@@ -107,11 +106,11 @@
 			knowledge of the distance between each pair of taxa (e.g., species or sequences) to form the tree.</p>
          
 			         
-			Neighbor joining takes as input a <a href="https://en.wikipedia.org/wiki/Distance_matrix" title="Distance matrix">distance matrix</a> specifying the distance between each pair of taxa. The algorithm starts with a completely unresolved tree, whose topology corresponds to that of a <a href="https://en.wikipedia.org/wiki/Star_network" title="Star network">star network</a>, and iterates over the following steps until the tree is completely resolved and all branch lengths are known:</p>
+			Neighbor joining takes as input a distance matrix - <a href="#" title="Distance matrix">https://en.wikipedia.org/wiki/Distance_matrix</a> - specifying the distance between each pair of taxa. The algorithm starts with a completely unresolved tree, whose topology corresponds to that of a star network - <a href="#" title="Star network">https://en.wikipedia.org/wiki/Star_network</a>, and iterates over the following steps until the tree is completely resolved and all branch lengths are known:</p>
 			<ol>
 			<li>Based on the current distance matrix calculate the matrix <span class="mwe-math-element"><b>Q</b> (defined below).</li>
 			<li>Find the pair of distinct taxa i and j (i.e. with <b><i>i &#8800; j</i></b>) for which <b><i>Q(i,j)</i></b> has its lowest value. These taxa are joined to a newly created node, which is connected to the central node. In the figure at right, f and g are joined to the new node u.</li>
-			<li>Calculate the distance from each of the <a href="https://en.wikipedia.org/wiki/Taxon" title="Taxon">taxa</a> in the pair to this new node.</li>
+			<li>Calculate the distance from each of the taxa - <a href="#" title="Taxon">https://en.wikipedia.org/wiki/Taxon</a> - in the pair to this new node.</li>
 			<li>Calculate the distance from each of the taxa outside of this pair to the new node.</li>
 			<li>Start the algorithm again, replacing the pair of joined neighbors with the new node and using the distances calculated in the previous step.</li>
 			</ol>
@@ -220,9 +219,12 @@ gradually being created; they neither affect nor are affected by later neighbor-
         
         <p>
          <b>Clustering result can be exported into RAW text or NEWICK format</b><br>
-         The latter can be then browsed using common applications such as <a href="http://tree.bio.ed.ac.uk/software/figtree/" name="FigTree" title="FigTree">FigTree</a>.<br>
+         The latter can be then browsed using common applications such as FigTree - <a href="#" name="FigTree" title="FigTree">http://tree.bio.ed.ac.uk/software/figtree/</a>.<br>
          <br>
+         <img src="figtree-software.png" width="1024" height="768" alt="">
+         <br><br>
          <img src="figtree.png" width="1148" height="311" alt="">
+         <br>
         </p>
 
 <hr>
@@ -230,9 +232,9 @@ gradually being created; they neither affect nor are affected by later neighbor-
 			<p>
 			<h2>Inspiration taken from</h2>
 			<ul>
-			<li><a href="https://github.com/golgauth/mzmine2/tree/personal/doc-deps/Bioinformatics-2011-Kim-bioinformatics_btr188.pdf">An Optimal Peak Alignment For Comprehensive
-Two-Dimensional Gas Chromatography Mass Spectrometry Using Mixture Similarity Measure</a></li>			
-			<li><a href="http://www.cs.waikato.ac.nz/ml/weka/">WEKA hierarchical clustering</a></li>			
+			<li>An Optimal Peak Alignment For Comprehensive
+Two-Dimensional Gas Chromatography Mass Spectrometry Using Mixture Similarity Measure - <a href="#">https://github.com/golgauth/mzmine2/tree/personal/doc-deps/Bioinformatics-2011-Kim-bioinformatics_btr188.pdf</a></li>			
+			<li>WEKA hierarchical clustering - <a href="#">http://www.cs.waikato.ac.nz/ml/weka/</a></li>			
 			</ul>			
 			</p>
 
