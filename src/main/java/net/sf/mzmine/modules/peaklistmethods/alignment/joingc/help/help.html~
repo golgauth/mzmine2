@@ -228,11 +228,10 @@ gradually being created; they neither affect nor are affected by later neighbor-
 <hr>
 
 			<p>
-			<h2>Inspiration was taken from</h2>
+			<h2>Inspiration taken from</h2>
 			<ul>
-			<li><a href="Bioinformatics-2011-Kim-bioinformatics_btr188.pdf">An Optimal Peak Alignment For Comprehensive
-Two-Dimensional Gas Chromatography Mass
-Spectrometry Using Mixture Similarity Measure</a></li>			
+			<li><a href="../../../../../../../../../../../doc-deps/Bioinformatics-2011-Kim-bioinformatics_btr188.pdf">An Optimal Peak Alignment For Comprehensive
+Two-Dimensional Gas Chromatography Mass Spectrometry Using Mixture Similarity Measure</a></li>			
 			<li><a href="http://www.cs.waikato.ac.nz/ml/weka/">WEKA hierarchical clustering</a></li>			
 			</ul>			
 			</p>
