@@ -580,9 +580,9 @@ public class JoinAlignerGCTask extends AbstractTask {
                     
                 }
                 
-                // Free mem
-                allIdentified_all_ident = null;
-                identRowsMap = null;
+//                // Free mem
+//                allIdentified_all_ident = null;
+//                identRowsMap = null;
 
                 
 //                //
@@ -1518,8 +1518,8 @@ public class JoinAlignerGCTask extends AbstractTask {
             }
         }
         
-        // Free mem
-        rtAdjustementMapping = null;
+//        // Free mem
+//        rtAdjustementMapping = null;
 
 
         int finalNbPeaks_0 = 0;
