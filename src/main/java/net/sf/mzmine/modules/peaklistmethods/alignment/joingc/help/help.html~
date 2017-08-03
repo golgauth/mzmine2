@@ -181,7 +181,7 @@ A final step is required to get the very final clusters list. A "cutoff" based o
 
 <h4>Example with a 3 samples binary tree</h4>
 
-
+<img src="splitting-binary-tree.png" width="953" height="614" alt="">
 
 
 <hr>
@@ -214,14 +214,18 @@ A final step is required to get the very final clusters list. A "cutoff" based o
             <dt>Use apex</dt>
             <dd>Use apex scan for RT and MZ profile. Otherwise, 5% of the scans around the apex are used to redefine averaged RT and MZ profile.</dd>
             <dt>Use RT recalibration</dt>
-            <dd>Use compounds with known identities to ease alignment. See "Identification - Custom JDX(s) search" help entry.</dd>
+            <dd>Use compounds with known identities to ease alignment. 
+            				This requires running the identification module on all the 
+            				peak lists before running this alignment module (See <a href="net/sf/mzmine/modules/peaklistmethods/identification/customjdxsearch/help/help.html">Identification - Custom JDX(s) search</a> module).</dd>
             <dt>Use DETECTED m/z only</dt>
-            <dd>Use simplified spectra resulting from a previous 'merge step' (See "Peak detection - RT based peak merger" help entry)) to compute chemical similarity score.</dd>
+            <dd>Use simplified spectra resulting from a previous 'merge step' to compute chemical similarity score. 
+            				This requires having run the peak merging module on all the 
+            			 	peak lists before running this alignment module (See <a href="net/sf/mzmine/modules/peaklistmethods/merging/rt/help/help.html">Peak detection - RT based peak merger</a> module).</dd>
             
             <dt>RT tolerance post-recalibration</dt>
             <dd>Ignored if "Use RT recalibration" is unchecked. Maximum allowed difference between two RT values after RT recalibration.</dd>
             <dt>Dendrogram text format</dt>
-            <dd>Ignored if "Export dendrogram as TXT" is unchecked. possible values are: <I>NEWICK</I> (standard printing), or <I>RAW</I> (flat human readable non-standard printing).</dd>
+            <dd>Ignored if "Export dendrogram as TXT" is unchecked. Possible values are: <I>NEWICK</I> (standard printing), or <I>RAW</I> (flat human readable non-standard printing).</dd>
             <dt>Dendrogram output text filename</dt>
             <dd>Name of the resulting TXT file to write the clustering resulting dendrogram to. If the file already exists, it will be overwritten.</dd>
 

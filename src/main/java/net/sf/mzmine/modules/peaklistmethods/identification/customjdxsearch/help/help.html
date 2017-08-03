@@ -1,0 +1,115 @@
+<html>
+	<head>
+		<title>Identification - Custom JDX search</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="/net/sf/mzmine/desktop/impl/helpsystem/HelpStyles.css">
+    </head>
+
+<body>
+
+<h1>Custom JDX search</h1>
+
+<h2>Description</h2>
+
+<p>
+This method assigns identity to peaks according to their m/z profile and retention time values (at apex). 
+The user provides a database of m/z profiles to compare to in JDX format (see below) stored in a given directory.
+This directory can contain several JDX files, thus constitutes a custom database to be searched. 
+The user can also provide a retention time search window for each JDX spectrum to ease avoid false positive identification.
+</p>
+
+<h4>Method parameters</h4>
+<dl>
+
+<dt>JDX(s) directory</dt>
+<dd>Directory path containing jdx files to blast from</dd>
+
+<dt>Erase previous identities</dt>
+<dd>Erases any previous identification operation (use with caution)"</dd>
+
+<dt>Tag as standard compound</dt>
+<dd>Use as reference/standard compound for later use in <a href="/net/sf/mzmine/modules/peaklistmethods/alignment/joingc/help/help.html">Alignment - Join aligner GC</a></dd>
+
+<dt>Similarity method</dt>
+<dd>Similarity method among DOT or PEARSON (careful with PEARSON: not yet fully implemented!)</dd>
+
+<dt>Area Mix factor</dt>
+<dd>Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantaged)</dd>
+
+<dt>Minimum score</dt>
+<dd>Minimum score for matching between two peaks to be considered as successful 
+(WARNING: 'Pearson correlation' similarity method can imply scores < 0.0 and/or > 1.0... Use with caution!)</dd>
+
+<dt>Use DETECTED m/z only</dt>
+<dd>Use simplified spectra resulting from a previous 'merge step' to compute chemical similarity score. 
+				This requires having run the peak merging module on all the 
+			 	peak lists before running this alignment module (See <a href="/net/sf/mzmine/modules/peaklistmethods/merging/rt/help/help.html">Peak detection - RT based peak merger</a> module)</dd>
+
+<dt>Ignore range files</dt>
+<dd>Ignore files containing RT search ranges (.rts files), even if present in the "JDX(s) directory"</dd>
+
+<dt>Blast output filename</dt>
+<dd>Requires "Apply without checking" checked. Name of the resulting CSV file to write standard compounds best blast scores into. If the file already exists, it will be overwritten</dd>
+
+<dt>Field separator</dt>
+<dd>Requires "Apply without checking" checked. Character(s) used to separate fields in the exported file</dd>
+
+</dl>
+
+
+<h3>The JDX file format</h3>
+
+<p>
+Database file has to be provided in JDX format (stands for JCAMP-DX - <a href="http://www.jcamp-dx.org/">http://www.jcamp-dx.org/</a>). 
+
+Such files can be edited manually using a text editor, since they are plain text. 
+
+This format was chosen among others because spectra can be downloaded directly from the NIST Chemistry WebBook - <a href="http://webbook.nist.gov/chemistry/">http://webbook.nist.gov/chemistry/</a> 
+(ex. Nonanal mass spectrum page: <a href="http://webbook.nist.gov/cgi/cbook.cgi?ID=C124196&Mask=200#Mass-Spec">http://webbook.nist.gov/cgi/cbook.cgi?ID=C124196&Mask=200#Mass-Spec</a>, 
+related JDX file can be downloaded at: <a href="http://webbook.nist.gov/cgi/cbook.cgi?JCAMP=C124196&Index=0&Type=Mass">http://webbook.nist.gov/cgi/cbook.cgi?JCAMP=C124196&Index=0&Type=Mass</a>).
+
+It is also possible to export any spectrum displayed in MZmine to this format: See <a href="/net/sf/mzmine/modules/peaklistmethods/io/jdxexport/help/help.html">Export - JDX Export</a>.
+
+<br>
+<br>
+<b>The following example shows the minimal structure of such a JDX file:</b>
+</p>
+
+<pre>
+##TITLE=Nonanal
+##JCAMP-DX=5.00
+##DATATYPE=MASS SPECTRUM
+##DATACLASS=PEAK TABLE
+##XUNITS=M/Z
+##YUNITS=ARBITRARY UNITS
+##NPOINTS=106
+##PEAKTABLE=(XY..XY)
+38.0,2.8686373233795166
+39.0,30.257293701171875
+...
+284.0,0.20490266382694244
+285.0,0.06830088794231415
+##END=
+</pre>
+
+<p>
+If the directory containing the nonanal-124-19-6-Mass<b><i>.jdx</i></b> file also contains a nonanal-124-19-6-Mass<b><i>.jdx.rts</i></b> file and the option "Ignore range files" is unchecked, 
+the identification algorithm will use the RT range as described in the RTS file. Otherwise, the search is done on the whole raw data file.
+<br>
+<br>
+<b>The following example shows the structure the '.rts' file must stick to:</b>
+</p>
+
+<pre>
+MIN_RT=18.5
+MAX_RT=21
+</pre>
+
+
+<h3>Setup dialog for the identification:</h3>
+<p>
+<img src="searchDialog.png">
+</p>
+
+</body>
+</html>

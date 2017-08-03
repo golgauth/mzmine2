@@ -163,7 +163,7 @@ public class CustomJDXSearchTask extends AbstractTask {
         
         useDetectedMzOnly = parameters.getParameter(CustomJDXSearchParameters.useDetectedMzOnly).getValue();
 
-        ignoreRanges = parameters.getParameter(CustomJDXSearchParameters.IGNORE_RT_RANGES_FILES).getValue();
+        ignoreRanges = parameters.getParameter(CustomJDXSearchParameters.IGNORE_RT_RANGE_FILES).getValue();
 //        applyWithoutCheck = parameters.getParameter(CustomJDXSearchParameters.APPLY_WITHOUT_CHECK).getValue();
         blastOutputFilename = parameters.getParameter(CustomJDXSearchParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(CustomJDXSearchParameters.FIELD_SEPARATOR).getValue();

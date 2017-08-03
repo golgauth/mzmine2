@@ -68,12 +68,12 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
             "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
             false);
 
-    public static final BooleanParameter IGNORE_RT_RANGES_FILES = new BooleanParameter(
-            "Ignore ranges files", "Ignore files containing RT search ranges, "
+    public static final BooleanParameter IGNORE_RT_RANGE_FILES = new BooleanParameter(
+            "Ignore range files", "Ignore files containing RT search ranges (.rts files), "
                     + "even if present in the \"JDX(s) directory\"", false);
 
     // TODO: ???
-    /*
+    /*Minimum score
      * public static final BooleanParameter APPLY_WITHOUT_CHECK = new
      * BooleanParameter( "Apply without checking",
      * "Apply best scoring compounds without checking manually " +
@@ -93,12 +93,12 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
 
     public static final BooleanParameter BRUTE_FORCE_ERASE = new BooleanParameter(
             "Erase previous identities",
-            "Erases any previous identitification operation "
+            "Erases any previous identification operation "
                     + "(use with caution)", false);
 
     public static final BooleanParameter USE_AS_STD_COMPOUND = new BooleanParameter(
             "Tag as standard compound",
-            " Use as reference/standard compound for later use in 'Join Aligner GC'.", false);
+            "Use as reference/standard compound for later use in 'Join Aligner GC'.", false);
 
     public CustomJDXSearchParameters() {
         super(new Parameter[] { PEAK_LISTS,
@@ -107,7 +107,7 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                 BRUTE_FORCE_ERASE, USE_AS_STD_COMPOUND,
                 SIMILARITY_METHOD, AREA_MIX_FACTOR,
                 MIN_SCORE, useDetectedMzOnly, 
-                IGNORE_RT_RANGES_FILES,
+                IGNORE_RT_RANGE_FILES,
                 // APPLY_WITHOUT_CHECK,
                 BLAST_OUTPUT_FILENAME, FIELD_SEPARATOR });
     }
