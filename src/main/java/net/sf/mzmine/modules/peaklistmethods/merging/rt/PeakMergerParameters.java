@@ -43,7 +43,7 @@ public class PeakMergerParameters extends SimpleParameterSet {
 	//          rawdatamethods was applied, or if it has been removed.
 	public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
 			"Use original raw data file", 
-			"Get peaks information from the very oldest Raw Data File ancestor (if it has not been removed). "
+			"Get peaks information from the very oldest 'Raw Data File' ancestor (if it has not been removed). "
 					+ "Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from).",
 					false
 			);
