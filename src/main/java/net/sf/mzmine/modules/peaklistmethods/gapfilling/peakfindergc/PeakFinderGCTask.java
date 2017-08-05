@@ -70,7 +70,7 @@ class PeakFinderGCTask extends AbstractTask {
 	private final MZmineProject project;
 	private PeakList peakList, processedPeakList;
 	private String suffix;
-	private double intTolerance;
+	////**private double intTolerance;
 	private MZTolerance mzTolerance;
 	////**private RTTolerance rtTolerance;
 	private double rtColumnMargin;
@@ -95,8 +95,8 @@ class PeakFinderGCTask extends AbstractTask {
 
 		suffix = parameters.getParameter(PeakFinderGCParameters.suffix)
 				.getValue();
-		intTolerance = parameters.getParameter(
-				PeakFinderGCParameters.intTolerance).getValue();
+//		intTolerance = parameters.getParameter(
+//				PeakFinderGCParameters.intTolerance).getValue();
 		mzTolerance = parameters.getParameter(PeakFinderGCParameters.MZTolerance)
 				.getValue();
 		//	rtTolerance = parameters.getParameter(PeakFinderGCParameters.RTTolerance)
@@ -353,7 +353,7 @@ class PeakFinderGCTask extends AbstractTask {
 						Range<Double> rtDurationRange =  parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).getValue();                        
 						parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).setValue(rtDurationRange);
 						GapGC newGap = new GapGC(parameters, peakList, row, newRow, dataFile, mzRange,
-								rtRange, intTolerance, minChemSimScore);
+								rtRange, /*intTolerance,*/ minChemSimScore);
 
 						gaps.add(newGap);
 
@@ -433,7 +433,10 @@ class PeakFinderGCTask extends AbstractTask {
 
 	}
 
-
+	/*
+	 * Avoids getting twice the same peak: If a newly deconvoluted/detected peak
+	 * has the exact same RT on same RDF, it gets rejected.
+	 */
 	public static boolean checkPeak(Feature peak, PeakList peakList) {
 
 		boolean peak_is_known = false;
@@ -616,7 +619,7 @@ class PeakFinderGCTask extends AbstractTask {
 								Range<Double> rtDurationRange =  parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).getValue();                        
 								parameters.getParameter(PeakFinderGCParameters.PEAK_DURATION).setValue(rtDurationRange);
 								GapGC newGap = new GapGC(parameters, peakList, row, newRow, datafile1, mzRange,
-										rtRange, intTolerance, minChemSimScore);
+										rtRange, /*intTolerance,*/ minChemSimScore);
 
 								gaps.add(newGap);
 								

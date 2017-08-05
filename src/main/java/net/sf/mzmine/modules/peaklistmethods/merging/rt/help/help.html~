@@ -36,7 +36,7 @@ cross samples comparisons).
 
 <dt>Use original raw data file<dt>
 <dd>Get peaks information from the very oldest 'Raw Data File' ancestor (if it has not been removed). 
-Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from)<dd>
+Unchecked: information are grabbed as usual (from the data file the peak list to be merged was built from)</dd>
 					
 <dt>DETECTED m/z search window</dt>
 <dd>Ignored if "Use DETECTED peaks only" or "Use original raw data file" is unchecked, or if "Cumulative computing" is checked. 

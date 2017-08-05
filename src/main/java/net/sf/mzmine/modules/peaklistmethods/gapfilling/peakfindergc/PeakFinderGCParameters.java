@@ -42,9 +42,9 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
     public static final StringParameter suffix = new StringParameter(
 	    "Name suffix", "Suffix to be added to peak list name", "gap-filled");
 
-    public static final PercentParameter intTolerance = new PercentParameter(
-	    "Intensity tolerance",
-	    "Maximum allowed deviation from expected /\\ shape of a peak in chromatographic direction");
+//    public static final PercentParameter intTolerance = new PercentParameter(
+//	    "Intensity tolerance",
+//	    "Maximum allowed deviation from expected /\\ shape of a peak in chromatographic direction");
 
     public static final MZToleranceParameter MZTolerance = new MZToleranceParameter();
 
@@ -85,7 +85,7 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
 
     public static final DoubleParameter SEARCH_RT_RANGE = new DoubleParameter(
             "Search minimum in RT range (min)",
-            "If a local minimum is minimal in this range of retention time, it will be considered a border between two peaks",
+            "Limiting RT bounds: If a local minimum is minimal in this range of retention time, it will be considered a border between two peaks",
             MZmineCore.getConfiguration().getRTFormat(), null, 0.001, null);
 
     public static final PercentParameter MIN_RELATIVE_HEIGHT = new PercentParameter(
@@ -101,13 +101,13 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
 
     public static final DoubleParameter MIN_RATIO = new DoubleParameter(
             "Min ratio of peak top/edge",
-            "Minimum ratio between peak's top intensity and side (lowest) data points."
+            "Limiting peak shape: Minimum ratio between peak's top intensity and side (lowest) data points."
                 +"\nThis parameter helps to reduce detection of false peaks in case the chromatogram is not smooth.",
                 new DecimalFormat("0.0000"),
                 1.0);
 
     public static /*final*/ DoubleRangeParameter PEAK_DURATION = new DoubleRangeParameter(
-            "Peak duration range (min)", "Range of acceptable peak lengths",
+            "Peak duration range (min)", "Limiting peak width: Range of acceptable peak lengths",
             MZmineCore.getConfiguration().getRTFormat(),
             Range.closed(0.0, 3.0));
 
@@ -125,7 +125,7 @@ public class PeakFinderGCParameters extends SimpleParameterSet {
 	    "If checked, the original peak list will be removed");
 
     public PeakFinderGCParameters() {
-	super(new Parameter[] { peakLists, suffix, intTolerance, MZTolerance,
+	super(new Parameter[] { peakLists, suffix, /*intTolerance,*/ MZTolerance,
 		/*RTTolerance,*/RTColumnTolerance, minSimScore,  
 		rtCorrection, useRegression,
 		SEARCH_RT_RANGE, PEAK_DURATION, 
