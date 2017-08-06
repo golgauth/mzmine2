@@ -1,0 +1,72 @@
+<html>
+	<head>
+		<title>Data analysis - Kovats Retention Indexer</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="/net/sf/mzmine/desktop/impl/helpsystem/HelpStyles.css">
+    </head>
+
+<body>
+
+<h1>Kovats Retention Indexer</h1>
+
+<h2>Description</h2>
+
+<p>
+This module can determine the <b><i>Kovats Retention Index</i></b> explained below.<br>
+It assumes a reference sample (Peak list) with already detected alkanes 
+(this can be obtained by using the <a href="/net/sf/mzmine/modules/peaklistmethods/identification/customjdxsearch/help/help.html">Identification - Custom JDX search</a> module).
+</p>
+
+<h4>Method parameters</h4>
+
+<dl>
+
+<dt>Alkanes peak list name</dt>
+<dd>Name of the peak list containing the required alkanes properly identified</dd>
+
+<dt>Rentention Index method</dt>
+<dd>Rentention Index (Kovats) computing method (if you don't know, use the default linear 'Programmed temperature')"</dd>
+
+</dl>
+
+
+
+<h3>What's the Kovats?</h3>
+The Kováts retention index (or Kováts index) of a compound is its retention time normalized to the retention times of adjacently eluting n-alkanes.<br>
+<br>
+It depends on the fact that logt∝n, where t is the retention time and n is the number of carbon atoms in the alkane.<br>
+For an isothermal chromatogram, you use the following equation to calculate the Kováts index, I:<br>
+<br>
+<img src="formulas.png" width="660" height="416" alt="">
+<br>
+
+<h4>Example of use:</h4>
+First, let's run a chromatogram of a standard alkane mixture in the range of interest, say from C-8 to C-16.<br>
+You might get something like the chromatogram below:<br><br>
+<img src="AlkanePattern.png" width="763" height="310" alt=""><br>
+Then you do a co-injection of your sample with the standard alkanes.
+<br><br>
+Assume that the retention times were: sample = 3.12 min; C-9 = 2.71 min;
+C-10 = 3.89 min. Then the Kováts index for your sample is:<br>
+<img src="example1.png" width="597" height="73" alt="">
+<br>
+
+
+<p>
+<ul>
+<li><b><i>Note 1</i></b>: Even many years later and in a different laboratory, you can reproduce this retention index even though your old retention times no longer have any meaning.</li>
+<li><b><i>Note 2</i></b>: Some chemistry databases use this value to ease identification 
+(See <a href="/net/sf/mzmine/modules/peaklistmethods/identification/nistgc/help/help.html">Identification - NIST MS Search GC</a> module).</li>
+<li><b><i>Note 3</i></b>: And so can do MZmine internally 
+(See <a href="/net/sf/mzmine/modules/peaklistmethods/identification/customjdxsearch/help/help.html">Identification - Custom JDX search</a> module).</li>
+</ul>
+</p>
+
+
+<h3>Setup dialog for the indexing</h3>
+<p>
+<img src="settings-dialog.png" width="599" height="226" alt="">
+</p>
+
+</body>
+</html>

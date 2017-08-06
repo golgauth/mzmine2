@@ -39,7 +39,8 @@ public class KovatsRetentionIndexParameters extends SimpleParameterSet {
     		);
     
     public static final ComboParameter<KovatsMethodType> KOVATS_METHOD = new ComboParameter<KovatsMethodType>(
-            "Rentention Index method", "Rentention Index (Kovats) computing method",
+            "Rentention Index method", 
+            "Rentention Index (Kovats) computing method (if you don't know, use the default linear 'Programmed temperature').",
             KovatsMethodType.values(),
             KovatsMethodType.PROGRAMMED_TEMPERATURE);
 

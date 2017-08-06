@@ -33,8 +33,11 @@ The user can also provide a retention time search window for each JDX spectrum t
 <dt>Similarity method</dt>
 <dd>Similarity method among DOT or PEARSON (careful with PEARSON: not yet fully implemented!)</dd>
 
+<dt>RI Mix factor</dt>
+<dd>Weight for balancing between Similarity, RI and Area (use 0.0 to ignore RI while computing score)</dd>
+
 <dt>Area Mix factor</dt>
-<dd>Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantaged)</dd>
+<dd>Weight for balancing between Similarity, RI and Area (use 0.0 to ignore Area while computing score)</dd>
 
 <dt>Minimum score</dt>
 <dd>Minimum score for matching between two peaks to be considered as successful 
@@ -43,7 +46,7 @@ The user can also provide a retention time search window for each JDX spectrum t
 <dt>Use DETECTED m/z only</dt>
 <dd>Use simplified spectra resulting from a previous 'merge step' to compute chemical similarity score. 
 				This requires having run the peak merging module on all the 
-			 	peak lists before running this alignment module (See <a href="/net/sf/mzmine/modules/peaklistmethods/merging/rt/help/help.html">Peak detection - RT based peak merger</a> module).</dd>
+			 	peak lists before running this alignment module (See <a href="/net/sf/mzmine/modules/peaklistmethods/merging/rt/help/help.html">Peak detection - RT based peak merger</a> module)</dd>
 
 <dt>Ignore range files</dt>
 <dd>Ignore files containing RT search ranges (.rts files), even if present in the "JDX(s) directory"</dd>
@@ -103,6 +106,7 @@ the identification algorithm will use the RT range as described in the RTS file.
 <pre>
 MIN_RT=18.5
 MAX_RT=21
+RI=1079
 </pre>
 
 

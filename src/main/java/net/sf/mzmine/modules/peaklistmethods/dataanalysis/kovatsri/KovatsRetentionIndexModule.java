@@ -35,7 +35,7 @@ import net.sf.mzmine.util.ExitCode;
  */
 public class KovatsRetentionIndexModule implements MZmineProcessingModule {
 
-	private static final String MODULE_NAME = "Kovats Retention Index";
+	private static final String MODULE_NAME = "Kovats Retention Indexer";
 	private static final String MODULE_DESCRIPTION = "Computes and stores peaks \"Retention Index\", using a reference peak list of well identified alkanes.";
 
 	@Override
