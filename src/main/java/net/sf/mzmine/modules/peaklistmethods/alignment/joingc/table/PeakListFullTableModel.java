@@ -60,6 +60,7 @@ import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.visualization.peaklisttable.ColumnSettingParameter;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
@@ -270,7 +271,14 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                         Feature peak = a_pl_row.getPeak(rdf);
                         if (peak != null) {
                             
+                        	// Identity
                             PeakIdentity mainIdentity = a_pl_row.getPreferredPeakIdentity();
+                            
+                            // Retention Index
+                            double kovatsRI = KovatsRetentionIndexTask.getRetentionIndex(peak);
+                            boolean kovatsRIset = KovatsRetentionIndexTask.isRetentionIndexSet(peak);
+                            String str_kovatsRI = ((kovatsRIset) ? " / " + rtFormat.format(kovatsRI) : "");
+
 
                             if (mainIdentity != null) {
                             
@@ -278,6 +286,7 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                 strIdentities = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowProps.PROPERTY_IDENTITIES_NAMES);
                                 strScores = ((SimplePeakIdentity) mainIdentity).getPropertyValue(AlignedRowProps.PROPERTY_IDENTITIES_SCORES);
 
+                                
                                 // More than one rdf (align peak list) 
                                 if (this.peakList.getRawDataFiles().length > 1) {
                                     
@@ -314,13 +323,14 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                                     objects.add(rtFormat.format(peak.getRT()) + 
                                                 (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" : "") + 
                                                 " / " + areaFormat.format(peak.getArea()) + 
-                                                " / " + peakIdentity
-                                                + strScore);
+                                                " / " + peakIdentity + strScore +
+                                                str_kovatsRI );
                                 } 
                                 // Handle regular single rdf peak list
                                 else {
                                     objects.add(rtFormat.format(peak.getRT()) + 
-                                            " / " + areaFormat.format(peak.getArea()));
+                                            " / " + areaFormat.format(peak.getArea()) + 
+                                            str_kovatsRI);
                                 }
                                 //
                                 mainIdentities[j-1] = mainIdentity;                                  
@@ -328,7 +338,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                             } else {
                                 // Case row identity is "null" (i.e. != "Unknown")
                                 objects.add(rtFormat.format(peak.getRT()) + 
-                                        " / " + areaFormat.format(peak.getArea()));
+                                        " / " + areaFormat.format(peak.getArea()) + 
+                                        str_kovatsRI);
                             }
                             
                             arrNbDetected[j-1] += 1;

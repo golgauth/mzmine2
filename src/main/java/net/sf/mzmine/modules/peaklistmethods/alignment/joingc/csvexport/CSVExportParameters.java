@@ -62,11 +62,16 @@ public class CSVExportParameters extends SimpleParameterSet {
             "Export identities",
             "If checked, identification header row will be exported. ", true);
 
+//    public static final BooleanParameter exportKovatsRI = new BooleanParameter(
+//            "Export Kovats RI",
+//            "If checked, 'Kovats Retention Index' will be exported. ", true);
+
 
     public CSVExportParameters() {
         super(new Parameter[] { peakLists, filename, fieldSeparator,
                 exportSeparate, exportRtAverage, exportNumDetected,
-                exportIdentities /* , idSeparator */});
+                exportIdentities /* , idSeparator */
+                /*,exportKovatsRI*/});
     }
 
 }

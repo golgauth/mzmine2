@@ -52,6 +52,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTable;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
@@ -75,7 +76,7 @@ public class CSVExportTask extends AbstractTask {
 
     private String fieldSeparator;
     private Boolean exportSeparate, exportRtAverage, exportNumDetected,
-            exportIdentities;
+            exportIdentities/*, exportKovatsRI*/;
 
     private static final String SEP_STR_CSV = " / ";
 
@@ -95,6 +96,8 @@ public class CSVExportTask extends AbstractTask {
                 CSVExportParameters.exportNumDetected).getValue();
         exportIdentities = parameters.getParameter(
                 CSVExportParameters.exportIdentities).getValue();
+//        exportKovatsRI = parameters.getParameter(
+//                CSVExportParameters.exportKovatsRI).getValue();
     }
 
     public double getFinishedPercentage() {
@@ -155,28 +158,20 @@ public class CSVExportTask extends AbstractTask {
             }
 
             // Feedback
-            if (success) {
-                if (exportSeparate)
-                    logger.log(
-                            Level.INFO,
-                            "Table saved to files: "
-                                    + this.getCSVfilenames()[1] + " | "
-                                    + this.getCSVfilenames()[2]);
-                else
-                    logger.log(Level.INFO,
-                            "Table saved to file: " + this.getCSVfilename());
-            } else {
-                if (exportSeparate)
-                    logger.log(
-                            Level.INFO,
-                            "Could not write to files: "
-                                    + this.getCSVfilenames()[1] + " | "
-                                    + this.getCSVfilenames()[2]);
-                else
-                    logger.log(Level.INFO,
-                            "Could not write to file: " + this.getCSVfilename());
-            }
-
+            String msg_prefix = ((success) ? "Table saved to file(s): " : "Could not write to file(s): ");
+            if (exportSeparate) {
+            	
+            	String exportFiles = "";
+                for (int k = 1; k < csvFilenames.length; k++) {
+                	exportFiles += csvFilenames[k] + " | ";
+                }
+                exportFiles = exportFiles.substring(0, exportFiles.length() - " | ".length());
+                
+                logger.log(Level.INFO, msg_prefix + exportFiles);
+            } else
+                logger.log(Level.INFO, msg_prefix + this.getCSVfilename());
+            
+            
             // Close file
             try {
                 writer.close();
@@ -214,7 +209,7 @@ public class CSVExportTask extends AbstractTask {
         // Separated output files (rt + area + ...)
         String basePath = null;
         String[] suffixes = new String[] { "-rt-orig.csv", "-rt-reca.csv",
-                "-area.csv", "-ident.csv", "-scor.csv" };
+                "-area.csv", "-ident.csv", "-scor.csv", "-ri-kov.csv" };
         int nbFiles = suffixes.length;
         String[] filenames = new String[nbFiles];
         FileWriter[] fileWriters = new FileWriter[nbFiles];
@@ -267,7 +262,7 @@ public class CSVExportTask extends AbstractTask {
             ArrayList<Vector<Object>> rowsList = new ArrayList<Vector<Object>>();
             for (int i = 0; i < nbRows; ++i) {
 
-                Vector<Object> objects = new Vector<Object>(/*
+                Vector<Object> objects = new Vector<Object>(/*exportToCSV
                                                              * columnNames.length
                                                              */);
 
@@ -320,8 +315,14 @@ public class CSVExportTask extends AbstractTask {
                             Feature peak = a_pl_row.getPeak(rdf);
                             if (peak != null) {
 
-                                PeakIdentity mainIdentity = a_pl_row
+                            	// Identity
+                            	PeakIdentity mainIdentity = a_pl_row
                                         .getPreferredPeakIdentity();
+                                
+                                // Retention Index
+                                double kovatsRI = KovatsRetentionIndexTask.getRetentionIndex(peak);
+                                boolean kovatsRIset = KovatsRetentionIndexTask.isRetentionIndexSet(peak);
+                                String str_kovatsRI = ((kovatsRIset) ? SEP_STR_CSV + rtFormat.format(kovatsRI) : "");
 
                                 if (mainIdentity != null) {
 
@@ -366,22 +367,36 @@ public class CSVExportTask extends AbstractTask {
                                             peakIdentity = "";
                                         }
                                         
+//                                        objects.add(rtFormat.format(
+//                                                peak.getRT())
+//                                                + SEP_STR_CSV
+//                                                + (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" + SEP_STR_CSV : "")
+//                                                + areaFormat.format(peak.getArea())
+//                                                + SEP_STR_CSV + peakIdentity + strScore
+//                                                + str_kovatsRI);
                                         objects.add(rtFormat.format(
                                                 peak.getRT())
-                                                + SEP_STR_CSV
-                                                + (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" + SEP_STR_CSV : "")
-                                                + areaFormat.format(peak.getArea())
-                                                + SEP_STR_CSV + peakIdentity
-                                                + strScore);
+                                                + SEP_STR_CSV + (!Strings.isNullOrEmpty(peakAjustedRT) ? " [" + peakAjustedRT + "]" : "")
+                                                + SEP_STR_CSV + areaFormat.format(peak.getArea())
+                                                + SEP_STR_CSV + peakIdentity 
+                                                + SEP_STR_CSV + score
+                                                + SEP_STR_CSV + kovatsRI);
                                         
                                     }
                                     // Handle regular single rdf peak list
                                     else {
-                                        objects.add(rtFormat.format(peak
-                                                .getRT())
+//                                        objects.add(rtFormat.format(peak
+//                                                .getRT())
+//                                                + SEP_STR_CSV
+//                                                + areaFormat.format(peak.getArea())
+//                                                + str_kovatsRI);
+                                        objects.add(rtFormat.format(
+                                        		peak.getRT())
                                                 + SEP_STR_CSV
-                                                + areaFormat.format(peak
-                                                        .getArea()));
+                                                + SEP_STR_CSV + areaFormat.format(peak.getArea())
+                                                + SEP_STR_CSV
+                                                + SEP_STR_CSV
+                                                + SEP_STR_CSV + kovatsRI);
                                     }
                                     //
                                     mainIdentities[j - 1] = mainIdentity;
@@ -480,7 +495,8 @@ public class CSVExportTask extends AbstractTask {
                 boolean doWrite = true;
                 if ((i == 0 && !exportRtAverage)
                         || (i == 1 && !exportIdentities)
-                        || (i == 2 && !exportNumDetected))
+                        || (i == 2 && !exportIdentities)
+                        || (i == 3 && !exportNumDetected))
                     doWrite = false;
 
                 if (doWrite) {
@@ -493,12 +509,16 @@ public class CSVExportTask extends AbstractTask {
 
                         writer.write(str);
                         if (separatedOutputs) {
+                        	
                             String[] arrStr = str.split(SEP_STR_CSV);
+                            // Peak info ("/" separated)
                             if (arrStr.length == nbFiles) {
                                 for (int k = 0; k < nbFiles; ++k) {
                                     buffWriters[k].write(arrStr[k]);
                                 }
-                            } else {
+                            }
+                            // Row info (rtAverage, identities, numDetected, ...)
+                            else {
                                 for (int k = 0; k < nbFiles; ++k) {
                                     buffWriters[k].write(str);
                                 }

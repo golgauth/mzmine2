@@ -153,7 +153,7 @@ public class KovatsRetentionIndexTask extends AbstractTask {
         			alkanesList.add(a_row);
         			System.out.println(">>>> Found alkane: " + a_row.getPreferredPeakIdentity());
         		} else {
-        			System.out.println("000> Rejected alkane: " + a_row.getPreferredPeakIdentity());
+        			//
         		}
         	}
         	// Sort by ascending RT
@@ -197,20 +197,47 @@ public class KovatsRetentionIndexTask extends AbstractTask {
 	        					
         						n_alkane = alkanesArr[i - 1];
         						
-        						// Nb atomes of Carbon in alkane 'n'
         						//String n_alkane_molform = ((JDXCompound) n_alkane.getPreferredPeakIdentity()).getFormula();
         						String n_alkane_molform = n_alkane.getPreferredPeakIdentity().getPropertyValue(PROPERTY_FORMULA);
-        						int indexOfC = n_alkane_molform.indexOf('C');
-        						int indexOfSpace = n_alkane_molform.indexOf(' ');
-	        	            	int n = 0;
-	        	            	try {
-		        	            	n = ((indexOfC == 0 && indexOfSpace > indexOfC) 
-		        	            			? Integer.valueOf(n_alkane_molform.substring(indexOfC+1, indexOfSpace)) : -1); 
-	        	            	} catch (NumberFormatException nfe) {
-	        	            		// 
-	        	            	}
+           						//String N_alkane_molform = ((JDXCompound) N_alkane.getPreferredPeakIdentity()).getFormula();
+        						String N_alkane_molform = N_alkane.getPreferredPeakIdentity().getPropertyValue(PROPERTY_FORMULA);
+
+        						int nC = 0;
+//	        	            	try {
+//		        	            	
+//	        						// Nb atomes of Carbon in alkane 'n'
+//	        						int indexOfC = n_alkane_molform.indexOf('C');
+//	        						int indexOfSpace = n_alkane_molform.indexOf(' ');
+//	        	            		nC = ((indexOfC == 0 && indexOfSpace > indexOfC) 
+//		        	            			? Integer.valueOf(n_alkane_molform.substring(indexOfC + 1, indexOfSpace)) : -1);
+//		        	            	
+//	        	            		
+//	        	            		/** --- Check alkane --- */
+//		        	            	// Make also sure we are talking about proper alkanes [ form: C(n)H(2n+2) ]
+//	        						// Nb atomes of Hydrogen in alkane 'n'
+//	        						int indexOfH = n_alkane_molform.indexOf('H');
+//	        						int indexOfSecondSpace = n_alkane_molform.indexOf(' ', indexOfH);
+//	        						int indexOfEnd = ((indexOfSecondSpace == -1) ? n_alkane_molform.length() : indexOfSecondSpace);
+//	        	            		nH = ((indexOfH == 0 && indexOfEnd > indexOfH) 
+//		        	            			? Integer.valueOf(n_alkane_molform.substring(indexOfH + 1, indexOfEnd)) : -1);
+//	        	            		// Shall we accept "cyclic" alkanes [ form: C(n)H(2n) ] ?
+//	        	            		if ((indexOfSecondSpace == -1) && (nH != (2 * nC + 2)) /*&& (nH != (2 * nC))*/) {
+//	        	            			
+//		        	        			setErrorMessage("Formula for peak '" + n_alkane 
+//		        	        					+ "' (" + n_alkane_molform + ") couldn't be parsed as an actual "
+//		        	        							+ "alkane molecule (not of form: 'C(n)H(2n+2)' )!");
+//		        	            		setStatus(TaskStatus.ERROR);
+//	        	            		}
+//	        	            		/** ------------------- */
+//	        	            		
+//	        	            	} catch (NumberFormatException nfe) {
+//	        	            		// 
+//	        	            	}
+
+        	            		nC = isAlcane(n_alkane_molform, true); //Shall we accept "cyclic" alkanes
+        	            		int NC = isAlcane(N_alkane_molform, true);
 	        	            	
-	        	            	if (n > 0) {
+	        	            	if (nC > 0 && NC > 0) {
 	        	            		
 		        	            	// RTs for alkanes 'n' and 'N' alkanesList
 		        	            	double n_rt = n_alkane.getAverageRT();
@@ -228,12 +255,10 @@ public class KovatsRetentionIndexTask extends AbstractTask {
 		        	            	} 
 		        	            	
 		        	            	// Set 'I' (the Kovats retention index)
-		        	            	double d_ri = 100d * (n + ratio);
+		        	            	double d_ri = 100d * (nC + ratio);
 		        	            	KovatsRetentionIndexTask.setRetentionIndex(peak, d_ri);
 		        	            	
 	        	            		
-	           						//String N_alkane_molform = ((JDXCompound) N_alkane.getPreferredPeakIdentity()).getFormula();
-	        						String N_alkane_molform = N_alkane.getPreferredPeakIdentity().getPropertyValue(PROPERTY_FORMULA);
 	        	            		System.out.println("Success! - Peak '" + peak 
 	        	            				+ "' is in between alkanes [" + n_alkane_molform + " @" + n_alkane.getAverageRT() 
 	        	            				+ ", " + N_alkane_molform + " @" + N_alkane.getAverageRT() + "]");
@@ -241,7 +266,8 @@ public class KovatsRetentionIndexTask extends AbstractTask {
 	        	            	} else {
 	        	            		
 	        	        			setErrorMessage("Formula for peak '" + n_alkane 
-	        	        					+ "' (" + n_alkane_molform + ") couldn't be parsed as an alkane one!");
+	        	        					+ "' (" + n_alkane_molform + ") or (" + N_alkane_molform + ") "
+	        	        							+ "couldn't be parsed as an alkane one!");
 	        	            		setStatus(TaskStatus.ERROR);
 	        	            		
 	        	            	}
@@ -302,10 +328,47 @@ public class KovatsRetentionIndexTask extends AbstractTask {
     	double d_ri = ((double) peak.getCharge()) / (Math.pow(10, nb_digits));
     	return d_ri;
     }
+    /**
+     * 
+     */
+    public static boolean isRetentionIndexSet(Feature peak) {
+        
+    	return (peak.getCharge() != 0);
+    }
 
     
-    
-    
+    private static int isAlcane(String molform, boolean acceptCyclic) {
+    	
+    	int nC = 0, nH;
+    	boolean is_alcane = false;
+    	
+    	try {
+    		// Nb atomes of Carbon in alkane 'n'
+    		int indexOfC = molform.indexOf('C');
+    		int indexOfSpace = molform.indexOf(' ');
+    		// Methane (C H4) case
+    		if (indexOfSpace == indexOfC + 1)
+    			nC = 1;
+    		else
+	    		nC = ((indexOfC == 0 && indexOfSpace > indexOfC) 
+	    				? Integer.valueOf(molform.substring(indexOfC + 1, indexOfSpace)) : -1);
+
+    		// Nb atomes of Hydrogen in alkane 'n'
+    		int indexOfH = molform.indexOf('H');
+    		int indexOfSecondSpace = molform.indexOf(' ', indexOfH);
+    		int indexOfEnd = ((indexOfSecondSpace == -1) ? molform.length() : indexOfSecondSpace);
+    		nH = ((indexOfH == 0 && indexOfEnd > indexOfH) 
+    				? Integer.valueOf(molform.substring(indexOfH + 1, indexOfEnd)) : -1);
+
+    		// Shall we accept "cyclic" alkanes [ form: C(n)H(2n) ] ?
+    		is_alcane =  (indexOfSecondSpace == -1 && (nH == (2 * nC + 2) || (nH != (2 * nC) && acceptCyclic)));
+    		
+    	} catch (NumberFormatException nfe) {
+    		// 
+    	}
+		
+		return (is_alcane ? nC : 0);
+    }
     
     
     
