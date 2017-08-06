@@ -51,9 +51,14 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
             "Similarity method", "Similarity method",
             SimilarityMethodType.values());
 
+    public static final DoubleParameter RI_MIX_FACTOR = new DoubleParameter(
+            "RI Mix factor",
+            "Weight for balancing between Similarity, RI and Area (use 0.0 to ignore RI while computing score).",
+            MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
+
     public static final DoubleParameter AREA_MIX_FACTOR = new DoubleParameter(
             "Area Mix factor",
-            "Weight for balancing between Similarity and Area (0.0 is 'Similarity only', otherwise huge peaks get advantaged).",
+            "Weight for balancing between Similarity, RI and Area (use 0.0 to ignore Area while computing score).",
             MZmineCore.getConfiguration().getIntensityFormat(), 0.0, 0.0, 1.0);
 
     public static final DoubleParameter MIN_SCORE = new DoubleParameter(
@@ -105,7 +110,8 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                 // RI_SEARCH_WINDOW
                 JDX_DIR, 
                 BRUTE_FORCE_ERASE, USE_AS_STD_COMPOUND,
-                SIMILARITY_METHOD, AREA_MIX_FACTOR,
+                SIMILARITY_METHOD, 
+                RI_MIX_FACTOR, AREA_MIX_FACTOR,
                 MIN_SCORE, useDetectedMzOnly, 
                 IGNORE_RT_RANGE_FILES,
                 // APPLY_WITHOUT_CHECK,

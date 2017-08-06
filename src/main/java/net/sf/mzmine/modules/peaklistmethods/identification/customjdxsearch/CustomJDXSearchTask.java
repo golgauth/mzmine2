@@ -53,6 +53,7 @@ import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationParameters;
@@ -111,6 +112,7 @@ public class CustomJDXSearchTask extends AbstractTask {
 //    private JDXCompound jdxComp1, jdxComp2;
 //    private Range<Double> rtSearchRangeC1, rtSearchRangeC2;
     private SimilarityMethodType simMethodType;
+    private double riMixFactor;
     private double areaMixFactor;
     private double minScore;
     
@@ -129,6 +131,7 @@ public class CustomJDXSearchTask extends AbstractTask {
     private NumberFormat areaFormat = MZmineCore.getConfiguration().getIntensityFormat();
 
     private Range<Double>[] rtSearchRanges;
+    private int[] riArr;
 
 
     /**
@@ -158,6 +161,7 @@ public class CustomJDXSearchTask extends AbstractTask {
 //        rtSearchRangeC1 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C1).getValue();
 //        rtSearchRangeC2 = parameters.getParameter(CustomJDXSearchParameters.RT_SEARCH_WINDOW_C2).getValue();
         simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
+        riMixFactor = parameters.getParameter(CustomJDXSearchParameters.RI_MIX_FACTOR).getValue();
         areaMixFactor = parameters.getParameter(CustomJDXSearchParameters.AREA_MIX_FACTOR).getValue();
         minScore = parameters.getParameter(CustomJDXSearchParameters.MIN_SCORE).getValue();
         
@@ -204,8 +208,9 @@ public class CustomJDXSearchTask extends AbstractTask {
             }
         });        
         JDXCompound[] jdxCompounds = new JDXCompound[jdxFiles.length];
-        String[] columnNames = new String[1 + 4*jdxFiles.length];
+        String[] columnNames = new String[1 + 5*jdxFiles.length];
         rtSearchRanges = (Range<Double>[]) new Range[jdxFiles.length];
+        riArr = new int[jdxFiles.length];
         
         if (!isCanceled()) {
             int i_f = 0;
@@ -220,34 +225,45 @@ public class CustomJDXSearchTask extends AbstractTask {
                     logger.info("Parsed JDX file: " + jdxFiles[i_f].getName());
 
                     // Build csv header row
-                    int col = 4 * (i_f % jdxFiles.length);
+                    int col = 5 * (i_f % jdxFiles.length);
                     columnNames[1 + col] = jdxCompounds[i_f].getName();
                     columnNames[1 + col + 1] = " score";
                     columnNames[1 + col + 2] = " rt";
                     columnNames[1 + col + 3] = " area";
+                    columnNames[1 + col + 4] = " ri";
                     
                     // Try getting related ranges
                     String rtFilename = jdxFiles[i_f].getPath() + ".rts";
                     String line;
                     try (
-                            InputStream fis = new FileInputStream(rtFilename);
-                            InputStreamReader isr = new InputStreamReader(fis/*, Charset.forName("UTF-8")*/);
-                            BufferedReader br = new BufferedReader(isr);
-                            ) {
-                        // Try get min and max
-                        Double min = Double.MIN_VALUE, max = Double.MAX_VALUE;
-                        while ((line = br.readLine()) != null) {
-                            if (line.startsWith("MIN_RT")) {
-                                min = Double.valueOf(line.split("=")[1]);
-                            }
-                            if (line.startsWith("MAX_RT")) {
-                                max = Double.valueOf(line.split("=")[1]);
-                            }
-                        }
-                        logger.info("Range file found: " + jdxFiles[i_f].getName() + ".rts" + " ([" + min + ", " + max + "])");
-                        rtSearchRanges[i_f] = Range.closed(min, max);
+                    		InputStream fis = new FileInputStream(rtFilename);
+                    		InputStreamReader isr = new InputStreamReader(fis/*, Charset.forName("UTF-8")*/);
+                    		BufferedReader br = new BufferedReader(isr);
+                    		) {
+                    	
+                    	// Try get min and max
+                    	Double min = Double.MIN_VALUE, max = Double.MAX_VALUE;
+                    	int ri = -1;
+                    	while ((line = br.readLine()) != null) {
+                    		if (line.startsWith("MIN_RT")) {
+                    			min = Double.valueOf(line.split("=")[1]);
+                    		}
+                    		if (line.startsWith("MAX_RT")) {
+                    			max = Double.valueOf(line.split("=")[1]);
+                    		}
+                    		if (line.startsWith("RI")) {
+                    			ri = Integer.valueOf(line.split("=")[1]);
+                    		}
+                    	}
+                    	logger.info("Range file found: " + jdxFiles[i_f].getName() + ".rts" + " ([" + min + ", " + max + "])");
+                    	if (ri > 0)
+                    		logger.info("RI file found: " + jdxFiles[i_f].getName() + ".rts" + " (Kovats RI = '" + ri + "')");
+                    	
+                    	rtSearchRanges[i_f] = Range.closed(min, max);
+                    	riArr[i_f] = ri;
+                    	
                     } catch (/*FileNotFoundException |*/ IOException e) {
-                        rtSearchRanges[i_f] = Range.closed(Double.MIN_VALUE, Double.MAX_VALUE);
+                    	rtSearchRanges[i_f] = Range.closed(Double.MIN_VALUE, Double.MAX_VALUE);
                     }
                 }
                 
@@ -338,7 +354,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
                                 if (rdf == null) { rdf = curRefRDF; }
-                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i], this.useDetectedMzOnly);
+                                double score = computeCompoundRowScore(rdf, curPeakList, a_row, findCompounds[i], riArr[i], this.useDetectedMzOnly);
                                 if (score < minScore)
                                     scoreMatrix[finishedItems][i+1] = MIN_SCORE_ABSOLUTE;
                                 else
@@ -423,6 +439,9 @@ public class CustomJDXSearchTask extends AbstractTask {
                                 objects.add(bestPeak.getRT());
                                 // Add area  of selected peak
                                 objects.add(bestPeak.getArea());
+                                // Add RI  of selected peak
+                                int ri = (int) Math.floor(KovatsRetentionIndexTask.getRetentionIndex(bestPeak));
+                                objects.add(ri);
 
                             }
 
@@ -642,7 +661,7 @@ public class CustomJDXSearchTask extends AbstractTask {
     }
 
     private double computeCompoundRowScore(final RawDataFile refRDF, final PeakList curPeakList, final PeakListRow row, 
-            final JDXCompound compound, boolean useDetectedMzOnly)
+            final JDXCompound compound, int compoundRI, boolean useDetectedMzOnly)
             throws IOException {
 
         double score = 0.0;
@@ -673,17 +692,38 @@ public class CustomJDXSearchTask extends AbstractTask {
         // Get similarity score.
         JDXCompound newComp = (JDXCompound) compound.clone();
 
-        score = computeSimilarityScore(vec1, vec2);	
-
+        score = computeSimilarityScore(vec1, vec2);
+        
+        // Ignore 'RI' contribution if not available
+        if (compoundRI == -1)
+        	riMixFactor = 0d;
         // Adjust taking area in account (or not: areaMixFactor = 0.0).
         // TODO: Check if the following is pertinent with Pearson's correlation method
         //			(where scores are not normalized and can be negative).
-        if (areaMixFactor > 0.0) {
+        if (areaMixFactor > 0d || riMixFactor > 0d) {
             double maxArea = Double.MIN_VALUE;
+            double maxRIdiff = Double.MIN_VALUE;
             for (PeakListRow plr : currentPeakList.getRows()) {
-                if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
+                
+            	if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
+                
+            	if (compoundRI != -1) { // RI info is available
+	                double ri_diff = Math.abs(KovatsRetentionIndexTask.getRetentionIndex(plr.getBestPeak()) - compoundRI);
+	                if (ri_diff > maxRIdiff) { maxRIdiff = ri_diff; }
+            	}
             }
-            score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
+            
+            ////score = (1.0 - areaMixFactor) * score + (areaMixFactor) * row.getBestPeak().getArea() / maxArea;
+            //
+            double ri_diff = maxRIdiff;
+            if (compoundRI != -1) // RI info is available
+            	ri_diff = Math.abs(KovatsRetentionIndexTask.getRetentionIndex(row.getBestPeak()) - compoundRI);
+            //
+            double area = row.getBestPeak().getArea();
+            //
+            score = (1.0 - (areaMixFactor + riMixFactor)) * score
+            		+ (riMixFactor) * (1d - ri_diff / maxRIdiff)
+            		+ (areaMixFactor) * area / maxArea;
         }
 
 

@@ -786,7 +786,7 @@ public class NistMsSearchGCTask extends AbstractTask {
 	        // Specify a Kovats RI if available for this peak
 	        double kovats_ri = KovatsRetentionIndexTask.getRetentionIndex(peakRow.getBestPeak());
 	        if (kovats_ri >= 1d) {
-	            writer.write("Retention_index: " + Math.floor(kovats_ri));
+	            writer.write("Retention_index: " + ((int) Math.floor(kovats_ri)));
 		        writer.newLine();
 	        }
 	        
