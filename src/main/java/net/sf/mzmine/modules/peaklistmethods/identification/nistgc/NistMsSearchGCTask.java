@@ -142,6 +142,8 @@ public class NistMsSearchGCTask extends AbstractTask {
     private final int minMatchFactor;
     private final int minReverseMatchFactor;
     
+    private boolean skipKovatsRI;
+    
     private boolean useDetectedMzOnly;
     private boolean useAsStdCompound;
 
@@ -192,6 +194,8 @@ public class NistMsSearchGCTask extends AbstractTask {
 	minReverseMatchFactor = params.getParameter(MIN_REVERSE_MATCH_FACTOR)
 		.getValue();
 
+	skipKovatsRI = params.getParameter(NistMsSearchGCParameters.skipKovatsRI).getValue();
+	
 	useDetectedMzOnly = params.getParameter(NistMsSearchGCParameters.useDetectedMzOnly).getValue();
         useAsStdCompound = params.getParameter(NistMsSearchGCParameters.USE_AS_STD_COMPOUND).getValue();
 
@@ -323,26 +327,26 @@ public class NistMsSearchGCTask extends AbstractTask {
 		    // Has this neighbourhood's search been run already?
 		    if (!rowIdentities.containsKey(neighbours)) {
 
-                        System.out.println(">> SEARCH: " + row);
-			if (!isCanceled()) {
+		    	System.out.println(">> SEARCH: " + row);
+		    	if (!isCanceled()) {
 
-			    // Write spectra file.
-			    final File spectraFile = writeSpectraFile(peakList, 
-			            row, neighbours, useDetectedMzOnly);
+		    		// Write spectra file.
+		    		final File spectraFile = writeSpectraFile(peakList, 
+		    				row, neighbours, skipKovatsRI, useDetectedMzOnly);
 
-			    // Write locator file.
-			    writeSecondaryLocatorFile(locatorFile2, spectraFile);
+		    		// Write locator file.
+		    		writeSecondaryLocatorFile(locatorFile2, spectraFile);
 
-			    // Run the search.
-			    runNistMsSearch(nistMsSearchDir, command);
+		    		// Run the search.
+		    		runNistMsSearch(nistMsSearchDir, command);
 
-			    // Read the search results file and store the
-			    // results.
-			    rowIdentities.put(neighbours,
-				    readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, row));
-			}
+		    		// Read the search results file and store the
+		    		// results.
+		    		rowIdentities.put(neighbours,
+		    				readSearchResults(nistMsSearchDir, minMatchFactor, minReverseMatchFactor, row));
+		    	}
 		    } else {
-		        System.out.println(">> SKIPPED from SEARCH: " + row);
+		    	System.out.println(">> SKIPPED from SEARCH: " + row);
 		    }
 
 		    // Get the search results.
@@ -750,7 +754,7 @@ public class NistMsSearchGCTask extends AbstractTask {
      *             if an i/o problem occurs.
      */
     public static File writeSpectraFile(final PeakList peakList, final PeakListRow peakRow,
-	    final Collection<PeakListRow> neighbourRows, boolean useDetectedMzOnly) throws IOException {
+	    final Collection<PeakListRow> neighbourRows, boolean skipKovatsRI, boolean useDetectedMzOnly) throws IOException {
 
 	final File spectraFile = File.createTempFile(SPECTRA_FILE_PREFIX,
 		SPECTRA_FILE_SUFFIX);
@@ -783,12 +787,14 @@ public class NistMsSearchGCTask extends AbstractTask {
 
             Scan apexScan = peakRow.getRawDataFiles()[0].getScan(peakRow.getBestPeak().getRepresentativeScanNumber());
 	        
-	        // Specify a Kovats RI if available for this peak
-	        double kovats_ri = KovatsRetentionIndexTask.getRetentionIndex(peakRow.getBestPeak());
-	        if (kovats_ri >= 1d) {
-	            writer.write("Retention_index: " + ((int) Math.floor(kovats_ri)));
-		        writer.newLine();
-	        }
+            if (!skipKovatsRI) {
+		        // Specify a Kovats RI if available for this peak
+		        double kovats_ri = KovatsRetentionIndexTask.getRetentionIndex(peakRow.getBestPeak());
+		        if (kovats_ri >= 1d) {
+		            writer.write("Retention_index: " + ((int) Math.floor(kovats_ri)));
+			        writer.newLine();
+		        }
+            }
 	        
             DataPoint[] dataPoints;
             if (useDetectedMzOnly) {

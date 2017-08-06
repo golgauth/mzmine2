@@ -1,8 +1,3 @@
-<!--
-  Code created was by or on behalf of Syngenta and is released under the open source license in use for the
-  pre-existing code or project. Syngenta does not assert ownership or copyright any over pre-existing work.
-  -->
-
 <html>
 <head>
     <title>Identification - NIST MS Search GC</title>
@@ -81,6 +76,10 @@
     <dt>Min. reverse match factor</dt>
     <dd>NIST MS Search calculates a <span style="font-style: italic;">reverse</span> match factor (0 .. 999) between the
         submitted spectrum and each hit. Ignore hits with a reverse match factor below the given threshold.
+    </dd>
+
+    <dt>Skip Retention Index</dt>
+    <dd>If unchecked, but yet the Kovats RI is available, this information will be ignored while searching the NIST.
     </dd>
 
     <dt>Use DETECTED m/z only</dt>

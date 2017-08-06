@@ -105,7 +105,14 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
 	    "The minimum reverse match factor (0 .. 1000) that search hits must have",
 	    500, 0, 1000);
 
+    
     //
+    public static final BooleanParameter skipKovatsRI = new BooleanParameter(
+            "Skip Retention Index",
+            "If unchecked, but yet the Kovats RI is available, this information will be ignored while searching the NIST.",
+            false);
+
+    
     public static final BooleanParameter useDetectedMzOnly = new BooleanParameter(
             "Use DETECTED m/z only",
             "If checked, uses simplified spectra resulting from a previous 'merge step' to compute chemical similarity score",
