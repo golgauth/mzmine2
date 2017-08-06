@@ -27,6 +27,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Iterator;
 //import java.util.Collections;
 import java.util.logging.Logger;
 
@@ -42,6 +43,8 @@ import org.jcamp.spectrum.ArrayData;
 import org.jcamp.spectrum.MassSpectrum;
 import org.jcamp.spectrum.OrderedArrayData;
 import org.jcamp.spectrum.Spectrum;
+import org.jcamp.spectrum.notes.Note;
+import org.jcamp.spectrum.notes.NoteDescriptor;
 import org.jcamp.units.AliasUnit;
 import org.jcamp.units.BaseUnit;
 import org.jcamp.units.CommonUnit;
@@ -145,6 +148,17 @@ public class JDXCompound extends SimplePeakIdentity {
             //        if (nmrspectrum.hasPeakTable()) {
             //        	assertEquals(nmrspectrum.getPeakTable().length,16384);
             //        }
+            
+            // Recover formula among parsed information
+        	Iterator notesIt = jcampSpectrum.getNotes().iterator();
+        	while (notesIt.hasNext()) {
+        		Note note = (Note) notesIt.next();
+        		NoteDescriptor descr = note.getDescriptor();
+        		//if ("title".equals(descr.getKey()))
+        		//System.out.println(descr.getKey() + " => " + note.getValue());
+        		if ("molform".equals(descr.getKey()))
+        			formula = note.getValue().toString();
+        	}
 
         } catch (FileNotFoundException e) {
             throw new JCAMPException("File not found: " + e.getMessage());
@@ -277,6 +291,10 @@ public class JDXCompound extends SimplePeakIdentity {
 
     public double[] getSpectrum() {
     	return this.spectrum;
+    }
+    
+    public String getFormula() {
+    	return this.formula;
     }
     
     public int getMinMZ() {
