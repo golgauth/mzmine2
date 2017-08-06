@@ -64,6 +64,7 @@ import net.sf.mzmine.desktop.Desktop;
 import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.taskcontrol.AbstractTask;
@@ -781,7 +782,14 @@ public class NistMsSearchGCTask extends AbstractTask {
 //	    }
 
             Scan apexScan = peakRow.getRawDataFiles()[0].getScan(peakRow.getBestPeak().getRepresentativeScanNumber());
-
+	        
+	        // Specify a Kovats RI if available for this peak
+	        double kovats_ri = KovatsRetentionIndexTask.getRetentionIndex(peakRow.getBestPeak());
+	        if (kovats_ri >= 1d) {
+	            writer.write("Retention_index: " + Math.floor(kovats_ri));
+		        writer.newLine();
+	        }
+	        
             DataPoint[] dataPoints;
             if (useDetectedMzOnly) {
                 dataPoints = peakRow.getBestPeak().getIsotopePattern().getDataPoints();

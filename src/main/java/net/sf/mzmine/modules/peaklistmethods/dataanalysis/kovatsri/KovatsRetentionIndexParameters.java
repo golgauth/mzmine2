@@ -19,18 +19,11 @@
 
 package net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri;
 
-import java.text.NumberFormat;
-
 import net.sf.mzmine.datamodel.PeakList;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.SimilarityMethodType;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
-import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
-import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
-import net.sf.mzmine.parameters.parametertypes.filenames.DirectoryParameter;
-import net.sf.mzmine.parameters.parametertypes.filenames.FileNameParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
 
@@ -39,12 +32,7 @@ public class KovatsRetentionIndexParameters extends SimpleParameterSet {
     public static final PeakListsParameter PEAK_LISTS = new PeakListsParameter();
 
     // I.e. Can use the "Custom JDX search" to identify alkanes in a sample peak list from a JDX directory
-    ////public static final PeakListsParameter ALKANES_REF_PEAKLIST = new PeakListsParameter(1, 1);
-//    public static final ComboParameter<String> ALKANES_REF_PEAKLIST_NAME = new ComboParameter<String>(
-//    		"Alkanes peak list",
-//    		"Peak list containing the required alkanes properly identified.",
-//    		getAllListsNames()
-//    		);
+//    public static final PeakListsParameter ALKANES_REF_PEAKLIST = new PeakListsParameter(1, 1);
     public static final StringParameter ALKANES_REF_PEAKLIST_NAME = new StringParameter(
     		"Alkanes peak list name",
     		"Name of the peak list containing the required alkanes properly identified."
@@ -59,24 +47,12 @@ public class KovatsRetentionIndexParameters extends SimpleParameterSet {
     public KovatsRetentionIndexParameters() {
         super(new Parameter[] { PEAK_LISTS,
                 // RI_SEARCH_WINDOW
+        		////ALKANES_REF_PEAKLIST,
         		ALKANES_REF_PEAKLIST_NAME,
-        		
         		KOVATS_METHOD,
         		});
     }
 
-    private static String[] getAllListsNames() {
-    	
-        PeakList[] lists = MZmineCore.getProjectManager().getCurrentProject().getPeakLists();
-        String[] listNames = new String[lists.length];
-        int i = 0;
-        for (PeakList lst : lists) {
-        	listNames[i] = lst.getName();
-          i++;
-        }
-        
-        return listNames;
-    }
     public static PeakList getPeakListByName(String plName) {
     	
         PeakList[] lists = MZmineCore.getProjectManager().getCurrentProject().getPeakLists();

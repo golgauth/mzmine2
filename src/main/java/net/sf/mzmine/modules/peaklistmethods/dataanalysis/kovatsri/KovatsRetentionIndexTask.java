@@ -115,6 +115,7 @@ public class KovatsRetentionIndexTask extends AbstractTask {
 
         peakLists = parameters.getParameter(KovatsRetentionIndexParameters.PEAK_LISTS).getValue().getMatchingPeakLists();
         
+//        alkanesPeakList = parameters.getParameter(KovatsRetentionIndexParameters.ALKANES_REF_PEAKLIST).getValue().getMatchingPeakLists()[0];
         String alkanesPeakListName = parameters.getParameter(KovatsRetentionIndexParameters.ALKANES_REF_PEAKLIST_NAME).getValue();
         alkanesPeakList = KovatsRetentionIndexParameters.getPeakListByName(alkanesPeakListName);
         
