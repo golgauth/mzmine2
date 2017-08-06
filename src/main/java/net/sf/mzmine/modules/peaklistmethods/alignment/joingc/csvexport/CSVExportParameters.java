@@ -46,7 +46,8 @@ public class CSVExportParameters extends SimpleParameterSet {
     public static final BooleanParameter exportSeparate = new BooleanParameter(
             "Export into separate files",
             "If checked, result table will be exported to distinct CSV files:" +
-            " \"-rt.csv\" + \"-rt2.csv\" + \"-area.csv\" + \"-id.csv\"). ",
+            //" \"-rt.csv\" + \"-rt2.csv\" + \"-area.csv\" + \"-id.csv\"). ",
+            " \"-rt-orig.csv\", \"-rt-reca.csv\", \"-area.csv\", \"-ident.csv\", \"-scor.csv\", \"-ri-kov.csv\".", 
             true);
 
     public static final BooleanParameter exportRtAverage = new BooleanParameter(

@@ -1,0 +1,65 @@
+<html>
+	<head>
+		<title>Export - Export to CSV file(s) a'la JUL</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="/net/sf/mzmine/desktop/impl/helpsystem/HelpStyles.css">
+    </head>
+
+<body>
+
+<h1>Export - Export to CSV file(s)</h1>
+
+<h2>Description</h2>
+
+<p>
+Exports table to CSV format (in a "a'la JUL" manner).
+</p>
+
+<h4>Method parameters</h4>
+
+<dl>
+
+<dt>Filename</dt>
+<dd>Name of the output CSV file. Use pattern "{}" in the file name to substitute with peak list name. 
+(i.e. "blah{}blah.csv" would become "blahSourcePeakListNameblah.csv"). If the file already exists, it will be overwritten.
+</dd>
+
+<dt>Export into separate files</dt>
+<dd>If checked, result table will be exported to distinct CSV files:<br>
+<i>"-rt-orig.csv", "-rt-reca.csv", "-area.csv", "-ident.csv", "-scor.csv", "-ri-kov.csv"</i></dd>
+
+<dt>Export RT average</dt>
+<dd>If checked, all averaged RT will be exported</dd>
+
+<dt>Export number of detected peaks</dt>
+<dd>If checked, the number of detected samples header row will be exported</dd>
+
+<dt>Export identities</dt>
+<dd>If checked, identification header row will be exported</dd>
+
+
+</dl>
+
+
+
+<h3>Example</h3>
+
+<img src="peak-info.png" width="837" height="351" alt=""><br>
+<br><br>
+
+The table above can be output as a single file such as:
+<br><br>
+<img src="csv-1.png" width="799" height="134" alt=""><br>
+<br><br>
+Or, several files: one per peak specific info (RI, area, ...):<br>
+<br>
+<img src="csv-21.png" width="584" height="134" alt=""><br>
+<br>
+<img src="csv-22.png" width="584" height="134" alt=""><br>
+
+
+
+
+
+</body>
+</html>
