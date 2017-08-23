@@ -33,7 +33,7 @@ import net.sf.mzmine.util.ExitCode;
 /**
  * Module for computing Kovats Retention Index of the peaks from a reference alkanes peak list.
  */
-public class KovatsRetentionIndexModule implements MZmineProcessingModule {
+public class KovatsRetentionIndexerModule implements MZmineProcessingModule {
 
 	private static final String MODULE_NAME = "Kovats Retention Indexer";
 	private static final String MODULE_DESCRIPTION = "Computes and stores peaks \"Retention Index\", using a reference peak list of well identified alkanes.";
@@ -58,7 +58,7 @@ public class KovatsRetentionIndexModule implements MZmineProcessingModule {
 	public ExitCode runModule(@Nonnull MZmineProject project, @Nonnull ParameterSet parameters,
 			@Nonnull Collection<Task> tasks) {
 
-		Task newTask = new KovatsRetentionIndexTask(project, parameters);
+		Task newTask = new KovatsRetentionIndexerTask(project, parameters);
 		tasks.add(newTask);
 
 		return ExitCode.OK;
@@ -66,6 +66,6 @@ public class KovatsRetentionIndexModule implements MZmineProcessingModule {
 
 	@Override
 	public @Nonnull Class<? extends ParameterSet> getParameterSetClass() {
-		return KovatsRetentionIndexParameters.class;
+		return KovatsRetentionIndexerParameters.class;
 	}
 }

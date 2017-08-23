@@ -81,10 +81,10 @@ import com.google.common.collect.Range;
 
 
 
-public class KovatsRetentionIndexTask extends AbstractTask {
+public class KovatsRetentionIndexerTask extends AbstractTask {
 
     // Logger.
-    private static Logger logger = Logger.getLogger(KovatsRetentionIndexTask.class.getName());
+    private static Logger logger = Logger.getLogger(KovatsRetentionIndexerTask.class.getName());
 
     String PROPERTY_FORMULA = "Molecular formula";
 
@@ -109,17 +109,17 @@ public class KovatsRetentionIndexTask extends AbstractTask {
      * @param list
      *            peak list to operate on.
      */
-    KovatsRetentionIndexTask(final MZmineProject project, final ParameterSet parameters) {
+    KovatsRetentionIndexerTask(final MZmineProject project, final ParameterSet parameters) {
 
         this.project = project;
 
-        peakLists = parameters.getParameter(KovatsRetentionIndexParameters.PEAK_LISTS).getValue().getMatchingPeakLists();
+        peakLists = parameters.getParameter(KovatsRetentionIndexerParameters.PEAK_LISTS).getValue().getMatchingPeakLists();
         
 //        alkanesPeakList = parameters.getParameter(KovatsRetentionIndexParameters.ALKANES_REF_PEAKLIST).getValue().getMatchingPeakLists()[0];
-        String alkanesPeakListName = parameters.getParameter(KovatsRetentionIndexParameters.ALKANES_REF_PEAKLIST_NAME).getValue();
-        alkanesPeakList = KovatsRetentionIndexParameters.getPeakListByName(alkanesPeakListName);
+        String alkanesPeakListName = parameters.getParameter(KovatsRetentionIndexerParameters.ALKANES_REF_PEAKLIST_NAME).getValue();
+        alkanesPeakList = KovatsRetentionIndexerParameters.getPeakListByName(alkanesPeakListName);
         
-        kovatsMethod = parameters.getParameter(KovatsRetentionIndexParameters.KOVATS_METHOD).getValue();
+        kovatsMethod = parameters.getParameter(KovatsRetentionIndexerParameters.KOVATS_METHOD).getValue();
     }
 
     @Override
@@ -257,7 +257,7 @@ public class KovatsRetentionIndexTask extends AbstractTask {
 		        	            	
 		        	            	// Set 'I' (the Kovats retention index)
 		        	            	double d_ri = 100d * (nC + ratio);
-		        	            	KovatsRetentionIndexTask.setRetentionIndex(peak, d_ri);
+		        	            	KovatsRetentionIndexerTask.setRetentionIndex(peak, d_ri);
 		        	            	
 	        	            		
 	        	            		System.out.println("Success! - Peak '" + peak 

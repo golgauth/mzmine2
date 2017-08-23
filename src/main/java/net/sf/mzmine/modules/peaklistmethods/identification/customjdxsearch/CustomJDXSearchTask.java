@@ -53,7 +53,7 @@ import net.sf.mzmine.desktop.impl.HeadLessDesktop;
 import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
-import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexerTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.ArrayComparator;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationParameters;
@@ -440,7 +440,7 @@ public class CustomJDXSearchTask extends AbstractTask {
                                 // Add area  of selected peak
                                 objects.add(bestPeak.getArea());
                                 // Add RI  of selected peak
-                                int ri = (int) Math.floor(KovatsRetentionIndexTask.getRetentionIndex(bestPeak));
+                                int ri = (int) Math.floor(KovatsRetentionIndexerTask.getRetentionIndex(bestPeak));
                                 objects.add(ri);
 
                             }
@@ -708,7 +708,7 @@ public class CustomJDXSearchTask extends AbstractTask {
             	if (plr.getBestPeak().getArea() > maxArea) { maxArea = plr.getBestPeak().getArea(); }
                 
             	if (compoundRI != -1) { // RI info is available
-	                double ri_diff = Math.abs(KovatsRetentionIndexTask.getRetentionIndex(plr.getBestPeak()) - compoundRI);
+	                double ri_diff = Math.abs(KovatsRetentionIndexerTask.getRetentionIndex(plr.getBestPeak()) - compoundRI);
 	                if (ri_diff > maxRIdiff) { maxRIdiff = ri_diff; }
             	}
             }
@@ -717,7 +717,7 @@ public class CustomJDXSearchTask extends AbstractTask {
             //
             double ri_diff = maxRIdiff;
             if (compoundRI != -1) // RI info is available
-            	ri_diff = Math.abs(KovatsRetentionIndexTask.getRetentionIndex(row.getBestPeak()) - compoundRI);
+            	ri_diff = Math.abs(KovatsRetentionIndexerTask.getRetentionIndex(row.getBestPeak()) - compoundRI);
             //
             double area = row.getBestPeak().getArea();
             //

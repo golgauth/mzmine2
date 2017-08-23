@@ -60,7 +60,7 @@ import net.sf.mzmine.main.MZmineCore;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
-import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexerTask;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.visualization.peaklisttable.ColumnSettingParameter;
 import net.sf.mzmine.modules.visualization.peaklisttable.PeakListTableParameters;
@@ -275,8 +275,8 @@ public class PeakListFullTableModel extends DefaultTableModel implements
                             PeakIdentity mainIdentity = a_pl_row.getPreferredPeakIdentity();
                             
                             // Retention Index
-                            double kovatsRI = KovatsRetentionIndexTask.getRetentionIndex(peak);
-                            boolean kovatsRIset = KovatsRetentionIndexTask.isRetentionIndexSet(peak);
+                            double kovatsRI = KovatsRetentionIndexerTask.getRetentionIndex(peak);
+                            boolean kovatsRIset = KovatsRetentionIndexerTask.isRetentionIndexSet(peak);
                             String str_kovatsRI = ((kovatsRIset) ? " / " + rtFormat.format(kovatsRI) : "");
 
 

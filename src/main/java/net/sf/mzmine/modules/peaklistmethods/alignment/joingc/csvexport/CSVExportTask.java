@@ -52,7 +52,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.AlignedRowProps;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGcModule;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RawDataFileSorter;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.table.PeakListTable;
-import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexTask;
+import net.sf.mzmine.modules.peaklistmethods.dataanalysis.kovatsri.KovatsRetentionIndexerTask;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
@@ -320,8 +320,8 @@ public class CSVExportTask extends AbstractTask {
                                         .getPreferredPeakIdentity();
                                 
                                 // Retention Index
-                                double kovatsRI = KovatsRetentionIndexTask.getRetentionIndex(peak);
-                                boolean kovatsRIset = KovatsRetentionIndexTask.isRetentionIndexSet(peak);
+                                double kovatsRI = KovatsRetentionIndexerTask.getRetentionIndex(peak);
+                                boolean kovatsRIset = KovatsRetentionIndexerTask.isRetentionIndexSet(peak);
                                 String str_kovatsRI = ((kovatsRIset) ? SEP_STR_CSV + rtFormat.format(kovatsRI) : "");
 
                                 if (mainIdentity != null) {

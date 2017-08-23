@@ -27,7 +27,7 @@ import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
 
-public class KovatsRetentionIndexParameters extends SimpleParameterSet {
+public class KovatsRetentionIndexerParameters extends SimpleParameterSet {
 
     public static final PeakListsParameter PEAK_LISTS = new PeakListsParameter();
 
@@ -45,7 +45,7 @@ public class KovatsRetentionIndexParameters extends SimpleParameterSet {
             KovatsMethodType.PROGRAMMED_TEMPERATURE);
 
 
-    public KovatsRetentionIndexParameters() {
+    public KovatsRetentionIndexerParameters() {
         super(new Parameter[] { PEAK_LISTS,
                 // RI_SEARCH_WINDOW
         		////ALKANES_REF_PEAKLIST,
