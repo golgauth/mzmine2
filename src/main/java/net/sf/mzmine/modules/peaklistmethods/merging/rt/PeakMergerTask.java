@@ -56,7 +56,9 @@ import com.google.common.primitives.Ints;
 class PeakMergerTask extends AbstractTask {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
-
+	private static final boolean DEBUG = false;
+	
+	
     // RDF
     RawDataFile dataFile, ancestorDataFile, workingDataFile;
 
@@ -377,11 +379,12 @@ class PeakMergerTask extends AbstractTask {
                     dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
                     this.useOnlyDetectedPeaks = true;
     
-                    logger.log(
-                            Level.WARNING,
-                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
-                                    + scanNumber
-                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
+                    if (DEBUG )
+	                    logger.log(
+	                            Level.WARNING,
+	                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
+	                                    + scanNumber
+	                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
                 }
                 //
                 if (dataPoint != null) {
@@ -423,7 +426,8 @@ class PeakMergerTask extends AbstractTask {
                 if (newPeak.getScanNumbers().length == 0) {
                     ++nb_empty_peaks;
                     // #continue;
-                    logger.log(Level.WARNING, "0 scans peak found !");
+                    if (DEBUG)
+                    	logger.log(Level.WARNING, "0 scans peak found !");
                     break;
                 }
     
@@ -465,12 +469,13 @@ class PeakMergerTask extends AbstractTask {
                 
                 Feature aPeak = sortedPeaks.get(ind);
                 
-                for (int s_i: aPeak.getScanNumbers()) { 
-                    if(aPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
-                        logger.info("!!! Found input peak with zero intensity scan: " + aPeak);
-                        break;
-                    }
-                }
+                if (DEBUG)
+	                for (int s_i: aPeak.getScanNumbers()) { 
+	                    if(aPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
+	                        logger.info("!!! Found input peak with zero intensity scan: " + aPeak);
+	                        break;
+	                    }
+	                }
                 
                 
                 // Delete (and skip) if peak is a Bad Shaped one
@@ -654,8 +659,8 @@ class PeakMergerTask extends AbstractTask {
             }
             
             
-            
-            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> !!!  STARTING MERGE  !!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            if (DEBUG)
+            	logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> !!!  STARTING MERGE  !!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             
             // <a/> Merging peaks inside each group
             
@@ -754,11 +759,12 @@ class PeakMergerTask extends AbstractTask {
                     dataPoint = getMergedDataPointFromPeakGroup(scan, groupedPeaks, mzRange, futureMz);
                     this.useOnlyDetectedPeaks = true;
     
-                    logger.log(
-                            Level.WARNING,
-                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
-                                    + scanNumber
-                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
+                    if (DEBUG)
+	                    logger.log(
+	                            Level.WARNING,
+	                            "DETECTED Middle / Main peak (DataPoint) not found for scan: #"
+	                                    + scanNumber
+	                                    + ". Using \"Base Peak Intensity\" instead (May lead to inaccurate results).");
                 }
                 //
                 if (dataPoint != null) {
@@ -808,19 +814,21 @@ class PeakMergerTask extends AbstractTask {
                 // TODO: Might be VIOLENT (quick and dirty => to be verified)
                 if (newPeak.getScanNumbers().length == 0) {
                     ++nb_empty_peaks;
-                    logger.log(Level.WARNING, "0 scans peak found !");
+                    if (DEBUG)
+                    	logger.log(Level.WARNING, "0 scans peak found !");
                     break;
                 }
     
                 // Add new merged peak to "mergedPeakList", keeping the original ID.
                 updateMergedPeakListRow(oldRow, newPeak);
                 
-                for (int s_i: newPeak.getScanNumbers()) { 
-                    if(newPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
-                        logger.info("!!! Found merged peak with zero intensity scan: " + newPeak);
-                        break;
-                    }
-                }
+                if (DEBUG)
+	                for (int s_i: newPeak.getScanNumbers()) { 
+	                    if(newPeak.getDataPoint(s_i).getIntensity() <= EPSILON) {
+	                        logger.info("!!! Found merged peak with zero intensity scan: " + newPeak);
+	                        break;
+	                    }
+	                }
 
                 
                 // Clear already treated peaks
@@ -832,9 +840,8 @@ class PeakMergerTask extends AbstractTask {
             }
         }
 
-        if (nb_empty_peaks > 0)
-            logger.log(Level.WARNING, "Skipped \"" + nb_empty_peaks
-                    + "\" empty peaks !");
+        if (nb_empty_peaks > 0 && DEBUG)
+            logger.log(Level.WARNING, "Skipped \"" + nb_empty_peaks  + "\" empty peaks !");
         
         //---
         
@@ -1150,7 +1157,8 @@ class PeakMergerTask extends AbstractTask {
             // !!!!!!!!!!!!!!!!!!
             // TODO: Shouldn't the correct sequence contain the apex of the candidate peak as well !!??
             
-            logger.log(Level.INFO, "Gaps in sequence: " + scan_nums.toString());
+        	if (DEBUG)
+        		logger.log(Level.INFO, "Gaps in sequence: " + scan_nums.toString());
             List<Integer> scan_nums_ok = new ArrayList<Integer>();
 
             int it = scan_nums.indexOf(mainScanNum);
@@ -1175,8 +1183,9 @@ class PeakMergerTask extends AbstractTask {
                         && (scan_nums.get(it + 1) == scan_nums.get(it) + 1));
             }
 
-            logger.log(Level.INFO,
-                    "Valid sequence is: " + scan_nums_ok.toString());
+            if (DEBUG)
+	            logger.log(Level.INFO,
+	                    "Valid sequence is: " + scan_nums_ok.toString());
 
             double rt_min = this.workingDataFile.getScan(scan_nums_ok.get(0))
                     .getRetentionTime();
@@ -1192,14 +1201,17 @@ class PeakMergerTask extends AbstractTask {
             for (Feature p : groupedPeaks) {
                 if (!rt_range_ok.encloses(p.getRawDataPointsRTRange())) {
                     badCandidates.add(p);
-                    logger.log(
-                            Level.INFO,
-                            "Bad candidate found at: "
-                                    + p.getRepresentativeScanNumber());
-                    logger.log(Level.INFO,
-                            "rt_range_ok :" + rt_range_ok.toString());
-                    logger.log(Level.INFO, "rt_badCandidates: "
-                            + p.getRawDataPointsRTRange().toString());
+                    
+                    if (DEBUG) {
+	                    logger.log(
+	                            Level.INFO,
+	                            "Bad candidate found at: "
+	                                    + p.getRepresentativeScanNumber());
+	                    logger.log(Level.INFO,
+	                            "rt_range_ok :" + rt_range_ok.toString());
+	                    logger.log(Level.INFO, "rt_badCandidates: "
+	                            + p.getRawDataPointsRTRange().toString());
+                    }
                 }
             }
 
