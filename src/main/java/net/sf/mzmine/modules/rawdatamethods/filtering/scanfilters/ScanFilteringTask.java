@@ -65,6 +65,8 @@ class ScanFilteringTask extends AbstractTask {
 	suffix = parameters.getParameter(ScanFiltersParameters.suffix)
 		.getValue();
 
+	removeOriginal = parameters.getParameter(ScanFiltersParameters.autoRemove)
+			.getValue();
     }
 
     /**
