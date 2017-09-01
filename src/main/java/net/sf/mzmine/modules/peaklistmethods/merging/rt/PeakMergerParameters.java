@@ -5,24 +5,19 @@
 package net.sf.mzmine.modules.peaklistmethods.merging.rt;
 
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.MZmineModule;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowOrderType;
 import net.sf.mzmine.modules.peaklistmethods.filtering.shapefilter.FilterShapeModel;
-import net.sf.mzmine.modules.peaklistmethods.io.csvexport.ExportRowCommonElement;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
 import net.sf.mzmine.parameters.parametertypes.IntegerParameter;
-import net.sf.mzmine.parameters.parametertypes.MultiChoiceParameter;
 //import net.sf.mzmine.parameters.parametertypes.MZTolerance;
 //import net.sf.mzmine.parameters.parametertypes.RTTolerance;
 import net.sf.mzmine.parameters.parametertypes.tolerances.MZToleranceParameter;
 //import net.sf.mzmine.parameters.parametertypes.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTToleranceParameter;
-import net.sf.mzmine.parameters.parametertypes.ModuleComboParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
 
 public class PeakMergerParameters extends SimpleParameterSet {
@@ -35,6 +30,17 @@ public class PeakMergerParameters extends SimpleParameterSet {
 	public static final MZToleranceParameter mzTolerance = new MZToleranceParameter();
 
 	public static final RTToleranceParameter rtTolerance = new RTToleranceParameter();
+	
+//    public static final ComboParameter<Integer> nbScansTolerance = new ComboParameter<Integer>(
+//    		"RT tolerance window (number of scans)", 
+//    		//"Maximum distance (expressed in scans) between two peaks (at apex) to be considered \"mergeable\".",
+//    		"Tolerance window (expressed in scans) required for two peaks (at apex) to be considered \"mergeable\" "
+//    		+ "(ApexScan1 >= ApexScan2 - (ToleranceWindow/2) AND  ApexScan1 <= ApexScan2 + (ToleranceWindow/2))",
+//    		new Integer[] { 1, 3, 5, 7, 9, 11, 13, 15,  }, 9);
+    public static final IntegerParameter nbScansTolerance = new IntegerParameter(
+    		"RT tolerance window (number of scans)", 
+    		"Maximum distance (expressed in scans) between two peaks (at apex) to be considered \"mergeable\".",
+    		7, 0, 15);
 
 	/////////////// !!!!!!  The following warning is now DEPRECATED  !!!!!!
 	/////////////// WARNING: In case of batch processing, if checked, the oldest ancestor will be 
@@ -89,7 +95,7 @@ public class PeakMergerParameters extends SimpleParameterSet {
 
 	public PeakMergerParameters() {
 		super(new Parameter[] { 
-				peakLists, suffix, mzTolerance, rtTolerance,
+				peakLists, suffix, mzTolerance, /*rtTolerance,*/nbScansTolerance,
 				shapeFilterModel,
 				useOldestRDFAncestor, detectedMZSearchWidth, useOnlyDetectedPeaks, cumulativeComputing,
 				autoRemove });

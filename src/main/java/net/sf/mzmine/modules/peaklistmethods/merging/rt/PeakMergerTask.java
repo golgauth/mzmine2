@@ -76,10 +76,9 @@ class PeakMergerTask extends AbstractTask {
 
     // parameter values
     private String suffix;
-//    private MZTolerance mzTolerance;
-//    private RTTolerance rtTolerance;
     public static MZTolerance mzTolerance;
     public static RTTolerance rtTolerance;
+    int nbScansTolerance;
     private boolean useOldestRDFAncestor;
     private double detectedMZSearchWidth;
     private boolean useOnlyDetectedPeaks;
@@ -122,8 +121,8 @@ class PeakMergerTask extends AbstractTask {
 //        rtTolerance = parameters.getParameter(PeakMergerParameters.rtTolerance)
 //                .getValue();
         mzTolerance = parameters.getParameter(PeakMergerParameters.mzTolerance).getValue();
-        rtTolerance = parameters.getParameter(PeakMergerParameters.rtTolerance).getValue();
-
+        //rtTolerance = parameters.getParameter(PeakMergerParameters.rtTolerance).getValue();
+        nbScansTolerance = parameters.getParameter(PeakMergerParameters.nbScansTolerance).getValue();
 
         this.useOldestRDFAncestor = parameters.getParameter(
                 PeakMergerParameters.useOldestRDFAncestor).getValue();
@@ -515,11 +514,11 @@ class PeakMergerTask extends AbstractTask {
             
             // 
             // 2/ Start scan by scan groups grouping
-            double scanWidth = this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[1]).getRetentionTime() 
-                    - this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[0]).getRetentionTime();
-          //##logger.info("\n\n>>> RT scan width: " + scanWidth);
-            int max_step = (int) ((rtTolerance.getTolerance() / scanWidth));// / 2);
-          //##logger.info("\n\n>>> Window width: " + rtTolerance.getTolerance() + " ('" + (int) (rtTolerance.getTolerance() / scanWidth) + "' scans)");
+            int halfWidth = (nbScansTolerance / 2);
+//            double scanWidth = this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[1]).getRetentionTime() 
+//                    - this.workingDataFile.getScan(this.workingDataFile.getScanNumbers()[0]).getRetentionTime();
+//            int max_step = Math.max(1, (int) ((rtTolerance.getTolerance() / scanWidth)));
+            int max_step = Math.max(1, nbScansTolerance);//halfWidth);
             //-
             int sc_step = 1;
             boolean changes_occurred = false;
@@ -569,9 +568,12 @@ class PeakMergerTask extends AbstractTask {
                         double candidateGroupApexRT = this.workingDataFile.getScan(candidateGroupApexScanNumber).getRetentionTime();
                         
                         // If group apex is out of reach because out of RT tolerance window, skip it...
-                        if (!rtTolerance.checkWithinTolerance(curGroupApexRT, candidateGroupApexRT))
-                            continue;
-                        
+                        //if (!rtTolerance.checkWithinTolerance(curGroupApexRT, candidateGroupApexRT))
+                        //    continue;
+                        if (curGroupApexScanNumber < candidateGroupApexScanNumber - nbScansTolerance//- halfWidth 
+                        		|| curGroupApexScanNumber > candidateGroupApexScanNumber + nbScansTolerance)//halfWidth)
+                        	continue;
+                            
 //                         If group apex is close enough from current group (considering scan by scan stepping)
 //                         integrate it...
                         //-
