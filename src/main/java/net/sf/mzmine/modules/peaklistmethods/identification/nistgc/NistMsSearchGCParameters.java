@@ -134,6 +134,7 @@ public class NistMsSearchGCParameters extends SimpleParameterSet {
 	super(new Parameter[] { PEAK_LISTS, NIST_MS_SEARCH_DIR,
 		IONIZATION_METHOD, SPECTRUM_RT_WIDTH, MAX_NUM_PEAKS,
 		SAME_IDENTITIES, MIN_MATCH_FACTOR, MIN_REVERSE_MATCH_FACTOR,
+		skipKovatsRI,
 		useDetectedMzOnly, USE_AS_STD_COMPOUND
 		});
     }
