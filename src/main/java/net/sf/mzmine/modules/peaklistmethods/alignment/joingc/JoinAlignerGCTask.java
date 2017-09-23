@@ -23,6 +23,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.geom.FlatteningPathIterator;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
@@ -69,11 +70,17 @@ import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HDBSCANClusterer;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.CobwebClusterer;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HierarClusterer;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.KMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.LinkType;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.OPTICSClusterer;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.DBSCANClusterer;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.Tree;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeNode;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeParser;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.XMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
@@ -111,6 +118,7 @@ import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.PdfWriter;
 
+import de.lmu.ifi.dbs.elki.algorithm.clustering.hierarchical.HDBSCANLinearMemory;
 import jebl.evolution.graphs.Node;
 import jebl.evolution.io.ImportException;
 import jebl.evolution.io.NewickExporter;
@@ -192,6 +200,13 @@ public class JoinAlignerGCTask extends AbstractTask {
     private ClusteringProgression clustProgress; 
     
 
+    private static final int CLUSTERER_TYPE = 0; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN
+
+
+	public static final boolean USE_DOUBLE_PRECISION_FOR_DIST = true;
+	
+	
+	
     JoinAlignerGCTask(MZmineProject project, ParameterSet parameters) {
 
         this.project = project;
@@ -330,11 +345,17 @@ public class JoinAlignerGCTask extends AbstractTask {
         setStatus(TaskStatus.PROCESSING);
         logger.info("Running join aligner");
         
-        
+        // TIME STUFF
         long startTime, endTime;
         float ms;
         //
         startTime = System.currentTimeMillis();
+
+        // MEMORY STUFF
+        Runtime run_time = Runtime.getRuntime();
+        Long prevTotal = 0l;
+        Long prevFree = run_time.freeMemory();
+        printMemoryUsage(run_time, prevTotal, prevFree, "START TASK...");
 
 
         // Remember how many rows we need to process. Each row will be processed
@@ -738,7 +759,8 @@ public class JoinAlignerGCTask extends AbstractTask {
                 return;
             }
         }
-
+        
+        printMemoryUsage(run_time, prevTotal, prevFree, "COMPOUND DETECTED");
 
         /** Alignment mapping **/ 
         // Iterate source peak lists
@@ -785,7 +807,13 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
 
-        double[][] distances;
+        double[][] distances = null;
+        //Map<Pair<Integer, Integer>, Float> distancesMap = new HashMap<>();
+        double[] distancesAsVector = null;
+        float[] distancesAsFloatVector = null;
+        int numInstances = 0;
+        
+        
         String[] short_names;
         int nbPeaks = 0;
         for (int i = 0; i < newIds.length; ++i) {
@@ -1014,6 +1042,8 @@ public class JoinAlignerGCTask extends AbstractTask {
             }
 
         }
+        
+        printMemoryUsage(run_time, prevTotal, prevFree, "DISTANCES COMPUTED");
 
         
         // DEBUG: save distances matrix as CSV
@@ -1076,7 +1106,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 		// ---
         ClusteringResult clusteringResult = null;
         String newickCluster_clean = null;
-
+        // ---
+        List<ca.ualberta.cs.hdbscanstar.Cluster> clustersHDBSCAN = null;
+        
+        
         // OLD (RAM killer) way!
         if (JoinAlignerGCParameters.CLUST_METHOD == 0) {    
 
@@ -1093,112 +1126,564 @@ public class JoinAlignerGCTask extends AbstractTask {
         // WEKA way!
         else {
 
-        	// WEKA hierarchical clustering
-        	HierarClusterer hierarClusterer = new HierarClusterer(clustProgress, distances);
-
 
         	long startTime2, endTime2;
         	float ms2;
-        	//
-        	startTime2 = System.currentTimeMillis();
-        	//
-        	clusteringResult = hierarClusterer.performClustering(linkageStartegyType_12);
-        	//
-        	endTime2 = System.currentTimeMillis();
-        	ms2 = (endTime2 - startTime2);
-        	System.out.println("Done clustering: " + clusteringResult);
-
-        	System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
-
-        	if (isCanceled())
-        		return;
-
- 
-        	// Getting the result of the clustering in Newick format
-        	String newickCluster = clusteringResult.getHiearchicalCluster();
-
-
-        	//////
-
-
-        	// 1st parsing method
-        	if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
-        		
-	        	int current_depth = 0;
-	
-	        	// Make string really Newick standard
-	        	String line_sep = "\n";//System.getProperty("line.separator");
-//	        	System.out.println("Line sep = '" + line_sep + "'.");
-//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
-	        	newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
-	        	
-//	        	PrintWriter out;
-//	        	try {
-//	        		out = new PrintWriter("newick_check.txt");
-//	        		
-//        			String output_str = newickCluster_clean ;
-//        			
-//        			for (String short_n : dendro_names_dict.keySet()) {
-//        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
-//        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
-//        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
-//        			}
-//	        		
-//	        		out.println(output_str);
-//	        		
-//	        		out.close();
-//	        	} catch (FileNotFoundException e) {
-//	        		// TODO Auto-generated catch block
-//	        		e.printStackTrace();
-//	        	}
-
-	
-	        	//void setup() {
-	        	BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
-	        	//      BufferedReader r = null;
-	        	//		try {
-	        	//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
-	        	//		} catch (Exception e) {
-	        	//			// TODO Auto-generated catch block
-	        	//			e.printStackTrace();
-	        	//		}
-	        	//        BufferedReader r = null;
-	        	//		try {
-	        	//			r = new BufferedReader(new FileReader(nwk_ok));
-	        	//		} catch (FileNotFoundException e) {
-	        	//			// TODO Auto-generated catch block
-	        	//			e.printStackTrace();
-	        	//		}
-	        	if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
-
-	        		TreeParser tp = new TreeParser(r);
-	        		tree_1 = tp.tokenize(1, "tree", null);
-	        		int tree_height = tree_1.getHeight();
-	        		System.out.println("# Largest tree height is: " + tree_height);
-	        		//
-	        		if (DEBUG)
-	        			System.out.println("####" + recursive_print(tree_1, 0, 0));
-
-	        	// 2nd parsing method
-	        	} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
-
-	        		// Parse Newick formatted string
-	        		BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
-
-	        		NewickImporter importer = new NewickImporter(r2, true);
-
-	        		try {
-	        			while (importer.hasTree()) {
-	        				tree_2 = importer.importNextTree();
-	        			}
-	        		} catch (IOException | ImportException e) {
-	        			// TODO Auto-generated catch block
-	        			e.printStackTrace();
-	        		}
-
-	        	}
         	
+        	String newickCluster;
+        		
+        	if (CLUSTERER_TYPE == 0) {
+        		
+        		// WEKA hierarchical clustering
+        		//HierarClusterer hierarClusterer = new HierarClusterer(clustProgress, distances);
+//        		for (int i = 0; i < distances.length; i++) {
+//        			for (int j = i; j < distances[0].length; j++) {
+//        				
+//        				distancesMap.put(new Pair<Integer, Integer>(i, j), (float) distances[i][j]);
+//        			}
+//        		}
+        		
+        		numInstances = distances.length;
+        		HierarClusterer hierarClusterer;
+        		if (USE_DOUBLE_PRECISION_FOR_DIST) {
+        			distancesAsVector = symmetricMatrixToVector(distances);
+        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsVector, numInstances, this.minScore);
+        		} else {
+        			distancesAsFloatVector = symmetricMatrixToFloatVector(distances);
+        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsFloatVector, numInstances, this.minScore);
+        		}
+				//-
+				distances = null;
+				System.gc();
+				/**
+				HierarClusterer hierarClusterer = new HierarClusterer(clustProgress, distances);
+				*/
+				
+        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER CREATED");
+
+        		//
+        		startTime2 = System.currentTimeMillis();
+        		//
+        		clusteringResult = hierarClusterer.performClustering(linkageStartegyType_12);
+        		//            
+        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER PERFORMED");
+        		//
+        		endTime2 = System.currentTimeMillis();
+        		ms2 = (endTime2 - startTime2);
+        		System.out.println("Done clustering: " + clusteringResult);
+
+        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+
+        		if (isCanceled())
+        			return;
+
+
+        		// Getting the result of the clustering in Newick format
+        		newickCluster = clusteringResult.getHierarchicalCluster();
+        		//            
+        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER NEWICKED");
+
+
+        		//////
+
+
+        		// 1st parsing method
+        		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+
+        			int current_depth = 0;
+
+        			// Make string really Newick standard
+        			String line_sep = "\n";//System.getProperty("line.separator");
+        			//	        	System.out.println("Line sep = '" + line_sep + "'.");
+        			//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
+        			newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
+
+        				        	PrintWriter out;
+        				        	try {
+        				        		out = new PrintWriter("newick_check.txt");
+        				        		
+        			        			String output_str = newickCluster_clean ;
+        			        			
+//        			        			for (String short_n : dendro_names_dict.keySet()) {
+//        			        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//        			        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//        			        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+//        			        			}
+        				        		
+        				        		out.println(output_str);
+        				        		
+        				        		out.close();
+        				        	} catch (FileNotFoundException e) {
+        				        		// TODO Auto-generated catch block
+        				        		e.printStackTrace();
+        				        	}
+
+
+        			//void setup() {
+        			BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+        			//      BufferedReader r = null;
+        			//		try {
+        			//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
+        			//		} catch (Exception e) {
+        			//			// TODO Auto-generated catch block
+        			//			e.printStUSE_HIERARackTrace();
+        			//		}
+        			//        BufferedReader r = null;
+        			//		try {
+        			//			r = new BufferedReader(new FileReader(nwk_ok));
+        			//		} catch (FileNotFoundException e) {
+        			//			// TODO Auto-generated catch block
+        			//			e.printStackTrace();
+        			//		}
+        			if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+
+        				TreeParser tp = new TreeParser(r);
+        				tree_1 = tp.tokenize(1, "tree", null);
+        				int tree_height = tree_1.getHeight();
+        				System.out.println("# Largest tree height is: " + tree_height);
+        				//
+        				if (DEBUG)
+        					System.out.println("####" + recursive_print(tree_1, 0, 0));
+
+        				// 2nd parsing method
+        			} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+
+        				// Parse Newick formatted string
+        				BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
+
+        				NewickImporter importer = new NewickImporter(r2, true);
+
+        				try {
+        					while (importer.hasTree()) {
+        						tree_2 = importer.importNextTree();
+        					}
+        				} catch (IOException | ImportException e) {
+        					// TODO Auto-generated catch block
+        					e.printStackTrace();
+        				}
+
+        			}
+
+        		}
+        	
+        	// NOT "HIERAR"!
         	} 
+//        	else if (CLUSTERER_TYPE == 1) {
+//    			
+//        		// WEKA k-means clustering
+//        		KMeansClusterer kMeansClusterer = new KMeansClusterer(clustProgress, distances);
+////        		public static final int RANDOM = 0;
+////        		public static final int KMEANS_PLUS_PLUS = 1;
+////        		public static final int CANOPY = 2;
+////        		public static final int FARTHEST_FIRST = 3;
+//
+//
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER CREATED");
+//
+//        		//
+//        		startTime2 = System.currentTimeMillis();
+//        		//
+//        		clusteringResult = kMeansClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER PERFORMED");
+//        		//
+//        		endTime2 = System.currentTimeMillis();
+//        		ms2 = (endTime2 - startTime2);
+//        		System.out.println("Done clustering: " + clusteringResult);
+//
+//        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+//
+//
+//        		//
+//        		System.out.println("RESULT 1: " + kMeansClusterer.getClusterer().toString());
+//        		System.out.println("RESULT 2: " + kMeansClusterer.getClusterer().getNumClusters());
+//        		
+//        		
+//        		
+//        		if (isCanceled())
+//        			return;
+//
+//
+//        		// Getting the result of the clustering in Newick format
+//        		newickCluster = clusteringResult.getHierarchicalCluster();
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER NEWICKED");
+//
+//
+//        		//////
+//
+//
+//        		// 1st parsing method
+//        		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+//
+//        			int current_depth = 0;
+//
+//        			// Make string really Newick standard
+//        			String line_sep = "\n";//System.getProperty("line.separator");
+//        			//	        	System.out.println("Line sep = '" + line_sep + "'.");
+//        			//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
+//        			newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
+//
+//        			//	        	PrintWriter out;
+//        			//	        	try {
+//        			//	        		out = new PrintWriter("newick_check.txt");
+//        			//	        		
+//        			//        			String output_str = newickCluster_clean ;
+//        			//        			
+//        			//        			for (String short_n : dendro_names_dict.keySet()) {
+//        			//        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//        			//        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//        			//        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+//        			//        			}
+//        			//	        		
+//        			//	        		out.println(output_str);
+//        			//	        		
+//        			//	        		out.close();
+//        			//	        	} catch (FileNotFoundException e) {
+//        			//	        		// TODO Auto-generated catch block
+//        			//	        		e.printStackTrace();
+//        			//	        	}
+//
+//
+//        			//void setup() {
+//        			BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+//        			//      BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
+//        			//		} catch (Exception e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStUSE_HIERARackTrace();
+//        			//		}
+//        			//        BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new FileReader(nwk_ok));
+//        			//		} catch (FileNotFoundException e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStackTrace();
+//        			//		}
+//        			if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+//
+//        				TreeParser tp = new TreeParser(r);
+//        				tree_1 = tp.tokenize(1, "tree", null);
+//        				int tree_height = tree_1.getHeight();
+//        				System.out.println("# Largest tree height is: " + tree_height);
+//        				//
+//        				if (DEBUG)
+//        					System.out.println("####" + recursive_print(tree_1, 0, 0));
+//
+//        				// 2nd parsing method
+//        			} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+//
+//        				// Parse Newick formatted string
+//        				BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
+//
+//        				NewickImporter importer = new NewickImporter(r2, true);
+//
+//        				try {
+//        					while (importer.hasTree()) {
+//        						tree_2 = importer.importNextTree();
+//        					}
+//        				} catch (IOException | ImportException e) {
+//        					// TODO Auto-generated catch block
+//        					e.printStackTrace();
+//        				}
+//
+//        			}
+//
+//        		} 
+//
+//    		} else if (CLUSTERER_TYPE == 2) {
+//    			
+//        		// WEKA k-means clustering
+//        		XMeansClusterer xMeansClusterer = new XMeansClusterer(clustProgress, distances);
+////        		public static final int RANDOM = 0;
+////        		public static final int KMEANS_PLUS_PLUS = 1;
+////        		public static final int CANOPY = 2;
+////        		public static final int FARTHEST_FIRST = 3;
+//
+//
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER CREATED");
+//
+//        		//
+//        		startTime2 = System.currentTimeMillis();
+//        		//
+//        		clusteringResult = xMeansClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER PERFORMED");
+//        		//
+//        		endTime2 = System.currentTimeMillis();
+//        		ms2 = (endTime2 - startTime2);
+//        		System.out.println("Done clustering: " + clusteringResult);
+//
+//        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+//
+//
+//        		//
+//        		System.out.println("RESULT 1: " + xMeansClusterer.getClusterer().toString());
+//        		System.out.println("RESULT 2: " + xMeansClusterer.getClusterer().numberOfClusters());
+//        		
+//        		
+//        		
+//        		if (isCanceled())
+//        			return;
+//
+//
+//        		// Getting the result of the clustering in Newick format
+//        		newickCluster = clusteringResult.getHierarchicalCluster();
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER NEWICKED");
+//
+//
+//        		//////
+//
+//
+//        		// 1st parsing method
+//        		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+//
+//        			int current_depth = 0;
+//
+//        			// Make string really Newick standard
+//        			String line_sep = "\n";//System.getProperty("line.separator");
+//        			//	        	System.out.println("Line sep = '" + line_sep + "'.");
+//        			//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
+//        			newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
+//
+//        			//	        	PrintWriter out;
+//        			//	        	try {
+//        			//	        		out = new PrintWriter("newick_check.txt");
+//        			//	        		
+//        			//        			String output_str = newickCluster_clean ;
+//        			//        			
+//        			//        			for (String short_n : dendro_names_dict.keySet()) {
+//        			//        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//        			//        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//        			//        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+//        			//        			}
+//        			//	        		
+//        			//	        		out.println(output_str);
+//        			//	        		
+//        			//	        		out.close();
+//        			//	        	} catch (FileNotFoundException e) {
+//        			//	        		// TODO Auto-generated catch block
+//        			//	        		e.printStackTrace();
+//        			//	        	}
+//
+//
+//        			//void setup() {
+//        			BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+//        			//      BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
+//        			//		} catch (Exception e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStUSE_HIERARackTrace();
+//        			//		}
+//        			//        BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new FileReader(nwk_ok));
+//        			//		} catch (FileNotFoundException e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStackTrace();
+//        			//		}
+//        			if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+//
+//        				TreeParser tp = new TreeParser(r);
+//        				tree_1 = tp.tokenize(1, "tree", null);
+//        				int tree_height = tree_1.getHeight();
+//        				System.out.println("# Largest tree height is: " + tree_height);
+//        				//
+//        				if (DEBUG)
+//        					System.out.println("####" + recursive_print(tree_1, 0, 0));
+//
+//        				// 2nd parsing method
+//        			} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+//
+//        				// Parse Newick formatted string
+//        				BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
+//
+//        				NewickImporter importer = new NewickImporter(r2, true);
+//
+//        				try {
+//        					while (importer.hasTree()) {
+//        						tree_2 = importer.importNextTree();
+//        					}
+//        				} catch (IOException | ImportException e) {
+//        					// TODO Auto-generated catch block
+//        					e.printStackTrace();
+//        				}
+//
+//        			}
+//
+//        		} 
+//
+//    		} else if (CLUSTERER_TYPE == 3) {
+//
+//        		// WEKA Cobweb clustering
+//        		CobwebClusterer cobwebClusterer = new CobwebClusterer(clustProgress, distances);
+//
+//
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER CREATED");
+//
+//        		//
+//        		startTime2 = System.currentTimeMillis();
+//        		//
+//        		clusteringResult = cobwebClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER PERFORMED");
+//        		//
+//        		endTime2 = System.currentTimeMillis();
+//        		ms2 = (endTime2 - startTime2);
+//        		System.out.println("Done clustering: " + clusteringResult);
+//
+//        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+//
+//
+//        		//
+//        		System.out.println("RESULT 1: " + cobwebClusterer.getClusterer().toString());
+//        		System.out.println("RESULT 2: " + cobwebClusterer.getClusterer().numberOfClusters());
+//        		
+//        		
+//        		
+//        		if (isCanceled())
+//        			return;
+//
+//
+//        		// Getting the result of the clustering in Newick format
+//        		newickCluster = clusteringResult.getHierarchicalCluster();
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER NEWICKED");
+//
+//
+//        		//////
+//
+//
+//        		// 1st parsing method
+//        		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+//
+//        			int current_depth = 0;
+//
+//        			// Make string really Newick standard
+//        			String line_sep = "\n";//System.getProperty("line.separator");
+//        			//	        	System.out.println("Line sep = '" + line_sep + "'.");
+//        			//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
+//        			newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
+//
+//        			//	        	PrintWriter out;
+//        			//	        	try {
+//        			//	        		out = new PrintWriter("newick_check.txt");
+//        			//	        		
+//        			//        			String output_str = newickCluster_clean ;
+//        			//        			
+//        			//        			for (String short_n : dendro_names_dict.keySet()) {
+//        			//        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//        			//        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//        			//        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+//        			//        			}
+//        			//	        		
+//        			//	        		out.println(output_str);
+//        			//	        		
+//        			//	        		out.close();
+//        			//	        	} catch (FileNotFoundException e) {
+//        			//	        		// TODO Auto-generated catch block
+//        			//	        		e.printStackTrace();
+//        			//	        	}
+//
+//
+//        			//void setup() {
+//        			BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+//        			//      BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new StringReader(hierarClusterer.getClusterer().graph()));
+//        			//		} catch (Exception e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStUSE_HIERARackTrace();
+//        			//		}
+//        			//        BufferedReader r = null;
+//        			//		try {
+//        			//			r = new BufferedReader(new FileReader(nwk_ok));
+//        			//		} catch (FileNotFoundException e) {
+//        			//			// TODO Auto-generated catch block
+//        			//			e.printStackTrace();
+//        			//		}
+//        			if (JoinAlignerGCParameters.CLUST_METHOD == 1) {
+//
+//        				TreeParser tp = new TreeParser(r);
+//        				tree_1 = tp.tokenize(1, "tree", null);
+//        				int tree_height = tree_1.getHeight();
+//        				System.out.println("# Largest tree height is: " + tree_height);
+//        				//
+//        				if (DEBUG)
+//        					System.out.println("####" + recursive_print(tree_1, 0, 0));
+//
+//        				// 2nd parsing method
+//        			} else if (JoinAlignerGCParameters.CLUST_METHOD == 2) {
+//
+//        				// Parse Newick formatted string
+//        				BufferedReader r2 = new BufferedReader(new StringReader(newickCluster_clean));
+//
+//        				NewickImporter importer = new NewickImporter(r2, true);
+//
+//        				try {
+//        					while (importer.hasTree()) {
+//        						tree_2 = importer.importNextTree();
+//        					}
+//        				} catch (IOException | ImportException e) {
+//        					// TODO Auto-generated catch block
+//        					e.printStackTrace();
+//        				}
+//
+//        			}
+//
+//        		} 
+//
+//    		} 
+        else if (CLUSTERER_TYPE == 4) {
+    			
+        		// WEKA DBSCAN clustering
+        		//OPTICSClusterer opticsClusterer = new OPTICSClusterer(clustProgress, distances);
+	        	//***DBSCANClusterer opticsClusterer = new DBSCANClusterer(clustProgress, distances);
+	        	HDBSCANClusterer hdbscanClusterer = new HDBSCANClusterer(clustProgress, distances);
+
+        		printMemoryUsage(run_time, prevTotal, prevFree, "HDBSCAN CLUSTERER: created");
+
+        		//
+        		startTime2 = System.currentTimeMillis();
+        		//
+        		//***clusteringResult = opticsClusterer.performClustering(/*linkageStartegyType_12*/);
+        		clusteringResult = hdbscanClusterer.performClustering(/*linkageStartegyType_12*/);
+        		//            
+        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER: performed");
+        		//
+        		endTime2 = System.currentTimeMillis();
+        		ms2 = (endTime2 - startTime2);
+        		System.out.println("Done clustering: " + clusteringResult);
+
+        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+
+
+        		//
+        		System.out.println("RESULT 1: " + hdbscanClusterer.getClusterer().toString());
+        		try {
+					//***System.out.println("RESULT 2: " + hdbscanClusterer.getClusterer().numberOfClusters());
+        			// ...
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+        		
+        		
+        		
+        		if (isCanceled())
+        			return;
+
+
+        		// Getting the result of the clustering
+        		clustersHDBSCAN = hdbscanClusterer.getResultingClusters();
+        		// TODO: !!!!!!
+        		// ...
+
+    		}
+
         }
             
         ////// Arrange row clustered list with method 0,1,2
@@ -1235,8 +1720,14 @@ public class JoinAlignerGCTask extends AbstractTask {
         	tot = 0;
         	tot2 = 0;
 	            
-        	List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist, distances);
-
+        	List<Integer> validatedClusters;
+        	if (USE_DOUBLE_PRECISION_FOR_DIST) {
+	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsVector, numInstances);
+	        	//List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist, distances);
+        	} else {
+	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsFloatVector, numInstances);
+        	}
+        	
         	int nbLeaves = 0;
         	for (Integer nodekey: validatedClusters) {
         		nbLeaves += tree_1.getNodeByKey(nodekey).numberLeaves;
@@ -1265,7 +1756,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 
         			// Recover related PeakListRow
         			//                    rows_cluster.add(row_names_dict.get(leaf.getName()));
-        			int leaf_id = Integer.valueOf(leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//        			int leaf_id = Integer.valueOf(leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//					logger.info("Some node name: '" + leaf.getName() + "'! (" + leaf.getKey() + ")");
+    				String leaf_name = leaf.getName();
+    					    				
+	    				if (leaf.getName().isEmpty()) {
+	    					logger.info("\t=> Skipped!");
+	    					continue;
+    					}
+	    				
+    				if (leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+    					leaf_name = leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+    				else if (leaf.getName().startsWith(" ")) {
+    					leaf_name = leaf.getName().substring(1);
+    				}
+        			int leaf_id = Integer.valueOf(leaf_name);
         			rows_cluster.add(full_rows_list.get(leaf_id));
         			leaf_names.add(leaf.getName());
 
@@ -1315,6 +1820,13 @@ public class JoinAlignerGCTask extends AbstractTask {
         		}
         		clustersList.add(rows_cluster);
         		finalNbPeaks += rows_cluster.size();
+        	}
+        } else if (JoinAlignerGCParameters.CLUST_METHOD == 3) {
+        	
+        	// TODO: !!!!!!
+        	// ...
+        	for (ca.ualberta.cs.hdbscanstar.Cluster hdbscan_clust: clustersHDBSCAN) {
+        		//...
         	}
         }
 
@@ -1942,7 +2454,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     	List<Cluster> validatedClusters = new ArrayList<>();
 
-    	String newickCluster = clusteringResult.getHiearchicalCluster();
+    	String newickCluster = clusteringResult.getHierarchicalCluster();
     	// Make string really Newick standard
     	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
     	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
@@ -1975,9 +2487,287 @@ public class JoinAlignerGCTask extends AbstractTask {
         
         return recursive_validate_clusters_1(tree, level, max_dist, 0, 0, distMtx);
 	}
+    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, double[] distVect, int dim) {
+
+    	List<Cluster> validatedClusters = new ArrayList<>();
+
+    	String newickCluster = clusteringResult.getHierarchicalCluster();
+    	// Make string really Newick standard
+    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
+
+    	// Parse Newick formatted string
+        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+		TreeParser tp = new TreeParser(r);
+        Tree tree = tp.tokenize(1, "tree", null);
+        
+        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
+	}
+    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, float[] distVect, int dim) {
+
+    	List<Cluster> validatedClusters = new ArrayList<>();
+
+    	String newickCluster = clusteringResult.getHierarchicalCluster();
+    	// Make string really Newick standard
+    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
+
+    	// Parse Newick formatted string
+        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+		TreeParser tp = new TreeParser(r);
+        Tree tree = tp.tokenize(1, "tree", null);
+        
+        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
+	}
 
     static int tot = 0;
     static int tot2 = 0;
+    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, double[] distVect, int dim) {
+    	
+    	List<Integer> validatedClusters = new ArrayList<>();
+
+    	TreeNode currNode = tree.getNodeByKey(currkey);
+    	
+    	if (!currNode.isLeaf()) {
+    		
+    		int numChildren = currNode.numberChildren();
+    		
+    		for (int i = 0; i < numChildren; i++) {
+    			
+    			TreeNode child = currNode.getChild(i);
+    		    			
+    			if (child.isLeaf()) {
+    				validatedClusters.add(child.key);
+    				tot++;
+    				tot2++;
+    				continue;
+    			}
+    			
+    			
+    			boolean node_is_cluster = true;
+    			
+    			double max_dist_2 = -1d;
+    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
+    				
+    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
+    				
+    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
+        			// For each leaf
+	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
+	    				
+	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
+	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+//	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
+	    				String left_leaf_name = left_leaf.getName();
+	    				
+	    				if (left_leaf.getName().isEmpty()) {
+	    					logger.info("\t=> Skipped!");
+	    					continue;
+    					}
+	    				
+	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+	    				else if (left_leaf.getName().startsWith(" ")) {
+	    					left_leaf_name = left_leaf.getName().substring(1);
+	    				}
+	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
+
+	        			// For each leaf
+		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
+		    				
+		    				//if (l == k) { continue; }
+		    				
+		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
+		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+//		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
+		    				String right_leaf_name = right_leaf.getName();
+		    				
+		    				if (right_leaf.getName().isEmpty()) {
+		    					logger.info("\t=> Skipped!");
+		    					continue;
+	    					}
+		    				
+		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+		    				else if (right_leaf.getName().startsWith(" ")) {
+		    					right_leaf_name = right_leaf.getName().substring(1);
+		    				}
+		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
+
+		        			// Get distance between left and right leafs
+		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
+		    				
+		    				if (max_dist_2 < dist) {
+		    					max_dist_2 = dist;
+		    				}
+		    			}
+	    			}
+
+    			}
+    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
+    			
+    			if (node_is_cluster) {
+    				validatedClusters.add(child.key);
+    				tot++;
+    				tot2 += child.numberLeaves;
+    			} else {
+    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
+    			}
+    		}
+    	} else {
+    		validatedClusters.add(currNode.key);
+			tot++;
+			tot2++;
+    	}
+
+//    	for (int i = 0; i < numChildren; i++) {
+//    	
+//    		int childkey = currNode.getChild(i).key;
+//    		TreeNode childnode = tree.getNodeByKey(childkey);
+//    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+//    		recursive_print(tree, childkey, currdepth+1);
+//    	}
+    	
+    	if (DEBUG) {
+	    	// Check integrity
+	    	Set<Integer> leafs = new HashSet<>();
+	    	for (int clust_key : validatedClusters) {
+	    		
+	    		TreeNode clust = tree.getNodeByKey(clust_key);
+	    		leafs.addAll(getClusterLeafs_1(clust));
+	    	}
+	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
+	    	System.out.println(Arrays.toString(leafs.toArray()));
+    	}
+    	
+    	return validatedClusters;	
+    }
+    //-
+    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, float[] distVect, int dim) {
+    	
+    	List<Integer> validatedClusters = new ArrayList<>();
+
+    	TreeNode currNode = tree.getNodeByKey(currkey);
+    	
+    	if (!currNode.isLeaf()) {
+    		
+    		int numChildren = currNode.numberChildren();
+    		
+    		for (int i = 0; i < numChildren; i++) {
+    			
+    			TreeNode child = currNode.getChild(i);
+    		    			
+    			if (child.isLeaf()) {
+    				validatedClusters.add(child.key);
+    				tot++;
+    				tot2++;
+    				continue;
+    			}
+    			
+    			
+    			boolean node_is_cluster = true;
+    			
+    			double max_dist_2 = -1d;
+    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
+    				
+    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
+    				
+    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
+        			// For each leaf
+	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
+	    				
+	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
+	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+//	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
+	    				String left_leaf_name = left_leaf.getName();
+	    				
+	    				if (left_leaf.getName().isEmpty()) {
+	    					logger.info("\t=> Skipped!");
+	    					continue;
+    					}
+	    				
+	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+	    				else if (left_leaf.getName().startsWith(" ")) {
+	    					left_leaf_name = left_leaf.getName().substring(1);
+	    				}
+	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
+
+	        			// For each leaf
+		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
+		    				
+		    				//if (l == k) { continue; }
+		    				
+		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
+		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+//		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
+		    				String right_leaf_name = right_leaf.getName();
+		    				
+		    				if (right_leaf.getName().isEmpty()) {
+		    					logger.info("\t=> Skipped!");
+		    					continue;
+	    					}
+		    				
+		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+		    				else if (right_leaf.getName().startsWith(" ")) {
+		    					right_leaf_name = right_leaf.getName().substring(1);
+		    				}
+		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
+
+		        			// Get distance between left and right leafs
+		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
+		    				
+		    				if (max_dist_2 < dist) {
+		    					max_dist_2 = dist;
+		    				}
+		    			}
+	    			}
+
+    			}
+    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
+    			
+    			if (node_is_cluster) {
+    				validatedClusters.add(child.key);
+    				tot++;
+    				tot2 += child.numberLeaves;
+    			} else {
+    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
+    			}
+    		}
+    	} else {
+    		validatedClusters.add(currNode.key);
+			tot++;
+			tot2++;
+    	}
+
+//    	for (int i = 0; i < numChildren; i++) {
+//    	
+//    		int childkey = currNode.getChild(i).key;
+//    		TreeNode childnode = tree.getNodeByKey(childkey);
+//    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+//    		recursive_print(tree, childkey, currdepth+1);
+//    	}
+    	
+    	if (DEBUG) {
+	    	// Check integrity
+	    	Set<Integer> leafs = new HashSet<>();
+	    	for (int clust_key : validatedClusters) {
+	    		
+	    		TreeNode clust = tree.getNodeByKey(clust_key);
+	    		leafs.addAll(getClusterLeafs_1(clust));
+	    	}
+	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
+	    	System.out.println(Arrays.toString(leafs.toArray()));
+    	}
+    	
+    	return validatedClusters;	
+    }
+    //-
     List<Integer> recursive_validate_clusters_1(Tree tree, int level, double max_dist, int currkey, int currdepth, double[][] distMtx) {
     	
     	List<Integer> validatedClusters = new ArrayList<>();
@@ -2079,7 +2869,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 	    				
 	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
 	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
-	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
+	    				String left_leaf_name = left_leaf.getName();
+	    				
+	    				if (left_leaf.getName().isEmpty()) {
+	    					logger.info("\t=> Skipped!");
+	    					continue;
+    					}
+	    				
+	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+	    				else if (left_leaf.getName().startsWith(" ")) {
+	    					left_leaf_name = left_leaf.getName().substring(1);
+	    				}
+	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
 
 	        			// For each leaf
 		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
@@ -2088,7 +2892,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 		    				
 		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
 		    				//System.out.println("right_leaf.getName() = " + right_leaf);
-		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+//							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
+		    				String right_leaf_name = right_leaf.getName();
+		    				
+		    				if (right_leaf.getName().isEmpty()) {
+		    					logger.info("\t=> Skipped!");
+		    					continue;
+	    					}
+		    				
+		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+		    				else if (right_leaf.getName().startsWith(" ")) {
+		    					right_leaf_name = right_leaf.getName().substring(1);
+		    				}
+		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
 
 		        			// Get distance between left and right leafs
 		    				double dist = distMtx[left_leaf_id][right_leaf_id];
@@ -2212,7 +3030,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
     	//List<Node> validatedClusters = new ArrayList<>();
 
-    	String newickCluster = clusteringResult.getHiearchicalCluster();
+    	String newickCluster = clusteringResult.getHierarchicalCluster();
     	// Make string really Newick standard
     	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
     	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
@@ -2887,4 +3705,165 @@ public class JoinAlignerGCTask extends AbstractTask {
 //      return null;
 //    }
 //  }
+    
+    static final int MB = 1024 * 1024;
+    static int toMB(long bytes) {
+        return (int) Math.rint(bytes / MB);
+    }
+    
+    /** Prints in MegaBytes */
+    public static void printMemoryUsage(Runtime rt, Long prevTotal, Long prevFree, String prefix) {
+    	
+    	long max = rt.maxMemory();
+	    long total = rt.totalMemory();
+	    long free = rt.freeMemory();
+	    if (total != prevTotal || free != prevFree) {
+	        long used = total - free;
+	        long prevUsed = (prevTotal - prevFree);
+	        System.out.println(
+	            "## [" + prefix + "] MEM USAGE [max: " + toMB(max) + "] ## >>> Total: " + toMB(total) + 
+	            ", Used: " + toMB(used) +
+	            ", ∆Used: " + toMB(used - prevUsed) +
+	            ", Free: " + toMB(free) +
+	            ", ∆Free: " + toMB(free - prevFree)
+	            );
+	        prevTotal = total;
+	        prevFree = free;
+	    }
+    }
+
+    // Requires only N(N+1)/2 memory
+//    public static double[] symmetricMatrixToVector(double[][] a) {
+//    	
+//        int na = Math.min(a.length, a[0].length); // Dimension of the matrix
+//        int nv = na * (na + 1) / 2; // 1 + 2 + 3 + .. + na
+//        double[] v = new double[nv];
+//        int k = 0; // index in v.
+//        
+////        // Lower triangle
+////        for (int i = 0; i < na; ++i) {
+////            for (int j = 0; j <= i; ++j) {
+////                v[k] = a[i][j];
+////                ++k;
+////            }
+////        }
+//        // Upper triangle
+//        for (int i = 0; i < na; ++i) {
+//            for (int j = i; j < na; ++j) {
+//                v[k] = a[j][i];
+//                ++k;
+//            }
+//        }
+//        return v;
+//    }
+    
+//    public static double[] symmetricMatrixToVector(double[][] a) {
+//    	
+//    	int dim = a.length;
+//    	double[] vect = new double[(dim * (dim+1)) / 2];
+//
+//    	for (int r = 0; r < a.length; ++r) 
+//    	{
+//    		for (int c = 0; c < a[0].length; ++c)
+//    		{
+//    			int i = (dim * r) + c - ((r * (r+1)) / 2);
+//    			vect[i] = a[r][c];
+//    		}
+//    	}
+//    	
+//    	return vect;
+//    }
+
+//    //Row-major order: (C, C#, Java) a[i][j] is element at row i, column j.
+//  public static double[] symmetricMatrixToVector(double[][] a) {
+//	
+//    int na = Math.min(a.length, a[0].length); // Dimension of the matrix
+//    int nv = na * (na + 1) / 2; // 1 + 2 + 3 + .. + na
+//    double[] v = new double[nv];
+//    int k = 0; // index in v.
+//    
+//    for (int i = 0; i < na; ++i) {
+//        for (int j = 0; j <= i; ++j) {
+//            v[k] = a[i][j];
+//            ++k;
+//        }
+//    }
+//    return v;
+//}
+//    
+//    public static double getValueFromVector(int i, int j, int dim, double[] vector) {
+////    	int v_i = (i <= j) ? (dim * j) + i - ((j * (j+1)) / 2) : (dim * i) + j - ((i * (i+1)) / 2);
+////    	return vector[v_i];
+//    	
+////    	return vector[(dim * r) + c - ((r * (r+1)) / 2)];
+//    	return vector[flatten(i, j, dim)];
+//    }
+//
+//    public static int flatten(int i, int j, int size) {
+//    	int offset = -1;
+//
+//    	if (i < j) {
+//    		offset = j - (i + 1) + (int)((((size - 1) + (size - i)) / 2.0) * i);
+//    	} else {
+//    		offset = i - (j + 1) + (int)((((size - 1) + (size - j)) / 2.0) * j);
+//    	}
+//
+//    	return offset;
+//    }
+
+    public static double[] symmetricMatrixToVector(double[][] matrix) {
+    	
+    	int n = matrix.length;
+    	
+    	double[] array = new double[(n * (n+1)) / 2]; // allocate
+    	for (int r = 0; r < matrix.length; ++r) // each row
+    	{
+    		for (int c = r; c < matrix[0].length; ++c)
+    		{
+    			int i = (n * r) + c - ((r * (r+1)) / 2); // corrected from earlier post
+    			
+    			array[i] = matrix[r][c];
+    			
+    			//System.out.println(Arrays.toString(array));
+    		}
+    	}
+    	
+    	return array;
+    }
+    public static double getValueFromVector(int r, int c, int n, double[] vector) {
+    	
+    	if (r < c)
+    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
+    	else
+    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
+    }
+    //-
+    public static float[] symmetricMatrixToFloatVector(double[][] matrix) {
+    	
+    	int n = matrix.length;
+    	
+    	float[] array = new float[(n * (n+1)) / 2]; // allocate
+    	for (int r = 0; r < matrix.length; ++r) // each row
+    	{
+    		for (int c = r; c < matrix[0].length; ++c)
+    		{
+    			int i = (n * r) + c - ((r * (r+1)) / 2); // corrected from earlier post
+    			
+    			array[i] = (float) matrix[r][c];
+    			
+    			//System.out.println(Arrays.toString(array));
+    		}
+    	}
+    	
+    	return array;
+    }
+    public static double getValueFromVector(int r, int c, int n, float[] vector) {
+    	
+    	if (r < c)
+    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
+    	else
+    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
+    }
+
+    
 }

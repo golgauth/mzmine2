@@ -22,7 +22,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
 public enum LinkType {
 
     SINGLE("Single"), COMPLETE("Complete"), AVERAGE("Average"), MEAN("Mean"), CENTROID(
-	    "Centroid"), WARD("Ward"), ADJUSTEDCOMPLETE("Adjusted complete"), NEIGHBOT(
+	    "Centroid"), WARD("Ward"), ADJUSTEDCOMPLETE("Adjusted complete"), NEIGHBORJOINING(
 	    "Neighbor Joining");
 
     private final String name;

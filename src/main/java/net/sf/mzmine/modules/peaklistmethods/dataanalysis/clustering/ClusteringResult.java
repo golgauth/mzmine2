@@ -24,14 +24,14 @@ import java.util.List;
 public class ClusteringResult {
 
     private List<Integer> clusters;
-    private String hiearchicalCluster;
+    private String hierarchicalCluster;
     private int numberOfGroups;
     private VisualizationType visualizationType;
 
-    public ClusteringResult(List<Integer> clusters, String hiearchicalCluster,
+    public ClusteringResult(List<Integer> clusters, String hierarchicalCluster,
 	    int numberOfGroups, VisualizationType visualizationType) {
 	this.clusters = clusters;
-	this.hiearchicalCluster = hiearchicalCluster;
+	this.hierarchicalCluster = hierarchicalCluster;
 	this.numberOfGroups = numberOfGroups;
 	this.visualizationType = visualizationType;
     }
@@ -40,8 +40,8 @@ public class ClusteringResult {
 	return clusters;
     }
 
-    public String getHiearchicalCluster() {
-	return hiearchicalCluster;
+    public String getHierarchicalCluster() {
+	return hierarchicalCluster;
     }
 
     public int getNumberOfGroups() {

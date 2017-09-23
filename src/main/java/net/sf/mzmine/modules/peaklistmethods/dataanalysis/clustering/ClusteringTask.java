@@ -208,7 +208,7 @@ public class ClusteringTask extends AbstractXYDataset
                 .equals("Hierarchical clusterer")) {
             progress = 0;
             // Getting the result of the clustering in Newick format
-            cluster = result.getHiearchicalCluster();
+            cluster = result.getHierarchicalCluster();
 
             // Getting the number of clusters counting the number of times the
             // word "cluster" is in the result
