@@ -162,11 +162,11 @@
             <url>file:///home/golgauth/.m2/repository</url>
         </repository>
         
-  		<repository>
+  		<!-- <repository>
     		<id>freehep-maven</id>
     		<name>Maven FreeHEP</name>
     		<url>http://java.freehep.org/maven2</url>
-  		</repository>
+  		</repository> -->
 	</repositories>
 	<dependencies>
 		<dependency>
@@ -235,7 +235,8 @@
 		<dependency>
 			<groupId>nz.ac.waikato.cms.weka</groupId>
 			<artifactId>weka-stable</artifactId>
-			<version>3.6.13</version>
+			<!-- <version>3.6.13</version> -->
+			<version>3.8.1</version>
 		</dependency>
 		<dependency>
 			<groupId>net.sourceforge.jmol</groupId>
@@ -493,6 +494,13 @@
     <groupId>org.prefuse</groupId>
     <artifactId>prefuse</artifactId>
     <version>beta-20071021</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/de.lmu.ifi.dbs.elki/elki -->
+<dependency>
+    <groupId>de.lmu.ifi.dbs.elki</groupId>
+    <artifactId>elki</artifactId>
+    <version>0.7.1</version>
 </dependency>
 
 
