@@ -21,7 +21,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
 import java.text.NumberFormat;
 
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.LinkType;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.LinkType;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.Parameter;
 import net.sf.mzmine.parameters.impl.SimpleParameterSet;
@@ -37,8 +37,9 @@ import net.sf.mzmine.parameters.parametertypes.tolerances.RTToleranceParameter;
 public class JoinAlignerGCParameters extends SimpleParameterSet {
 
 
-    // Clustering method [0:RAM buggy but cool, 1: OK but poor parser, 2: Good but too many dependencies and may be less comsuming]
-    static int CLUST_METHOD = 1;
+    // Clustering method 
+	// [0:RAM buggy but cool, 1: OK but poor parser, 2: Good but too many dependencies and may be less consuming]
+    public static final int CLUST_METHOD = 1;
 
     
 	

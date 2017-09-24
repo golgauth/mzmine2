@@ -1,4 +1,4 @@
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
@@ -11,7 +11,7 @@ import java.util.Vector;
 
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.ClusteringProgression;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCTask;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HierarClusterer.ConcreteInstance;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HierarClusterer.ConcreteInstance;
 import weka.clusterers.AbstractClusterer;
 import weka.core.Capabilities;
 import weka.core.CapabilitiesHandler;
@@ -340,6 +340,9 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		}
 
 	} // buildClusterer
+	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec) throws Exception {
+		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
+	}
 	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec, double distThreshold) throws Exception {
 		
 		
@@ -404,6 +407,9 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 
 	} // buildClustererGLG
 	//-
+	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec) throws Exception {
+		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
+	}
 	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec, double distThreshold) throws Exception {
 		
 		
@@ -895,7 +901,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 					queue.add(new Tuple(dist, i, j, 1, 1));
 				}
 			}
-			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
+			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
 		}
 		
 		
@@ -962,7 +968,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 			
 			nClusters--;
 
-			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<2> ... " + queue.size() + ")");
+			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<2> ... " + queue.size() + ")");
 		}
 
 		// GLG HACK: progress stuff

@@ -33,7 +33,7 @@
    THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import java.util.*;
 import java.text.Collator;

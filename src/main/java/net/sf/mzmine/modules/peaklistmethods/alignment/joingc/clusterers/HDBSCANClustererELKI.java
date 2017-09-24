@@ -17,7 +17,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,7 +82,7 @@ import java.util.Vector;
 
 
 
-public class HDBSCANClusterer /*implements ClusteringAlgorithm*/ {
+public class HDBSCANClustererELKI /*implements ClusteringAlgorithm*/ {
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -109,7 +109,7 @@ public class HDBSCANClusterer /*implements ClusteringAlgorithm*/ {
 	//	return MODULE_NAME;
 	//    }
 
-	public HDBSCANClusterer(ClusteringProgression clustProgress, double[][] rawData) {
+	public HDBSCANClustererELKI(ClusteringProgression clustProgress, double[][] rawData) {
 
 		this.distMtx = rawData;
 		//		this.dataSet = createSampleWekaDataset(rawData);

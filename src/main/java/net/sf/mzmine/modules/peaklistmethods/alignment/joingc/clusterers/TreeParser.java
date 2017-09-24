@@ -1,4 +1,4 @@
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import java.awt.Frame;
 import java.awt.GridBagConstraints;

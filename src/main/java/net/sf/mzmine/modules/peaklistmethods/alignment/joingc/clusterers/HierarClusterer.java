@@ -17,7 +17,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -536,7 +536,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 			clusterer.setClusteringProgression(clustProgress);
 	        //
             JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (before...)");
-            System.out.println("Trying to bulid clusterer from numInstances:" + this.dataSet.numInstances());
+            System.out.println("Trying to build clusterer from numInstances:" + this.dataSet.numInstances());
             //clusterer.buildClusterer(this.dataSet, this.distMtx);
             if (JoinAlignerGCTask.USE_DOUBLE_PRECISION_FOR_DIST)
             	clusterer.buildClustererGLG(this.dataSet, this.distVect, this.distThreshold);
@@ -689,8 +689,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 	}
 	
 	
-	public class ConcreteInstance implements Instance, Serializable,
-	  RevisionHandler {
+	public class ConcreteInstance implements Instance, Serializable, RevisionHandler {
 		
 		/**
 		 * 

@@ -20,7 +20,7 @@
  * Copyright (C) Jeffrey Heer (original prefuse demo)
  */
 
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 import prefuse.Constants;
 import prefuse.Display;

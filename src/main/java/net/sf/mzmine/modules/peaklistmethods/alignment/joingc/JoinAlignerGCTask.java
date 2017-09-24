@@ -70,16 +70,13 @@ import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HDBSCANClusterer;
-//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.CobwebClusterer;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.HierarClusterer;
-//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.KMeansClusterer;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.LinkType;
-//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.OPTICSClusterer;
-//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.DBSCANClusterer;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.Tree;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeNode;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.TreeParser;
+//import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.DBSCANClusterer;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HDBSCANClusterer;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HierarClusterer;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.LinkType;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.Tree;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeNode;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeParser;
 //import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.XMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
@@ -200,9 +197,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     private ClusteringProgression clustProgress; 
     
 
-    private static final int CLUSTERER_TYPE = 0; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN
-
-
+    private static final int CLUSTERER_TYPE = 0; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
 	public static final boolean USE_DOUBLE_PRECISION_FOR_DIST = true;
 	
 	
@@ -1123,7 +1118,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
          	List<Cluster> validatedClusters = getValidatedClusters_0(clust, newIds.length, max_dist);
         }
-        // WEKA way!
+        // WEKA way! (And more: Mostly HDBSCAN*/ELKI, see 'CLUSTERER_TYPE==5')
         else {
 
 
@@ -1152,7 +1147,7 @@ public class JoinAlignerGCTask extends AbstractTask {
         			distancesAsFloatVector = symmetricMatrixToFloatVector(distances);
         			hierarClusterer = new HierarClusterer(clustProgress, distancesAsFloatVector, numInstances, this.minScore);
         		}
-				//-
+				// Get rid of distances, since we already transmitted it as vector to the clusterer!
 				distances = null;
 				System.gc();
 				/**
@@ -1198,25 +1193,25 @@ public class JoinAlignerGCTask extends AbstractTask {
         			//	        	System.out.println("Line sep found at index '" + newickCluster.indexOf(line_sep) + "'.");
         			newickCluster_clean = newickCluster.substring(newickCluster.indexOf(line_sep) + line_sep.length()) + ";";
 
-        				        	PrintWriter out;
-        				        	try {
-        				        		out = new PrintWriter("newick_check.txt");
-        				        		
-        			        			String output_str = newickCluster_clean ;
-        			        			
-//        			        			for (String short_n : dendro_names_dict.keySet()) {
-//        			        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
-//        			        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
-//        			        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
-//        			        			}
-        				        		
-        				        		out.println(output_str);
-        				        		
-        				        		out.close();
-        				        	} catch (FileNotFoundException e) {
-        				        		// TODO Auto-generated catch block
-        				        		e.printStackTrace();
-        				        	}
+//		        	PrintWriter out;
+//		        	try {
+//		        		out = new PrintWriter("newick_check.txt");
+//		        		
+//	        			String output_str = newickCluster_clean ;
+//	        			
+////        			for (String short_n : dendro_names_dict.keySet()) {
+////        				String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+////        				String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+////        				output_str = output_str.replaceAll(short_nn + ":", long_nn + ":");
+////        			}
+//		        		
+//		        		out.println(output_str);
+//		        		
+//		        		out.close();
+//		        	} catch (FileNotFoundException e) {
+//		        		// TODO Auto-generated catch block
+//		        		e.printStackTrace();
+//		        	}
 
 
         			//void setup() {
@@ -1637,11 +1632,51 @@ public class JoinAlignerGCTask extends AbstractTask {
 //        		} 
 //
 //    		} 
+    	// NOT "HIERAR"! (OPTICS/DBSCAN)
+        // !!! NEED Weka 3.6.13 to have this work !!! (see pom.xml)
         else if (CLUSTERER_TYPE == 4) {
     			
-        		// WEKA DBSCAN clustering
-        		//OPTICSClusterer opticsClusterer = new OPTICSClusterer(clustProgress, distances);
-	        	//***DBSCANClusterer opticsClusterer = new DBSCANClusterer(clustProgress, distances);
+//        		// WEKA DBSCAN clustering
+//        		//OPTICSClusterer opticsClusterer = new OPTICSClusterer(clustProgress, distances);
+//	        	DBSCANClusterer dbscanClusterer = new DBSCANClusterer(clustProgress, distances);
+//
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "HDBSCAN CLUSTERER: created");
+//
+//        		//
+//        		startTime2 = System.currentTimeMillis();
+//        		//
+//        		//***clusteringResult = opticsClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		clusteringResult = dbscanClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER: performed");
+//        		//
+//        		endTime2 = System.currentTimeMillis();
+//        		ms2 = (endTime2 - startTime2);
+//        		System.out.println("Done clustering: " + clusteringResult);
+//
+//        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+//
+//
+//        		//
+//        		System.out.println("RESULT 1: " + dbscanClusterer.getClusterer().toString());
+//        		try {
+//					//***System.out.println("RESULT 2: " + hdbscanClusterer.getClusterer().numberOfClusters());
+//        			// ...
+//				} catch (Exception e1) {
+//					// TODO Auto-generated catch block
+//					e1.printStackTrace();
+//				}
+//        		
+//        		
+//        		
+//        		if (isCanceled())
+//        			return;
+
+    		}
+    	// SEMI "HIERAR"! "HDBSCAN*/ELKI"
+        else if (CLUSTERER_TYPE == 5) {
+    			
+        		// HDBSCAN* clustering
 	        	HDBSCANClusterer hdbscanClusterer = new HDBSCANClusterer(clustProgress, distances);
 
         		printMemoryUsage(run_time, prevTotal, prevFree, "HDBSCAN CLUSTERER: created");
@@ -1659,18 +1694,6 @@ public class JoinAlignerGCTask extends AbstractTask {
         		System.out.println("Done clustering: " + clusteringResult);
 
         		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
-
-
-        		//
-        		System.out.println("RESULT 1: " + hdbscanClusterer.getClusterer().toString());
-        		try {
-					//***System.out.println("RESULT 2: " + hdbscanClusterer.getClusterer().numberOfClusters());
-        			// ...
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-        		
         		
         		
         		if (isCanceled())
@@ -1681,7 +1704,9 @@ public class JoinAlignerGCTask extends AbstractTask {
         		clustersHDBSCAN = hdbscanClusterer.getResultingClusters();
         		// TODO: !!!!!!
         		// ...
-
+        		// "HDBSCAN*" produces 3 output files "_hierarchy.csv, _tree.csv, ...": need to build a parser able to 
+        		// recover proper clusters from those results...
+        		
     		}
 
         }
@@ -3706,12 +3731,15 @@ public class JoinAlignerGCTask extends AbstractTask {
 //    }
 //  }
     
+    /**
+     * MEMORY check stuffs
+     */
     static final int MB = 1024 * 1024;
     static int toMB(long bytes) {
         return (int) Math.rint(bytes / MB);
     }
-    
-    /** Prints in MegaBytes */
+    //-
+    // Prints in MegaBytes
     public static void printMemoryUsage(Runtime rt, Long prevTotal, Long prevFree, String prefix) {
     	
     	long max = rt.maxMemory();
@@ -3732,85 +3760,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 	    }
     }
 
-    // Requires only N(N+1)/2 memory
-//    public static double[] symmetricMatrixToVector(double[][] a) {
-//    	
-//        int na = Math.min(a.length, a[0].length); // Dimension of the matrix
-//        int nv = na * (na + 1) / 2; // 1 + 2 + 3 + .. + na
-//        double[] v = new double[nv];
-//        int k = 0; // index in v.
-//        
-////        // Lower triangle
-////        for (int i = 0; i < na; ++i) {
-////            for (int j = 0; j <= i; ++j) {
-////                v[k] = a[i][j];
-////                ++k;
-////            }
-////        }
-//        // Upper triangle
-//        for (int i = 0; i < na; ++i) {
-//            for (int j = i; j < na; ++j) {
-//                v[k] = a[j][i];
-//                ++k;
-//            }
-//        }
-//        return v;
-//    }
-    
-//    public static double[] symmetricMatrixToVector(double[][] a) {
-//    	
-//    	int dim = a.length;
-//    	double[] vect = new double[(dim * (dim+1)) / 2];
-//
-//    	for (int r = 0; r < a.length; ++r) 
-//    	{
-//    		for (int c = 0; c < a[0].length; ++c)
-//    		{
-//    			int i = (dim * r) + c - ((r * (r+1)) / 2);
-//    			vect[i] = a[r][c];
-//    		}
-//    	}
-//    	
-//    	return vect;
-//    }
-
-//    //Row-major order: (C, C#, Java) a[i][j] is element at row i, column j.
-//  public static double[] symmetricMatrixToVector(double[][] a) {
-//	
-//    int na = Math.min(a.length, a[0].length); // Dimension of the matrix
-//    int nv = na * (na + 1) / 2; // 1 + 2 + 3 + .. + na
-//    double[] v = new double[nv];
-//    int k = 0; // index in v.
-//    
-//    for (int i = 0; i < na; ++i) {
-//        for (int j = 0; j <= i; ++j) {
-//            v[k] = a[i][j];
-//            ++k;
-//        }
-//    }
-//    return v;
-//}
-//    
-//    public static double getValueFromVector(int i, int j, int dim, double[] vector) {
-////    	int v_i = (i <= j) ? (dim * j) + i - ((j * (j+1)) / 2) : (dim * i) + j - ((i * (i+1)) / 2);
-////    	return vector[v_i];
-//    	
-////    	return vector[(dim * r) + c - ((r * (r+1)) / 2)];
-//    	return vector[flatten(i, j, dim)];
-//    }
-//
-//    public static int flatten(int i, int j, int size) {
-//    	int offset = -1;
-//
-//    	if (i < j) {
-//    		offset = j - (i + 1) + (int)((((size - 1) + (size - i)) / 2.0) * i);
-//    	} else {
-//    		offset = i - (j + 1) + (int)((((size - 1) + (size - j)) / 2.0) * j);
-//    	}
-//
-//    	return offset;
-//    }
-
+    // Using vector: Requires only N(N+1)/2 memory !!!
+    /**
+     * DOUBLE storage
+     */
     public static double[] symmetricMatrixToVector(double[][] matrix) {
     	
     	int n = matrix.length;
@@ -3837,12 +3790,14 @@ public class JoinAlignerGCTask extends AbstractTask {
     	else
     		return vector[(n * c) + r - ((c * (c+1)) / 2)];
     }
-    //-
+    /**
+     * FLOAT storage
+     */
     public static float[] symmetricMatrixToFloatVector(double[][] matrix) {
     	
     	int n = matrix.length;
     	
-    	float[] array = new float[(n * (n+1)) / 2]; // allocate
+    	float[] array = new float[(n * (n+1)) / 2]; // allocate storage
     	for (int r = 0; r < matrix.length; ++r) // each row
     	{
     		for (int c = r; c < matrix[0].length; ++c)
