@@ -198,7 +198,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     
 
     private static final int CLUSTERER_TYPE = 0; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
-	public static final boolean USE_DOUBLE_PRECISION_FOR_DIST = true;
+	public static final boolean USE_DOUBLE_PRECISION_FOR_DIST = false;
 	
 	
 	
@@ -802,11 +802,12 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
 
-        double[][] distances = null;
+//        double[][] distances = null;
+        TriangularMatrix distances;
         //Map<Pair<Integer, Integer>, Float> distancesMap = new HashMap<>();
-        double[] distancesAsVector = null;
-        float[] distancesAsFloatVector = null;
-        int numInstances = 0;
+//        double[] distancesAsVector = null;
+//        float[] distancesAsFloatVector = null;
+//        int numInstances = 0;
         
         
         String[] short_names;
@@ -816,7 +817,13 @@ public class JoinAlignerGCTask extends AbstractTask {
             nbPeaks += peakList.getNumberOfRows();
             logger.info("> Peaklist '" + peakList.getName() + "' [" + newIds[i] + "] has '" + peakList.getNumberOfRows() + "' rows.");
         }
-        distances = new double[nbPeaks][nbPeaks];
+        //distances = new double[nbPeaks][nbPeaks];
+        if (USE_DOUBLE_PRECISION_FOR_DIST) {
+        	distances = new TriangularMatrixDouble(nbPeaks);
+        } else {
+        	distances = new TriangularMatrixFloat(nbPeaks);
+        }
+        
         short_names = new String[nbPeaks];
 
         Map<String, PeakListRow> row_names_dict = new HashMap<>();
@@ -881,18 +888,32 @@ public class JoinAlignerGCTask extends AbstractTask {
                     .getRowsInsideScanAndMZRange(rtRange, mzRange);
                  */
                 //////List<PeakListRow> candidateRows = new ArrayList<>();
-                int y = 0;
+                
+                
+                /** int y = 0; */
+                int y = 0; // Cover only the upper triangle (half the squared matrix)
+                
+                
                 for (int k = 0; k < newIds.length; ++k) {
 
                     if (isCanceled())
                         return;
+                    
+//                    // !!! Skip the diagonal !!!
+//                    if (x == y) { continue; }
+//                    
+                    
 
                     PeakList k_peakList = peakLists[newIds[k]];
                     PeakListRow k_allRows[] = k_peakList.getRows();
 
                     //                  if (k != i) {
                     for (int l = 0; l < k_allRows.length; ++l) {
+                        
+                    	// Cover only the upper triangle (half the squared matrix),  Skip the lower triangle
+                    	if (x > y) { ++y; continue; }
 
+                        
                         ////int y = (k * k_allRows.length) + l;
 
 
@@ -903,7 +924,8 @@ public class JoinAlignerGCTask extends AbstractTask {
                         
                         if (x == y) {
                             /** Row tested against himself => fill matrix diagonal with zeros */
-                            distances[x][y] = 0.0d;
+//                            distances[x][y] = 0.0d;
+                        	distances.set(x, y, 0d);
                             //continue; 
                         } else {
                             
@@ -956,13 +978,15 @@ public class JoinAlignerGCTask extends AbstractTask {
                                     if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
                                         //////scoreSet.add(score);
                                         // The higher the score, the lower the distance!
-                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
+//                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
+                                    	distances.set(x, y , maximumScore - score.getScore());
                                     } else {
                                         /** Score too low => Distance is Infinity */
                                         //distances[x][y] = veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
                                         ////distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
                                         //////distances[x][y] = Double.MAX_VALUE;
-                                        distances[x][y] = veryLongDistance;
+//                                        distances[x][y] = veryLongDistance;
+                                    	distances.set(x, y , veryLongDistance);
                                     }
 
                                 } else {
@@ -971,14 +995,16 @@ public class JoinAlignerGCTask extends AbstractTask {
                                     //distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
                                     //distances[x][y] = Double.MAX_VALUE;//10.0d * veryLongDistance; // Need to rank distances for "rejected" cases
                                     //////distances[x][y] = Double.MAX_VALUE;
-                                    distances[x][y] = 10.0d * veryLongDistance;
+//                                    distances[x][y] = 10.0d * veryLongDistance;
+                                	distances.set(x, y , 10.0d * veryLongDistance);
                                 }
                             } else {
                                 /** Both rows belong to same list => Distance is Infinity */
                                 ////distances[x][y] = 100.0d * veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
                                 //distances[x][y] = Double.MAX_VALUE;//100.0d * veryLongDistance; // Need to rank distances for "rejected" cases
                                 //////distances[x][y] = Double.MAX_VALUE;
-                                distances[x][y] = 100.0d * veryLongDistance;
+//                                distances[x][y] = 100.0d * veryLongDistance;
+                            	distances.set(x, y , 100.0d * veryLongDistance);
                             }
                         }
                         
@@ -1037,6 +1063,13 @@ public class JoinAlignerGCTask extends AbstractTask {
             }
 
         }
+
+        if (DEBUG) {
+	        System.out.println("\nDISTANCES MATRIX:\n");
+	        distances.print();
+	        System.out.println("\nDISTANCES VECTOR:\n");
+	        distances.printVector();
+        }
         
         printMemoryUsage(run_time, prevTotal, prevFree, "DISTANCES COMPUTED");
 
@@ -1056,17 +1089,17 @@ public class JoinAlignerGCTask extends AbstractTask {
             }
             // Write things
             try {
-                for (int i = 0; i < distances.length; i++) {
+                for (int i = 0; i < distances.getDimension(); i++) {
 
                     if (i == 0)
-                        for (int j = 0; j < distances[i].length; j++) {
+                        for (int j = 0; j < distances.getDimension(); j++) {
                             writer.write(short_names[j] + "\t");
                         }
 
-                    for (int j = 0; j < distances[i].length; j++) {
+                    for (int j = 0; j < distances.getDimension(); j++) {
                         if (j == 0)
                             writer.write(short_names[i] + "\t");
-                        writer.write(rtFormat.format(distances[i][j]) + "\t");
+                        writer.write(rtFormat.format(distances.get(i,  j)) + "\t");
                     }
                     writer.write("\n");
                 }
@@ -1108,15 +1141,15 @@ public class JoinAlignerGCTask extends AbstractTask {
         // OLD (RAM killer) way!
         if (JoinAlignerGCParameters.CLUST_METHOD == 0) {    
 
-        	ClusteringAlgorithm alg = new DefaultClusteringAlgorithmWithProgress(); //DefaultClusteringAlgorithm();        
-        	clust = alg.performClustering(distances, short_names, linkageStrategy);
-
-        	System.out.println("Done clustering");
-
-        	if (isCanceled())
-        		return;
-
-         	List<Cluster> validatedClusters = getValidatedClusters_0(clust, newIds.length, max_dist);
+//        	ClusteringAlgorithm alg = new DefaultClusteringAlgorithmWithProgress(); //DefaultClusteringAlgorithm();        
+//        	clust = alg.performClustering(distances, short_names, linkageStrategy);
+//
+//        	System.out.println("Done clustering");
+//
+//        	if (isCanceled())
+//        		return;
+//
+//         	List<Cluster> validatedClusters = getValidatedClusters_0(clust, newIds.length, max_dist);
         }
         // WEKA way! (And more: Mostly HDBSCAN*/ELKI, see 'CLUSTERER_TYPE==5')
         else {
@@ -1138,18 +1171,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 //        			}
 //        		}
         		
-        		numInstances = distances.length;
+//        		numInstances = distances.getSize();
         		HierarClusterer hierarClusterer;
-        		if (USE_DOUBLE_PRECISION_FOR_DIST) {
-        			distancesAsVector = symmetricMatrixToVector(distances);
-        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsVector, numInstances, this.minScore);
-        		} else {
-        			distancesAsFloatVector = symmetricMatrixToFloatVector(distances);
-        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsFloatVector, numInstances, this.minScore);
-        		}
+//        		if (USE_DOUBLE_PRECISION_FOR_DIST) {
+//        			distancesAsVector = symmetricMatrixToVector(distances);
+//        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsVector, numInstances, this.minScore);
+//        		} else {
+//        			distancesAsFloatVector = symmetricMatrixToFloatVector(distances);
+//        			hierarClusterer = new HierarClusterer(clustProgress, distancesAsFloatVector, numInstances, this.minScore);
+//        		}
+    			hierarClusterer = new HierarClusterer(clustProgress, distances, this.minScore);
 				// Get rid of distances, since we already transmitted it as vector to the clusterer!
-				distances = null;
-				System.gc();
+
+//    			distances = null;
+//				System.gc();
+				
 				/**
 				HierarClusterer hierarClusterer = new HierarClusterer(clustProgress, distances);
 				*/
@@ -1676,36 +1712,36 @@ public class JoinAlignerGCTask extends AbstractTask {
     	// SEMI "HIERAR"! "HDBSCAN*/ELKI"
         else if (CLUSTERER_TYPE == 5) {
     			
-        		// HDBSCAN* clustering
-	        	HDBSCANClusterer hdbscanClusterer = new HDBSCANClusterer(clustProgress, distances);
-
-        		printMemoryUsage(run_time, prevTotal, prevFree, "HDBSCAN CLUSTERER: created");
-
-        		//
-        		startTime2 = System.currentTimeMillis();
-        		//
-        		//***clusteringResult = opticsClusterer.performClustering(/*linkageStartegyType_12*/);
-        		clusteringResult = hdbscanClusterer.performClustering(/*linkageStartegyType_12*/);
-        		//            
-        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER: performed");
-        		//
-        		endTime2 = System.currentTimeMillis();
-        		ms2 = (endTime2 - startTime2);
-        		System.out.println("Done clustering: " + clusteringResult);
-
-        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
-        		
-        		
-        		if (isCanceled())
-        			return;
-
-
-        		// Getting the result of the clustering
-        		clustersHDBSCAN = hdbscanClusterer.getResultingClusters();
-        		// TODO: !!!!!!
-        		// ...
-        		// "HDBSCAN*" produces 3 output files "_hierarchy.csv, _tree.csv, ...": need to build a parser able to 
-        		// recover proper clusters from those results...
+//        		// HDBSCAN* clustering
+//	        	HDBSCANClusterer hdbscanClusterer = new HDBSCANClusterer(clustProgress, distances);
+//
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "HDBSCAN CLUSTERER: created");
+//
+//        		//
+//        		startTime2 = System.currentTimeMillis();
+//        		//
+//        		//***clusteringResult = opticsClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		clusteringResult = hdbscanClusterer.performClustering(/*linkageStartegyType_12*/);
+//        		//            
+//        		printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER: performed");
+//        		//
+//        		endTime2 = System.currentTimeMillis();
+//        		ms2 = (endTime2 - startTime2);
+//        		System.out.println("Done clustering: " + clusteringResult);
+//
+//        		System.out.println("Done clustering: " + clusteringResult + "[took: " + ms2 + "ms. to build tree]");
+//        		
+//        		
+//        		if (isCanceled())
+//        			return;
+//
+//
+//        		// Getting the result of the clustering
+//        		clustersHDBSCAN = hdbscanClusterer.getResultingClusters();
+//        		// TODO: !!!!!!
+//        		// ...
+//        		// "HDBSCAN*" produces 3 output files "_hierarchy.csv, _tree.csv, ...": need to build a parser able to 
+//        		// recover proper clusters from those results...
         		
     		}
 
@@ -1746,12 +1782,18 @@ public class JoinAlignerGCTask extends AbstractTask {
         	tot2 = 0;
 	            
         	List<Integer> validatedClusters;
-        	if (USE_DOUBLE_PRECISION_FOR_DIST) {
-	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsVector, numInstances);
-	        	//List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist, distances);
-        	} else {
-	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsFloatVector, numInstances);
-        	}
+//        	if (USE_DOUBLE_PRECISION_FOR_DIST) {
+//	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsVector, numInstances);
+//	        	//List<Integer> validatedClusters = getValidatedClusters_1(clusteringResult, newIds.length, max_dist, distances);
+//        	} else {
+//	        	validatedClusters = getValidatedClusters_11(clusteringResult, newIds.length, max_dist, distancesAsFloatVector, numInstances);
+//        	}
+        	validatedClusters = getValidatedClusters_2(clusteringResult, newIds.length, max_dist, distances);
+        	
+        	
+        	// Free memory ASAP
+        	distances = null;
+        	System.gc();
         	
         	int nbLeaves = 0;
         	for (Integer nodekey: validatedClusters) {
@@ -2512,7 +2554,39 @@ public class JoinAlignerGCTask extends AbstractTask {
         
         return recursive_validate_clusters_1(tree, level, max_dist, 0, 0, distMtx);
 	}
-    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, double[] distVect, int dim) {
+//    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, double[] distVect, int dim) {
+//
+//    	List<Cluster> validatedClusters = new ArrayList<>();
+//
+//    	String newickCluster = clusteringResult.getHierarchicalCluster();
+//    	// Make string really Newick standard
+//    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+//    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
+//
+//    	// Parse Newick formatted string
+//        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+//		TreeParser tp = new TreeParser(r);
+//        Tree tree = tp.tokenize(1, "tree", null);
+//        
+//        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
+//	}
+//    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, float[] distVect, int dim) {
+//
+//    	List<Cluster> validatedClusters = new ArrayList<>();
+//
+//    	String newickCluster = clusteringResult.getHierarchicalCluster();
+//    	// Make string really Newick standard
+//    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
+//    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
+//
+//    	// Parse Newick formatted string
+//        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
+//		TreeParser tp = new TreeParser(r);
+//        Tree tree = tp.tokenize(1, "tree", null);
+//        
+//        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
+//	}
+    private List<Integer> getValidatedClusters_2(ClusteringResult clusteringResult, int level, double max_dist, TriangularMatrix distMtx) {
 
     	List<Cluster> validatedClusters = new ArrayList<>();
 
@@ -2526,151 +2600,259 @@ public class JoinAlignerGCTask extends AbstractTask {
 		TreeParser tp = new TreeParser(r);
         Tree tree = tp.tokenize(1, "tree", null);
         
-        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
+        return recursive_validate_clusters_2(tree, level, max_dist, 0, 0, distMtx);
 	}
-    private List<Integer> getValidatedClusters_11(ClusteringResult clusteringResult, int level, double max_dist, float[] distVect, int dim) {
-
-    	List<Cluster> validatedClusters = new ArrayList<>();
-
-    	String newickCluster = clusteringResult.getHierarchicalCluster();
-    	// Make string really Newick standard
-    	//String newickCluster_clean = newickCluster.substring(newickCluster.indexOf(System.getProperty("line.separator"))+1) + ";";
-    	String newickCluster_clean = newickCluster.substring(newickCluster.indexOf("\n")+1) + ";";
-
-    	// Parse Newick formatted string
-        BufferedReader r = new BufferedReader(new StringReader(newickCluster_clean));//createReader("treeoflife.tree");
-		TreeParser tp = new TreeParser(r);
-        Tree tree = tp.tokenize(1, "tree", null);
-        
-        return recursive_validate_clusters_11(tree, level, max_dist, 0, 0, distVect, dim);
-	}
-
+    
+    
     static int tot = 0;
     static int tot2 = 0;
-    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, double[] distVect, int dim) {
-    	
-    	List<Integer> validatedClusters = new ArrayList<>();
-
-    	TreeNode currNode = tree.getNodeByKey(currkey);
-    	
-    	if (!currNode.isLeaf()) {
-    		
-    		int numChildren = currNode.numberChildren();
-    		
-    		for (int i = 0; i < numChildren; i++) {
-    			
-    			TreeNode child = currNode.getChild(i);
-    		    			
-    			if (child.isLeaf()) {
-    				validatedClusters.add(child.key);
-    				tot++;
-    				tot2++;
-    				continue;
-    			}
-    			
-    			
-    			boolean node_is_cluster = true;
-    			
-    			double max_dist_2 = -1d;
-    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
-    				
-    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
-    				
-    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
-        			// For each leaf
-	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
-	    				
-	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
-	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
-//	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
-//						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
-	    				String left_leaf_name = left_leaf.getName();
-	    				
-	    				if (left_leaf.getName().isEmpty()) {
-	    					logger.info("\t=> Skipped!");
-	    					continue;
-    					}
-	    				
-	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
-	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
-	    				else if (left_leaf.getName().startsWith(" ")) {
-	    					left_leaf_name = left_leaf.getName().substring(1);
-	    				}
-	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
-
-	        			// For each leaf
-		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
-		    				
-		    				//if (l == k) { continue; }
-		    				
-		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
-		    				//System.out.println("right_leaf.getName() = " + right_leaf);
-//		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
-//							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
-		    				String right_leaf_name = right_leaf.getName();
-		    				
-		    				if (right_leaf.getName().isEmpty()) {
-		    					logger.info("\t=> Skipped!");
-		    					continue;
-	    					}
-		    				
-		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
-		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
-		    				else if (right_leaf.getName().startsWith(" ")) {
-		    					right_leaf_name = right_leaf.getName().substring(1);
-		    				}
-		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
-
-		        			// Get distance between left and right leafs
-		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
-		    				
-		    				if (max_dist_2 < dist) {
-		    					max_dist_2 = dist;
-		    				}
-		    			}
-	    			}
-
-    			}
-    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
-    			
-    			if (node_is_cluster) {
-    				validatedClusters.add(child.key);
-    				tot++;
-    				tot2 += child.numberLeaves;
-    			} else {
-    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
-    			}
-    		}
-    	} else {
-    		validatedClusters.add(currNode.key);
-			tot++;
-			tot2++;
-    	}
-
-//    	for (int i = 0; i < numChildren; i++) {
+//    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, double[] distVect, int dim) {
 //    	
-//    		int childkey = currNode.getChild(i).key;
-//    		TreeNode childnode = tree.getNodeByKey(childkey);
-//    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
-//    		recursive_print(tree, childkey, currdepth+1);
+//    	List<Integer> validatedClusters = new ArrayList<>();
+//
+//    	TreeNode currNode = tree.getNodeByKey(currkey);
+//    	
+//    	if (!currNode.isLeaf()) {
+//    		
+//    		int numChildren = currNode.numberChildren();
+//    		
+//    		for (int i = 0; i < numChildren; i++) {
+//    			
+//    			TreeNode child = currNode.getChild(i);
+//    		    			
+//    			if (child.isLeaf()) {
+//    				validatedClusters.add(child.key);
+//    				tot++;
+//    				tot2++;
+//    				continue;
+//    			}
+//    			
+//    			
+//    			boolean node_is_cluster = true;
+//    			
+//    			double max_dist_2 = -1d;
+//    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
+//    				
+//    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
+//    				
+//    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
+//        			// For each leaf
+//	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
+//	    				
+//	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
+//	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+////	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+////						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
+//	    				String left_leaf_name = left_leaf.getName();
+//	    				
+//	    				if (left_leaf.getName().isEmpty()) {
+//	    					logger.info("\t=> Skipped!");
+//	    					continue;
+//    					}
+//	    				
+//	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+//	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+//	    				else if (left_leaf.getName().startsWith(" ")) {
+//	    					left_leaf_name = left_leaf.getName().substring(1);
+//	    				}
+//	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
+//
+//	        			// For each leaf
+//		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
+//		    				
+//		    				//if (l == k) { continue; }
+//		    				
+//		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
+//		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+////		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+////							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
+//		    				String right_leaf_name = right_leaf.getName();
+//		    				
+//		    				if (right_leaf.getName().isEmpty()) {
+//		    					logger.info("\t=> Skipped!");
+//		    					continue;
+//	    					}
+//		    				
+//		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+//		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+//		    				else if (right_leaf.getName().startsWith(" ")) {
+//		    					right_leaf_name = right_leaf.getName().substring(1);
+//		    				}
+//		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
+//
+//		        			// Get distance between left and right leafs
+//		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
+//		    				
+//		    				if (max_dist_2 < dist) {
+//		    					max_dist_2 = dist;
+//		    				}
+//		    			}
+//	    			}
+//
+//    			}
+//    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
+//    			
+//    			if (node_is_cluster) {
+//    				validatedClusters.add(child.key);
+//    				tot++;
+//    				tot2 += child.numberLeaves;
+//    			} else {
+//    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
+//    			}
+//    		}
+//    	} else {
+//    		validatedClusters.add(currNode.key);
+//			tot++;
+//			tot2++;
 //    	}
-    	
-    	if (DEBUG) {
-	    	// Check integrity
-	    	Set<Integer> leafs = new HashSet<>();
-	    	for (int clust_key : validatedClusters) {
-	    		
-	    		TreeNode clust = tree.getNodeByKey(clust_key);
-	    		leafs.addAll(getClusterLeafs_1(clust));
-	    	}
-	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
-	    	System.out.println(Arrays.toString(leafs.toArray()));
-    	}
-    	
-    	return validatedClusters;	
-    }
+//
+////    	for (int i = 0; i < numChildren; i++) {
+////    	
+////    		int childkey = currNode.getChild(i).key;
+////    		TreeNode childnode = tree.getNodeByKey(childkey);
+////    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+////    		recursive_print(tree, childkey, currdepth+1);
+////    	}
+//    	
+//    	if (DEBUG) {
+//	    	// Check integrity
+//	    	Set<Integer> leafs = new HashSet<>();
+//	    	for (int clust_key : validatedClusters) {
+//	    		
+//	    		TreeNode clust = tree.getNodeByKey(clust_key);
+//	    		leafs.addAll(getClusterLeafs_1(clust));
+//	    	}
+//	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
+//	    	System.out.println(Arrays.toString(leafs.toArray()));
+//    	}
+//    	
+//    	return validatedClusters;	
+//    }
+//    //-
+//    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, float[] distVect, int dim) {
+//    	
+//    	List<Integer> validatedClusters = new ArrayList<>();
+//
+//    	TreeNode currNode = tree.getNodeByKey(currkey);
+//    	
+//    	if (!currNode.isLeaf()) {
+//    		
+//    		int numChildren = currNode.numberChildren();
+//    		
+//    		for (int i = 0; i < numChildren; i++) {
+//    			
+//    			TreeNode child = currNode.getChild(i);
+//    		    			
+//    			if (child.isLeaf()) {
+//    				validatedClusters.add(child.key);
+//    				tot++;
+//    				tot2++;
+//    				continue;
+//    			}
+//    			
+//    			
+//    			boolean node_is_cluster = true;
+//    			
+//    			double max_dist_2 = -1d;
+//    			if (child.numberLeaves <= level /*&& !child.isLeaf()*/) {
+//    				
+//    				List<Integer> leafs_nodekeys = getClusterLeafs_1(child);
+//    				
+//    				/** Leafs must all be an acceptable distance from each other for node to be considered a cluster! */
+//        			// For each leaf
+//	    			for (int k = 0; k < leafs_nodekeys.size(); k++) {
+//	    				
+//	    				TreeNode left_leaf = tree.getNodeByKey(leafs_nodekeys.get(k));
+//	    				//System.out.println("left_leaf.getName() = " + left_leaf.getName());
+////	        			int left_leaf_id = Integer.valueOf(left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+////						logger.info("Left node name: '" + left_leaf.getName() + "'! (" + left_leaf.getKey() + ")");
+//	    				String left_leaf_name = left_leaf.getName();
+//	    				
+//	    				if (left_leaf.getName().isEmpty()) {
+//	    					logger.info("\t=> Skipped!");
+//	    					continue;
+//    					}
+//	    				
+//	    				if (left_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+//	    					left_leaf_name = left_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+//	    				else if (left_leaf.getName().startsWith(" ")) {
+//	    					left_leaf_name = left_leaf.getName().substring(1);
+//	    				}
+//	        			int left_leaf_id = Integer.valueOf(left_leaf_name);
+//
+//	        			// For each leaf
+//		    			for (int l = k+1; l < leafs_nodekeys.size(); l++) {
+//		    				
+//		    				//if (l == k) { continue; }
+//		    				
+//		    				TreeNode right_leaf = tree.getNodeByKey(leafs_nodekeys.get(l));
+//		    				//System.out.println("right_leaf.getName() = " + right_leaf);
+////		        			int right_leaf_id = Integer.valueOf(right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length()));
+////							logger.info("Right node name: '" + right_leaf.getName() + "'! (" + right_leaf.getKey() + ")");
+//		    				String right_leaf_name = right_leaf.getName();
+//		    				
+//		    				if (right_leaf.getName().isEmpty()) {
+//		    					logger.info("\t=> Skipped!");
+//		    					continue;
+//	    					}
+//		    				
+//		    				if (right_leaf.getName().startsWith(HierarClusterer.NEWICK_LEAF_NAME_PREFIX))
+//		    					right_leaf_name = right_leaf.getName().substring(HierarClusterer.NEWICK_LEAF_NAME_PREFIX.length());
+//		    				else if (right_leaf.getName().startsWith(" ")) {
+//		    					right_leaf_name = right_leaf.getName().substring(1);
+//		    				}
+//		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
+//
+//		        			// Get distance between left and right leafs
+//		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
+//		    				
+//		    				if (max_dist_2 < dist) {
+//		    					max_dist_2 = dist;
+//		    				}
+//		    			}
+//	    			}
+//
+//    			}
+//    			node_is_cluster = (child.numberLeaves <= level && (max_dist_2 >= 0d && max_dist_2 < max_dist + EPSILON));
+//    			
+//    			if (node_is_cluster) {
+//    				validatedClusters.add(child.key);
+//    				tot++;
+//    				tot2 += child.numberLeaves;
+//    			} else {
+//    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
+//    			}
+//    		}
+//    	} else {
+//    		validatedClusters.add(currNode.key);
+//			tot++;
+//			tot2++;
+//    	}
+//
+////    	for (int i = 0; i < numChildren; i++) {
+////    	
+////    		int childkey = currNode.getChild(i).key;
+////    		TreeNode childnode = tree.getNodeByKey(childkey);
+////    		System.out.println("child name is: " + childnode.getName() + " depth is: " + currdepth);
+////    		recursive_print(tree, childkey, currdepth+1);
+////    	}
+//    	
+//    	if (DEBUG) {
+//	    	// Check integrity
+//	    	Set<Integer> leafs = new HashSet<>();
+//	    	for (int clust_key : validatedClusters) {
+//	    		
+//	    		TreeNode clust = tree.getNodeByKey(clust_key);
+//	    		leafs.addAll(getClusterLeafs_1(clust));
+//	    	}
+//	    	System.out.println("Leafs are (count:" + leafs.size() + "):");
+//	    	System.out.println(Arrays.toString(leafs.toArray()));
+//    	}
+//    	
+//    	return validatedClusters;	
+//    }
     //-
-    List<Integer> recursive_validate_clusters_11(Tree tree, int level, double max_dist, int currkey, int currdepth, float[] distVect, int dim) {
+    List<Integer> recursive_validate_clusters_2(Tree tree, int level, double max_dist, int currkey, int currdepth, TriangularMatrix distMtx) {
     	
     	List<Integer> validatedClusters = new ArrayList<>();
 
@@ -2745,8 +2927,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 		        			int right_leaf_id = Integer.valueOf(right_leaf_name);
 
 		        			// Get distance between left and right leafs
-		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
-		    				
+//		    				double dist = getValueFromVector(left_leaf_id, right_leaf_id, dim, distVect);//distMtx[left_leaf_id][right_leaf_id];
+		    				double dist = distMtx.get(left_leaf_id, right_leaf_id);
+		        			
 		    				if (max_dist_2 < dist) {
 		    					max_dist_2 = dist;
 		    				}
@@ -2761,7 +2944,7 @@ public class JoinAlignerGCTask extends AbstractTask {
     				tot++;
     				tot2 += child.numberLeaves;
     			} else {
-    				validatedClusters.addAll(recursive_validate_clusters_11(tree, level, max_dist, child.key, currdepth + 1, distVect, dim));
+    				validatedClusters.addAll(recursive_validate_clusters_2(tree, level, max_dist, child.key, currdepth + 1, distMtx));
     			}
     		}
     	} else {
@@ -3761,64 +3944,104 @@ public class JoinAlignerGCTask extends AbstractTask {
     }
 
     // Using vector: Requires only N(N+1)/2 memory !!!
-    /**
-     * DOUBLE storage
-     */
-    public static double[] symmetricMatrixToVector(double[][] matrix) {
-    	
-    	int n = matrix.length;
-    	
-    	double[] array = new double[(n * (n+1)) / 2]; // allocate
-    	for (int r = 0; r < matrix.length; ++r) // each row
-    	{
-    		for (int c = r; c < matrix[0].length; ++c)
-    		{
-    			int i = (n * r) + c - ((r * (r+1)) / 2); // corrected from earlier post
-    			
-    			array[i] = matrix[r][c];
-    			
-    			//System.out.println(Arrays.toString(array));
-    		}
-    	}
-    	
-    	return array;
-    }
-    public static double getValueFromVector(int r, int c, int n, double[] vector) {
-    	
-    	if (r < c)
-    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
-    	else
-    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
-    }
-    /**
-     * FLOAT storage
-     */
-    public static float[] symmetricMatrixToFloatVector(double[][] matrix) {
-    	
-    	int n = matrix.length;
-    	
-    	float[] array = new float[(n * (n+1)) / 2]; // allocate storage
-    	for (int r = 0; r < matrix.length; ++r) // each row
-    	{
-    		for (int c = r; c < matrix[0].length; ++c)
-    		{
-    			int i = (n * r) + c - ((r * (r+1)) / 2); // corrected from earlier post
-    			
-    			array[i] = (float) matrix[r][c];
-    			
-    			//System.out.println(Arrays.toString(array));
-    		}
-    	}
-    	
-    	return array;
-    }
-    public static double getValueFromVector(int r, int c, int n, float[] vector) {
-    	
-    	if (r < c)
-    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
-    	else
-    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
-    }
+//    /**
+//     * DOUBLE storage
+//     */
+//    public static double[] symmetricMatrixToVector(double[][] matrix) {
+//    	
+//    	int n = matrix.length;
+//    	
+//    	double[] array = new double[(n * (n+1)) / 2]; // allocate
+//    	for (int r = 0; r < matrix.length; ++r) // each row
+//    	{
+//    		for (int c = r; c < matrix[0].length; ++c)
+//    		{
+//    			int i = (n * r) + c - ((r * (r+1)) / 2); // corrected from earlier post
+//    			
+//    			array[i] = matrix[r][c];
+//    			
+//    			//System.out.println(Arrays.toString(array));
+//    		}
+//    	}
+//    	
+//    	return array;
+//    }
+//    public static double getValueFromVector(int r, int c, int n, double[] vector) {
+//    	
+//    	if (r < c)
+//    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
+//    	else
+//    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
+//    }
+//    /**
+//     * FLOAT storage
+//     */
+//    public static float[] symmetricMatrixToFloatVector_0(double[][] matrix) {
+//    	
+//    	int n = matrix.length;
+//    	
+//    	System.out.println("Squared matrix ? " + n + " x " + matrix[0].length + " [=" + (n == matrix[0].length) + "]");
+//    	
+//    	float[] array = new float[(n * (n+1)) / 2]; // allocate storage
+//    	for (int r = 0; r < matrix.length; ++r) // each row
+//    	{
+//    		for (int c = r; c < matrix[0].length; ++c)
+//    		{
+//    			int i = (n * r) + c - ((r * (r+1)) / 2); // (c * (c+1)) / 2 - 1 + r
+//    			
+//    			if (i < array.length)
+//    				array[i] = (float) matrix[r][c];
+//    			else
+//    				System.out.println("Vector is not properly allocated: actual size = " + array.length + ", but tried accessing index: " + i + "!!! WTF!" + " => Another approach would have given index = " + ((c * (c+1)) / 2 - 1 + r) + "!");
+//    			
+//    			//System.out.println(Arrays.toString(array));
+//    		}
+//    	}
+//    	
+//    	return array;
+//    }
+//    public static double getValueFromVector_0(int r, int c, int n, float[] vector) {
+//    	
+//    	if (r < c)
+//    		return vector[(n * r) + c - ((r * (r+1)) / 2)];
+//    	else
+//    		return vector[(n * c) + r - ((c * (c+1)) / 2)];
+//    }
 
     
+    
+    
+//    /**
+//     * FLOAT storage
+//     */
+//    public static float[] symmetricMatrixToFloatVector(double[][] matrix) {
+//    	
+//    	int n = matrix.length;
+//    	
+//    	TriangularMatrixFloat tri_mtx = new TriangularMatrixFloat(n);
+//    	
+//    	// Fill matrix
+//    	//float[] array = new float[(n * (n+1)) / 2]; // allocate storage
+//    	for (int r = 0; r < matrix.length; ++r) // each row
+//    	{
+//    		for (int c = r; c < matrix.length; ++c)
+//    		{
+//    			tri_mtx.set(r, c, (float) matrix[r][c]);
+//    		}
+//    	}
+//    	
+//    	// Build vector
+//    	float[] array = tri_mtx.getVector();
+//    	
+//    	return array;
+//    }
+////    public static double getValueFromVector(int r, int c, int n, float[] vector) {
+////    	
+////    	return vector[TriangularMatrix.getListIndex(r, c)];
+////    }
+//    public static float getValueFromVector(int r, int c, float[] vector) {
+//    	
+//    	return vector[TriangularMatrixFloat.getListIndex(r, c)];
+//    }
+
 }

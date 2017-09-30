@@ -11,6 +11,7 @@ import java.util.Vector;
 
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.ClusteringProgression;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCTask;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.TriangularMatrix;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HierarClusterer.ConcreteInstance;
 import weka.clusterers.AbstractClusterer;
 import weka.core.Capabilities;
@@ -340,11 +341,141 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		}
 
 	} // buildClusterer
-	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec) throws Exception {
-		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
-	}
-	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec, double distThreshold) throws Exception {
-		
+//	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec) throws Exception {
+//		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
+//	}
+//	public /*<T>*/ void buildClustererGLG(Instances data, double[] distVec, double distThreshold) throws Exception {
+//		
+//		
+//        // MEMORY STUFF
+//        Runtime run_time = Runtime.getRuntime();
+//        Long prevTotal = 0l;
+//        Long prevFree = run_time.freeMemory();
+//
+//        
+//		//		/System.err.println("Method " + m_nLinkType);
+//		m_instances = data;
+//		int nInstances = m_instances.numInstances();
+//		if (nInstances == 0) {
+//			return;
+//		}
+//		m_DistanceFunction.setInstances(m_instances);
+//		// use array of integer vectors to store cluster indices,
+//		// starting with one cluster per instance
+//		Vector<Integer> [] nClusterID = new Vector[data.numInstances()];
+//		for (int i = 0; i < data.numInstances(); i++) {
+//			nClusterID[i] = new Vector<Integer>();
+//			nClusterID[i].add(i);
+//		}
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (IDzed...)");
+//
+//		// calculate distance matrix
+//		int nClusters = data.numInstances();
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Distanced...)");
+//
+//		// used for keeping track of hierarchy
+//		Node [] clusterNodes = new Node[nInstances];
+//		if (m_nLinkType == NEIGHBOR_JOINING) {
+//			neighborJoining(nClusters, nClusterID, clusterNodes);
+//		} else {
+//			doLinkClusteringGLG(nClusters, nClusterID, clusterNodes, distVec, distThreshold);
+//		}
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Linked...)");
+//
+//
+//		// move all clusters in m_nClusterID array
+//		// & collect hierarchy
+//		int iCurrent = 0;
+//		m_clusters = new Node[m_nNumClusters];
+//		m_nClusterNr = new int[nInstances];
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Storage...)");
+//        
+//		for (int i = 0; i < nInstances; i++) {
+//			if (nClusterID[i].size() > 0) {
+//				for (int j = 0; j < nClusterID[i].size(); j++) {
+//					m_nClusterNr[nClusterID[i].elementAt(j)] = iCurrent;
+//				}
+//				m_clusters[iCurrent] = clusterNodes[i];
+//				iCurrent++;
+//			}
+//	        //
+//           // JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Iterated '" + i + "'...)");
+//		}
+//
+//	} // buildClustererGLG
+//	//-
+//	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec) throws Exception {
+//		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
+//	}
+//	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec, double distThreshold) throws Exception {
+//		
+//		
+//        // MEMORY STUFF
+//        Runtime run_time = Runtime.getRuntime();
+//        Long prevTotal = 0l;
+//        Long prevFree = run_time.freeMemory();
+//
+//        
+//		//		/System.err.println("Method " + m_nLinkType);
+//		m_instances = data;
+//		int nInstances = m_instances.numInstances();
+//		if (nInstances == 0) {
+//			return;
+//		}
+//		m_DistanceFunction.setInstances(m_instances);
+//		// use array of integer vectors to store cluster indices,
+//		// starting with one cluster per instance
+//		Vector<Integer> [] nClusterID = new Vector[data.numInstances()];
+//		for (int i = 0; i < data.numInstances(); i++) {
+//			nClusterID[i] = new Vector<Integer>();
+//			nClusterID[i].add(i);
+//		}
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (IDzed...)");
+//
+//		// calculate distance matrix
+//		int nClusters = data.numInstances();
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Distanced...)");
+//
+//		// used for keeping track of hierarchy
+//		Node [] clusterNodes = new Node[nInstances];
+//		if (m_nLinkType == NEIGHBOR_JOINING) {
+//			neighborJoining(nClusters, nClusterID, clusterNodes);
+//		} else {
+//			doLinkClusteringGLG(nClusters, nClusterID, clusterNodes, distVec, distThreshold);
+//		}
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Linked...)");
+//
+//
+//		// move all clusters in m_nClusterID array
+//		// & collect hierarchy
+//		int iCurrent = 0;
+//		m_clusters = new Node[m_nNumClusters];
+//		m_nClusterNr = new int[nInstances];
+//        //
+//        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Storage...)");
+//        
+//		for (int i = 0; i < nInstances; i++) {
+//			if (nClusterID[i].size() > 0) {
+//				for (int j = 0; j < nClusterID[i].size(); j++) {
+//					m_nClusterNr[nClusterID[i].elementAt(j)] = iCurrent;
+//				}
+//				m_clusters[iCurrent] = clusterNodes[i];
+//				iCurrent++;
+//			}
+//	        //
+//           // JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Iterated '" + i + "'...)");
+//		}
+//
+//	} // buildClustererGLG (float)
+	
+	public void buildClustererGLG(Instances data, TriangularMatrix distancesMtx, double distThreshold) {
 		
         // MEMORY STUFF
         Runtime run_time = Runtime.getRuntime();
@@ -379,7 +510,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		if (m_nLinkType == NEIGHBOR_JOINING) {
 			neighborJoining(nClusters, nClusterID, clusterNodes);
 		} else {
-			doLinkClusteringGLG(nClusters, nClusterID, clusterNodes, distVec, distThreshold);
+			doLinkClusteringGLG(nClusters, nClusterID, clusterNodes, distancesMtx, distThreshold);
 		}
         //
         JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Linked...)");
@@ -405,75 +536,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
            // JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Iterated '" + i + "'...)");
 		}
 
-	} // buildClustererGLG
-	//-
-	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec) throws Exception {
-		this.buildClustererGLG(data, distVec, Double.MAX_VALUE);
-	}
-	public /*<T>*/ void buildClustererGLG(Instances data, float[] distVec, double distThreshold) throws Exception {
-		
-		
-        // MEMORY STUFF
-        Runtime run_time = Runtime.getRuntime();
-        Long prevTotal = 0l;
-        Long prevFree = run_time.freeMemory();
-
-        
-		//		/System.err.println("Method " + m_nLinkType);
-		m_instances = data;
-		int nInstances = m_instances.numInstances();
-		if (nInstances == 0) {
-			return;
-		}
-		m_DistanceFunction.setInstances(m_instances);
-		// use array of integer vectors to store cluster indices,
-		// starting with one cluster per instance
-		Vector<Integer> [] nClusterID = new Vector[data.numInstances()];
-		for (int i = 0; i < data.numInstances(); i++) {
-			nClusterID[i] = new Vector<Integer>();
-			nClusterID[i].add(i);
-		}
-        //
-        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (IDzed...)");
-
-		// calculate distance matrix
-		int nClusters = data.numInstances();
-        //
-        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Distanced...)");
-
-		// used for keeping track of hierarchy
-		Node [] clusterNodes = new Node[nInstances];
-		if (m_nLinkType == NEIGHBOR_JOINING) {
-			neighborJoining(nClusters, nClusterID, clusterNodes);
-		} else {
-			doLinkClusteringGLG(nClusters, nClusterID, clusterNodes, distVec, distThreshold);
-		}
-        //
-        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Linked...)");
-
-
-		// move all clusters in m_nClusterID array
-		// & collect hierarchy
-		int iCurrent = 0;
-		m_clusters = new Node[m_nNumClusters];
-		m_nClusterNr = new int[nInstances];
-        //
-        JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Storage...)");
-        
-		for (int i = 0; i < nInstances; i++) {
-			if (nClusterID[i].size() > 0) {
-				for (int j = 0; j < nClusterID[i].size(); j++) {
-					m_nClusterNr[nClusterID[i].elementAt(j)] = iCurrent;
-				}
-				m_clusters[iCurrent] = clusterNodes[i];
-				iCurrent++;
-			}
-	        //
-           // JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (Iterated '" + i + "'...)");
-		}
-
-	} // buildClustererGLG (float)
-
+	} // buildClustererGLG (TriangularMatrix)
 
 	/** use neighbor joining algorithm for clustering
 	 * This is roughly based on the RapidNJ simple implementation and runs at O(n^3)
@@ -735,13 +798,242 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		clustProgress.setProgress(1d);
 
 	} // doLinkClustering
-	/** Perform clustering using a link method
-	 * This implementation uses a priority queue resulting in a O(n^2 log(n)) algorithm
-	 * @param nClusters number of clusters
-	 * @param nClusterID 
-	 * @param clusterNodes 
-	 */
-	void doLinkClusteringGLG(int nClusters, Vector<Integer>[] nClusterID, Node[] clusterNodes, double[] distVec, double distThreshold) {
+//	void doLinkClusteringGLG(int nClusters, Vector<Integer>[] nClusterID, Node[] clusterNodes, double[] distVec, double distThreshold) {
+//
+//		// GLG HACK: progress stuff
+//		clustProgress.setProgress(0d);
+//		int totalClusters = nClusters;
+//		
+//        // MEMORY STUFF
+//        Runtime run_time = Runtime.getRuntime();
+//        Long prevTotal = 0l;
+//        Long prevFree = run_time.freeMemory();
+//
+//		
+//		int nInstances = m_instances.numInstances();
+//		PriorityQueue<Tuple> queue = new PriorityQueue<Tuple>(nClusters*nClusters/2, new TupleComparator());
+//		/** double [][] fDistance0 = new double[nClusters][nClusters]; */
+//		JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (distance<1> ... " + queue.size() + ")");
+//		double [][] fClusterDistance = null;
+////		if (m_bDebug) {
+////			fClusterDistance = new double[nClusters][nClusters];
+////		}
+////		for (int i = 0; i < nClusters; i++) {
+////			fDistance0[i][i] = 0;
+////			for (int j = i+1; j < nClusters; j++) {
+////				fDistance0[i][j] = getDistance0(nClusterID[i], nClusterID[j]);
+////				fDistance0[j][i] = fDistance0[i][j];
+////				queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
+////				if (m_bDebug) {
+////					fClusterDistance[i][j] = fDistance0[i][j];
+////					fClusterDistance[j][i] = fDistance0[i][j];
+////				}
+////			}
+////			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
+////		}
+//		/** fDistance0 = distMtx;*/
+//		for (int i = 0; i < nClusters; i++) {
+//			for (int j = i+1; j < nClusters; j++) {
+//				//**if (fDistance0[i][j] < 1.0d) {
+//				double dist = JoinAlignerGCTask.getValueFromVector(i, j, nInstances, distVec);
+//				if (dist < distThreshold) {
+//					//**queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
+//					queue.add(new Tuple(dist, i, j, 1, 1));
+//				}
+//			}
+//			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
+//		}
+//		
+//		
+//		while (nClusters > m_nNumClusters) {
+//			int iMin1 = -1;
+//			int iMin2 = -1;
+//			// find closest two clusters
+//			if (m_bDebug) {
+//				/* simple but inefficient implementation */
+//				double fMinDistance = Double.MAX_VALUE;
+//				for (int i = 0; i < nInstances; i++) {
+//					if (nClusterID[i].size()>0) {
+//						for (int j = i+1; j < nInstances; j++) {
+//							if (nClusterID[j].size()>0) {
+//								double fDist = fClusterDistance[i][j];
+//								if (fDist < fMinDistance) {
+//									fMinDistance = fDist;
+//									iMin1 = i;
+//									iMin2 = j;
+//								}
+//							}
+//						}
+//					}
+//				}
+//				/****/merge(iMin1, iMin2, fMinDistance, fMinDistance, nClusterID, clusterNodes);
+//			} else {
+//				// use priority queue to find next best pair to cluster
+//				Tuple t;
+//				do {
+//					t = queue.poll();
+//				} while (t!=null && (nClusterID[t.m_iCluster1].size() != t.m_nClusterSize1 || nClusterID[t.m_iCluster2].size() != t.m_nClusterSize2));
+//				iMin1 = t.m_iCluster1;
+//				iMin2 = t.m_iCluster2;
+//				/****/merge(iMin1, iMin2, t.m_fDist, t.m_fDist, nClusterID, clusterNodes);
+//			}
+//			// merge  clusters
+//
+//			// update distances & queue
+//			for (int i = 0; i < nInstances; i++) {
+//				if (i != iMin1 && nClusterID[i].size()!=0) {
+//					int i1 = Math.min(iMin1,i);
+//					int i2 = Math.max(iMin1,i);
+//					/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
+//					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
+//					if (m_bDebug) {
+//						fClusterDistance[i1][i2] = fDistance;
+//						fClusterDistance[i2][i1] = fDistance;
+//					}
+//					//if (fDistance < 1.0d) {
+//						queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
+//					//}
+//				}
+//
+////				// GLG HACK: progress stuff
+////				double base_progress1 = 1d - (double) (nClusters) / (double) totalClusters;
+////				double base_progress2 = 1d - (double) (nClusters-1) / (double) totalClusters;
+////				double delta_progress = base_progress2 - base_progress1;
+////				clustProgress.setProgress((base_progress1 + delta_progress * (double) i / (double) nInstances));
+//
+//			}
+//			//
+//			// GLG HACK: progress stuff
+//			clustProgress.setProgress(1d - (double) nClusters / (double) totalClusters);
+//			
+//			nClusters--;
+//
+//			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<2> ... " + queue.size() + ")");
+//		}
+//
+//		// GLG HACK: progress stuff
+//		clustProgress.setProgress(1d);
+//
+//	} // doLinkClusteringGLG
+//	void doLinkClusteringGLG(int nClusters, Vector<Integer>[] nClusterID, Node[] clusterNodes, float[] distVec, double distThreshold) {
+//
+//		// GLG HACK: progress stuff
+//		clustProgress.setProgress(0d);
+//		int totalClusters = nClusters;
+//		
+//        // MEMORY STUFF
+//        Runtime run_time = Runtime.getRuntime();
+//        Long prevTotal = 0l;
+//        Long prevFree = run_time.freeMemory();
+//
+//		
+//		int nInstances = m_instances.numInstances();
+//		PriorityQueue<Tuple> queue = new PriorityQueue<Tuple>(nClusters*nClusters/2, new TupleComparator());
+//		/** double [][] fDistance0 = new double[nClusters][nClusters]; */
+//		JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (distance<1> ... " + queue.size() + ")");
+//		double [][] fClusterDistance = null;
+////		if (m_bDebug) {
+////			fClusterDistance = new double[nClusters][nClusters];
+////		}
+////		for (int i = 0; i < nClusters; i++) {
+////			fDistance0[i][i] = 0;
+////			for (int j = i+1; j < nClusters; j++) {
+////				fDistance0[i][j] = getDistance0(nClusterID[i], nClusterID[j]);
+////				fDistance0[j][i] = fDistance0[i][j];
+////				queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
+////				if (m_bDebug) {
+////					fClusterDistance[i][j] = fDistance0[i][j];
+////					fClusterDistance[j][i] = fDistance0[i][j];
+////				}
+////			}
+////			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
+////		}
+//		/** fDistance0 = distMtx;*/
+//		for (int i = 0; i < nClusters; i++) {
+//			for (int j = i+1; j < nClusters; j++) {
+//				//**if (fDistance0[i][j] < 1.0d) {
+//				double dist = JoinAlignerGCTask.getValueFromVector(i, j, nInstances, distVec);
+//				if (dist < distThreshold) {
+//					//**queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
+//					queue.add(new Tuple(dist, i, j, 1, 1));
+//				}
+//			}
+//			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
+//		}
+//		
+//		
+//		while (nClusters > m_nNumClusters) {
+//			int iMin1 = -1;
+//			int iMin2 = -1;
+//			// find closest two clusters
+//			if (m_bDebug) {
+//				/* simple but inefficient implementation */
+//				double fMinDistance = Double.MAX_VALUE;
+//				for (int i = 0; i < nInstances; i++) {
+//					if (nClusterID[i].size()>0) {
+//						for (int j = i+1; j < nInstances; j++) {
+//							if (nClusterID[j].size()>0) {
+//								double fDist = fClusterDistance[i][j];
+//								if (fDist < fMinDistance) {
+//									fMinDistance = fDist;
+//									iMin1 = i;
+//									iMin2 = j;
+//								}
+//							}
+//						}
+//					}
+//				}
+//				/****/merge(iMin1, iMin2, fMinDistance, fMinDistance, nClusterID, clusterNodes);
+//			} else {
+//				// use priority queue to find next best pair to cluster
+//				Tuple t;
+//				do {
+//					t = queue.poll();
+//				} while (t!=null && (nClusterID[t.m_iCluster1].size() != t.m_nClusterSize1 || nClusterID[t.m_iCluster2].size() != t.m_nClusterSize2));
+//				iMin1 = t.m_iCluster1;
+//				iMin2 = t.m_iCluster2;
+//				/****/merge(iMin1, iMin2, t.m_fDist, t.m_fDist, nClusterID, clusterNodes);
+//			}
+//			// merge  clusters
+//
+//			// update distances & queue
+//			for (int i = 0; i < nInstances; i++) {
+//				if (i != iMin1 && nClusterID[i].size()!=0) {
+//					int i1 = Math.min(iMin1,i);
+//					int i2 = Math.max(iMin1,i);
+//					/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
+//					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
+//					if (m_bDebug) {
+//						fClusterDistance[i1][i2] = fDistance;
+//						fClusterDistance[i2][i1] = fDistance;
+//					}
+//					//if (fDistance < 1.0d) {
+//						queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
+//					//}
+//				}
+//
+////				// GLG HACK: progress stuff
+////				double base_progress1 = 1d - (double) (nClusters) / (double) totalClusters;
+////				double base_progress2 = 1d - (double) (nClusters-1) / (double) totalClusters;
+////				double delta_progress = base_progress2 - base_progress1;
+////				clustProgress.setProgress((base_progress1 + delta_progress * (double) i / (double) nInstances));
+//
+//			}
+//			//
+//			// GLG HACK: progress stuff
+//			clustProgress.setProgress(1d - (double) nClusters / (double) totalClusters);
+//			
+//			nClusters--;
+//
+//			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<2> ... " + queue.size() + ")");
+//		}
+//
+//		// GLG HACK: progress stuff
+//		clustProgress.setProgress(1d);
+//
+//	} // doLinkClusteringGLG (float)
+	private void doLinkClusteringGLG(int nClusters, Vector<Integer>[] nClusterID, Node[] clusterNodes,
+			TriangularMatrix distancesMtx, double distThreshold) {
 
 		// GLG HACK: progress stuff
 		clustProgress.setProgress(0d);
@@ -758,27 +1050,13 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		/** double [][] fDistance0 = new double[nClusters][nClusters]; */
 		JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (distance<1> ... " + queue.size() + ")");
 		double [][] fClusterDistance = null;
-//		if (m_bDebug) {
-//			fClusterDistance = new double[nClusters][nClusters];
-//		}
-//		for (int i = 0; i < nClusters; i++) {
-//			fDistance0[i][i] = 0;
-//			for (int j = i+1; j < nClusters; j++) {
-//				fDistance0[i][j] = getDistance0(nClusterID[i], nClusterID[j]);
-//				fDistance0[j][i] = fDistance0[i][j];
-//				queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
-//				if (m_bDebug) {
-//					fClusterDistance[i][j] = fDistance0[i][j];
-//					fClusterDistance[j][i] = fDistance0[i][j];
-//				}
-//			}
-//			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
-//		}
+		
 		/** fDistance0 = distMtx;*/
 		for (int i = 0; i < nClusters; i++) {
 			for (int j = i+1; j < nClusters; j++) {
 				//**if (fDistance0[i][j] < 1.0d) {
-				double dist = JoinAlignerGCTask.getValueFromVector(i, j, nInstances, distVec);
+//				double dist = JoinAlignerGCTask.getValueFromVector(i, j, nInstances, distVec);
+				double dist = distancesMtx.get(i,  j);
 				if (dist < distThreshold) {
 					//**queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
 					queue.add(new Tuple(dist, i, j, 1, 1));
@@ -828,12 +1106,13 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 					int i1 = Math.min(iMin1,i);
 					int i2 = Math.max(iMin1,i);
 					/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
-					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
+//					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
+					double fDistance = getDistanceGLG(distancesMtx, nClusterID[i1], nClusterID[i2]);
 					if (m_bDebug) {
 						fClusterDistance[i1][i2] = fDistance;
 						fClusterDistance[i2][i1] = fDistance;
 					}
-					//if (fDistance < 1.0d) {
+					//if (fDistance < distThreshold) {
 						queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
 					//}
 				}
@@ -857,125 +1136,9 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		// GLG HACK: progress stuff
 		clustProgress.setProgress(1d);
 
-	} // doLinkClusteringGLG
-	void doLinkClusteringGLG(int nClusters, Vector<Integer>[] nClusterID, Node[] clusterNodes, float[] distVec, double distThreshold) {
+	} // doLinkClusteringGLG (TriangularMatrix)
 
-		// GLG HACK: progress stuff
-		clustProgress.setProgress(0d);
-		int totalClusters = nClusters;
-		
-        // MEMORY STUFF
-        Runtime run_time = Runtime.getRuntime();
-        Long prevTotal = 0l;
-        Long prevFree = run_time.freeMemory();
-
-		
-		int nInstances = m_instances.numInstances();
-		PriorityQueue<Tuple> queue = new PriorityQueue<Tuple>(nClusters*nClusters/2, new TupleComparator());
-		/** double [][] fDistance0 = new double[nClusters][nClusters]; */
-		JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (distance<1> ... " + queue.size() + ")");
-		double [][] fClusterDistance = null;
-//		if (m_bDebug) {
-//			fClusterDistance = new double[nClusters][nClusters];
-//		}
-//		for (int i = 0; i < nClusters; i++) {
-//			fDistance0[i][i] = 0;
-//			for (int j = i+1; j < nClusters; j++) {
-//				fDistance0[i][j] = getDistance0(nClusterID[i], nClusterID[j]);
-//				fDistance0[j][i] = fDistance0[i][j];
-//				queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
-//				if (m_bDebug) {
-//					fClusterDistance[i][j] = fDistance0[i][j];
-//					fClusterDistance[j][i] = fDistance0[i][j];
-//				}
-//			}
-//			JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
-//		}
-		/** fDistance0 = distMtx;*/
-		for (int i = 0; i < nClusters; i++) {
-			for (int j = i+1; j < nClusters; j++) {
-				//**if (fDistance0[i][j] < 1.0d) {
-				double dist = JoinAlignerGCTask.getValueFromVector(i, j, nInstances, distVec);
-				if (dist < distThreshold) {
-					//**queue.add(new Tuple(fDistance0[i][j], i, j, 1, 1));
-					queue.add(new Tuple(dist, i, j, 1, 1));
-				}
-			}
-			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<1> ... " + queue.size() + ")");
-		}
-		
-		
-		while (nClusters > m_nNumClusters) {
-			int iMin1 = -1;
-			int iMin2 = -1;
-			// find closest two clusters
-			if (m_bDebug) {
-				/* simple but inefficient implementation */
-				double fMinDistance = Double.MAX_VALUE;
-				for (int i = 0; i < nInstances; i++) {
-					if (nClusterID[i].size()>0) {
-						for (int j = i+1; j < nInstances; j++) {
-							if (nClusterID[j].size()>0) {
-								double fDist = fClusterDistance[i][j];
-								if (fDist < fMinDistance) {
-									fMinDistance = fDist;
-									iMin1 = i;
-									iMin2 = j;
-								}
-							}
-						}
-					}
-				}
-				/****/merge(iMin1, iMin2, fMinDistance, fMinDistance, nClusterID, clusterNodes);
-			} else {
-				// use priority queue to find next best pair to cluster
-				Tuple t;
-				do {
-					t = queue.poll();
-				} while (t!=null && (nClusterID[t.m_iCluster1].size() != t.m_nClusterSize1 || nClusterID[t.m_iCluster2].size() != t.m_nClusterSize2));
-				iMin1 = t.m_iCluster1;
-				iMin2 = t.m_iCluster2;
-				/****/merge(iMin1, iMin2, t.m_fDist, t.m_fDist, nClusterID, clusterNodes);
-			}
-			// merge  clusters
-
-			// update distances & queue
-			for (int i = 0; i < nInstances; i++) {
-				if (i != iMin1 && nClusterID[i].size()!=0) {
-					int i1 = Math.min(iMin1,i);
-					int i2 = Math.max(iMin1,i);
-					/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
-					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
-					if (m_bDebug) {
-						fClusterDistance[i1][i2] = fDistance;
-						fClusterDistance[i2][i1] = fDistance;
-					}
-					//if (fDistance < 1.0d) {
-						queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
-					//}
-				}
-
-//				// GLG HACK: progress stuff
-//				double base_progress1 = 1d - (double) (nClusters) / (double) totalClusters;
-//				double base_progress2 = 1d - (double) (nClusters-1) / (double) totalClusters;
-//				double delta_progress = base_progress2 - base_progress1;
-//				clustProgress.setProgress((base_progress1 + delta_progress * (double) i / (double) nInstances));
-
-			}
-			//
-			// GLG HACK: progress stuff
-			clustProgress.setProgress(1d - (double) nClusters / (double) totalClusters);
-			
-			nClusters--;
-
-			//JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (queue<2> ... " + queue.size() + ")");
-		}
-
-		// GLG HACK: progress stuff
-		clustProgress.setProgress(1d);
-
-	} // doLinkClusteringGLG (float)
-
+	
 	void merge(int iMin1, int iMin2, double fDist1, double fDist2, Vector<Integer>[] nClusterID, Node [] clusterNodes) {
 		if (m_bDebug) {
 			System.err.println("Merging " + iMin1 + " " + iMin2 + " " + fDist1 + " " + fDist2);
@@ -1185,292 +1348,440 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		return fBestDist;
 	} // getDistance
 
-	double getDistanceGLG(double[] distVec, Vector<Integer> cluster1, Vector<Integer> cluster2) {
-		double fBestDist = Double.MAX_VALUE;
-		switch (m_nLinkType) {
-		case SINGLE:
-			// find single link distance aka minimum link, which is the closest distance between
-			// any item in cluster1 and any item in cluster2
-			fBestDist = Double.MAX_VALUE;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2  = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fBestDist > fDist) {
-						fBestDist = fDist;
-					}
-				}
-			}
-			break;
-		case COMPLETE:
-		case ADJCOMLPETE:
-			// find complete link distance aka maximum link, which is the largest distance between
-			// any item in cluster1 and any item in cluster2
-			fBestDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fBestDist < fDist) {
-						fBestDist = fDist;
-					}
-				}
-			}
-			if (m_nLinkType == COMPLETE) {
-				break;
-			}
-			// calculate adjustment, which is the largest within cluster distance
-			double fMaxDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = i+1; j < cluster1.size(); j++) {
-					int i2 = cluster1.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fMaxDist < fDist) {
-						fMaxDist = fDist;
-					}
-				}
-			}
-			for (int i = 0; i < cluster2.size(); i++) {
-				int i1 = cluster2.elementAt(i);
-				for (int j = i+1; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fMaxDist < fDist) {
-						fMaxDist = fDist;
-					}
-				}
-			}
-			fBestDist -= fMaxDist;
-			break;
-		case AVERAGE:
-			// finds average distance between the elements of the two clusters
-			fBestDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** fBestDist += fDistance[i1][i2]; */
-					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-				}
-			}
-			fBestDist /= (cluster1.size() * cluster2.size());
-			break;
-		case MEAN: 
-		{
-			// calculates the mean distance of a merged cluster (akak Group-average agglomerative clustering)
-			Vector<Integer> merged = new Vector<Integer>();
-			merged.addAll(cluster1);
-			merged.addAll(cluster2);
-			fBestDist = 0;
-			for (int i = 0; i < merged.size(); i++) {
-				int i1 = merged.elementAt(i);
-				for (int j = i+1; j < merged.size(); j++) {
-					int i2 = merged.elementAt(j);
-					/** fBestDist += fDistance[i1][i2]; */
-					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-				}
-			}
-			int n = merged.size();
-			fBestDist /= (n*(n-1.0)/2.0);
-		}
-		break;
-		case CENTROID:
-			// finds the distance of the centroids of the clusters
-			double [] fValues1 = new double[m_instances.numAttributes()];
-			for (int i = 0; i < cluster1.size(); i++) {
-				Instance instance = m_instances.instance(cluster1.elementAt(i));
-				for (int j = 0; j < m_instances.numAttributes(); j++) {
-					fValues1[j] += instance.value(j);
-				}
-			}
-			double [] fValues2 = new double[m_instances.numAttributes()];
-			for (int i = 0; i < cluster2.size(); i++) {
-				Instance instance = m_instances.instance(cluster2.elementAt(i));
-				for (int j = 0; j < m_instances.numAttributes(); j++) {
-					fValues2[j] += instance.value(j);
-				}
-			}
-			for (int j = 0; j < m_instances.numAttributes(); j++) {
-				fValues1[j] /= cluster1.size();
-				fValues2[j] /= cluster2.size();
-			}
-			// set up two instances for distance function
-			Instance instance1 = (Instance) m_instances.instance(0).copy();
-			Instance instance2 = (Instance) m_instances.instance(0).copy();
-			for (int j = 0; j < m_instances.numAttributes(); j++) {
-				instance1.setValue(j, fValues1[j]);
-				instance2.setValue(j, fValues2[j]);
-			}
-			fBestDist = m_DistanceFunction.distance(instance1, instance2);
-			break;
-		case WARD:
-		{
-			// finds the distance of the change in caused by merging the cluster.
-			// The information of a cluster is calculated as the error sum of squares of the
-			// centroids of the cluster and its members.
-			double ESS1 = calcESS(cluster1);
-			double ESS2 = calcESS(cluster2);
-			Vector<Integer> merged = new Vector<Integer>();
-			merged.addAll(cluster1);
-			merged.addAll(cluster2);
-			double ESS = calcESS(merged);
-			fBestDist = ESS * merged.size() - ESS1 * cluster1.size() - ESS2 * cluster2.size();
-		}
-		break;
-		}
-		return fBestDist;
-	} // getDistanceGLG
-	double getDistanceGLG(float[] distVec, Vector<Integer> cluster1, Vector<Integer> cluster2) {
-		double fBestDist = Double.MAX_VALUE;
-		switch (m_nLinkType) {
-		case SINGLE:
-			// find single link distance aka minimum link, which is the closest distance between
-			// any item in cluster1 and any item in cluster2
-			fBestDist = Double.MAX_VALUE;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2  = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fBestDist > fDist) {
-						fBestDist = fDist;
-					}
-				}
-			}
-			break;
-		case COMPLETE:
-		case ADJCOMLPETE:
-			// find complete link distance aka maximum link, which is the largest distance between
-			// any item in cluster1 and any item in cluster2
-			fBestDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fBestDist < fDist) {
-						fBestDist = fDist;
-					}
-				}
-			}
-			if (m_nLinkType == COMPLETE) {
-				break;
-			}
-			// calculate adjustment, which is the largest within cluster distance
-			double fMaxDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = i+1; j < cluster1.size(); j++) {
-					int i2 = cluster1.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fMaxDist < fDist) {
-						fMaxDist = fDist;
-					}
-				}
-			}
-			for (int i = 0; i < cluster2.size(); i++) {
-				int i1 = cluster2.elementAt(i);
-				for (int j = i+1; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** double fDist = fDistance[i1][i2]; */
-					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-					if (fMaxDist < fDist) {
-						fMaxDist = fDist;
-					}
-				}
-			}
-			fBestDist -= fMaxDist;
-			break;
-		case AVERAGE:
-			// finds average distance between the elements of the two clusters
-			fBestDist = 0;
-			for (int i = 0; i < cluster1.size(); i++) {
-				int i1 = cluster1.elementAt(i);
-				for (int j = 0; j < cluster2.size(); j++) {
-					int i2 = cluster2.elementAt(j);
-					/** fBestDist += fDistance[i1][i2]; */
-					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-				}
-			}
-			fBestDist /= (cluster1.size() * cluster2.size());
-			break;
-		case MEAN: 
-		{
-			// calculates the mean distance of a merged cluster (akak Group-average agglomerative clustering)
-			Vector<Integer> merged = new Vector<Integer>();
-			merged.addAll(cluster1);
-			merged.addAll(cluster2);
-			fBestDist = 0;
-			for (int i = 0; i < merged.size(); i++) {
-				int i1 = merged.elementAt(i);
-				for (int j = i+1; j < merged.size(); j++) {
-					int i2 = merged.elementAt(j);
-					/** fBestDist += fDistance[i1][i2]; */
-					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
-				}
-			}
-			int n = merged.size();
-			fBestDist /= (n*(n-1.0)/2.0);
-		}
-		break;
-		case CENTROID:
-			// finds the distance of the centroids of the clusters
-			double [] fValues1 = new double[m_instances.numAttributes()];
-			for (int i = 0; i < cluster1.size(); i++) {
-				Instance instance = m_instances.instance(cluster1.elementAt(i));
-				for (int j = 0; j < m_instances.numAttributes(); j++) {
-					fValues1[j] += instance.value(j);
-				}
-			}
-			double [] fValues2 = new double[m_instances.numAttributes()];
-			for (int i = 0; i < cluster2.size(); i++) {
-				Instance instance = m_instances.instance(cluster2.elementAt(i));
-				for (int j = 0; j < m_instances.numAttributes(); j++) {
-					fValues2[j] += instance.value(j);
-				}
-			}
-			for (int j = 0; j < m_instances.numAttributes(); j++) {
-				fValues1[j] /= cluster1.size();
-				fValues2[j] /= cluster2.size();
-			}
-			// set up two instances for distance function
-			Instance instance1 = (Instance) m_instances.instance(0).copy();
-			Instance instance2 = (Instance) m_instances.instance(0).copy();
-			for (int j = 0; j < m_instances.numAttributes(); j++) {
-				instance1.setValue(j, fValues1[j]);
-				instance2.setValue(j, fValues2[j]);
-			}
-			fBestDist = m_DistanceFunction.distance(instance1, instance2);
-			break;
-		case WARD:
-		{
-			// finds the distance of the change in caused by merging the cluster.
-			// The information of a cluster is calculated as the error sum of squares of the
-			// centroids of the cluster and its members.
-			double ESS1 = calcESS(cluster1);
-			double ESS2 = calcESS(cluster2);
-			Vector<Integer> merged = new Vector<Integer>();
-			merged.addAll(cluster1);
-			merged.addAll(cluster2);
-			double ESS = calcESS(merged);
-			fBestDist = ESS * merged.size() - ESS1 * cluster1.size() - ESS2 * cluster2.size();
-		}
-		break;
-		}
-		return fBestDist;
-	} // getDistanceGLG (float)
+//	double getDistanceGLG(double[] distVec, Vector<Integer> cluster1, Vector<Integer> cluster2) {
+//		double fBestDist = Double.MAX_VALUE;
+//		switch (m_nLinkType) {
+//		case SINGLE:
+//			// find single link distance aka minimum link, which is the closest distance between
+//			// any item in cluster1 and any item in cluster2
+//			fBestDist = Double.MAX_VALUE;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2  = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fBestDist > fDist) {
+//						fBestDist = fDist;
+//					}
+//				}
+//			}
+//			break;
+//		case COMPLETE:
+//		case ADJCOMLPETE:
+//			// find complete link distance aka maximum link, which is the largest distance between
+//			// any item in cluster1 and any item in cluster2
+//			fBestDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fBestDist < fDist) {
+//						fBestDist = fDist;
+//					}
+//				}
+//			}
+//			if (m_nLinkType == COMPLETE) {
+//				break;
+//			}
+//			// calculate adjustment, which is the largest within cluster distance
+//			double fMaxDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = i+1; j < cluster1.size(); j++) {
+//					int i2 = cluster1.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fMaxDist < fDist) {
+//						fMaxDist = fDist;
+//					}
+//				}
+//			}
+//			for (int i = 0; i < cluster2.size(); i++) {
+//				int i1 = cluster2.elementAt(i);
+//				for (int j = i+1; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fMaxDist < fDist) {
+//						fMaxDist = fDist;
+//					}
+//				}
+//			}
+//			fBestDist -= fMaxDist;
+//			break;
+//		case AVERAGE:
+//			// finds average distance between the elements of the two clusters
+//			fBestDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//				}
+//			}
+//			fBestDist /= (cluster1.size() * cluster2.size());
+//			break;
+//		case MEAN: 
+//		{
+//			// calculates the mean distance of a merged cluster (akak Group-average agglomerative clustering)
+//			Vector<Integer> merged = new Vector<Integer>();
+//			merged.addAll(cluster1);
+//			merged.addAll(cluster2);
+//			fBestDist = 0;
+//			for (int i = 0; i < merged.size(); i++) {
+//				int i1 = merged.elementAt(i);
+//				for (int j = i+1; j < merged.size(); j++) {
+//					int i2 = merged.elementAt(j);
+//					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//				}
+//			}
+//			int n = merged.size();
+//			fBestDist /= (n*(n-1.0)/2.0);
+//		}
+//		break;
+//		case CENTROID:
+//			// finds the distance of the centroids of the clusters
+//			double [] fValues1 = new double[m_instances.numAttributes()];
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				Instance instance = m_instances.instance(cluster1.elementAt(i));
+//				for (int j = 0; j < m_instances.numAttributes(); j++) {
+//					fValues1[j] += instance.value(j);
+//				}
+//			}
+//			double [] fValues2 = new double[m_instances.numAttributes()];
+//			for (int i = 0; i < cluster2.size(); i++) {
+//				Instance instance = m_instances.instance(cluster2.elementAt(i));
+//				for (int j = 0; j < m_instances.numAttributes(); j++) {
+//					fValues2[j] += instance.value(j);
+//				}
+//			}
+//			for (int j = 0; j < m_instances.numAttributes(); j++) {
+//				fValues1[j] /= cluster1.size();
+//				fValues2[j] /= cluster2.size();
+//			}
+//			// set up two instances for distance function
+//			Instance instance1 = (Instance) m_instances.instance(0).copy();
+//			Instance instance2 = (Instance) m_instances.instance(0).copy();
+//			for (int j = 0; j < m_instances.numAttributes(); j++) {
+//				instance1.setValue(j, fValues1[j]);
+//				instance2.setValue(j, fValues2[j]);
+//			}
+//			fBestDist = m_DistanceFunction.distance(instance1, instance2);
+//			break;
+//		case WARD:
+//		{
+//			// finds the distance of the change in caused by merging the cluster.
+//			// The information of a cluster is calculated as the error sum of squares of the
+//			// centroids of the cluster and its members.
+//			double ESS1 = calcESS(cluster1);
+//			double ESS2 = calcESS(cluster2);
+//			Vector<Integer> merged = new Vector<Integer>();
+//			merged.addAll(cluster1);
+//			merged.addAll(cluster2);
+//			double ESS = calcESS(merged);
+//			fBestDist = ESS * merged.size() - ESS1 * cluster1.size() - ESS2 * cluster2.size();
+//		}
+//		break;
+//		}
+//		return fBestDist;
+//	} // getDistanceGLG
+//	double getDistanceGLG(float[] distVec, Vector<Integer> cluster1, Vector<Integer> cluster2) {
+//		double fBestDist = Double.MAX_VALUE;
+//		switch (m_nLinkType) {
+//		case SINGLE:
+//			// find single link distance aka minimum link, which is the closest distance between
+//			// any item in cluster1 and any item in cluster2
+//			fBestDist = Double.MAX_VALUE;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2  = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fBestDist > fDist) {
+//						fBestDist = fDist;
+//					}
+//				}
+//			}
+//			break;
+//		case COMPLETE:
+//		case ADJCOMLPETE:
+//			// find complete link distance aka maximum link, which is the largest distance between
+//			// any item in cluster1 and any item in cluster2
+//			fBestDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fBestDist < fDist) {
+//						fBestDist = fDist;
+//					}
+//				}
+//			}
+//			if (m_nLinkType == COMPLETE) {
+//				break;
+//			}
+//			// calculate adjustment, which is the largest within cluster distance
+//			double fMaxDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = i+1; j < cluster1.size(); j++) {
+//					int i2 = cluster1.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fMaxDist < fDist) {
+//						fMaxDist = fDist;
+//					}
+//				}
+//			}
+//			for (int i = 0; i < cluster2.size(); i++) {
+//				int i1 = cluster2.elementAt(i);
+//				for (int j = i+1; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//					if (fMaxDist < fDist) {
+//						fMaxDist = fDist;
+//					}
+//				}
+//			}
+//			fBestDist -= fMaxDist;
+//			break;
+//		case AVERAGE:
+//			// finds average distance between the elements of the two clusters
+//			fBestDist = 0;
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				int i1 = cluster1.elementAt(i);
+//				for (int j = 0; j < cluster2.size(); j++) {
+//					int i2 = cluster2.elementAt(j);
+//					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//				}
+//			}
+//			fBestDist /= (cluster1.size() * cluster2.size());
+//			break;
+//		case MEAN: 
+//		{
+//			// calculates the mean distance of a merged cluster (akak Group-average agglomerative clustering)
+//			Vector<Integer> merged = new Vector<Integer>();
+//			merged.addAll(cluster1);
+//			merged.addAll(cluster2);
+//			fBestDist = 0;
+//			for (int i = 0; i < merged.size(); i++) {
+//				int i1 = merged.elementAt(i);
+//				for (int j = i+1; j < merged.size(); j++) {
+//					int i2 = merged.elementAt(j);
+//					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+//				}
+//			}
+//			int n = merged.size();
+//			fBestDist /= (n*(n-1.0)/2.0);
+//		}
+//		break;
+//		case CENTROID:
+//			// finds the distance of the centroids of the clusters
+//			double [] fValues1 = new double[m_instances.numAttributes()];
+//			for (int i = 0; i < cluster1.size(); i++) {
+//				Instance instance = m_instances.instance(cluster1.elementAt(i));
+//				for (int j = 0; j < m_instances.numAttributes(); j++) {
+//					fValues1[j] += instance.value(j);
+//				}
+//			}
+//			double [] fValues2 = new double[m_instances.numAttributes()];
+//			for (int i = 0; i < cluster2.size(); i++) {
+//				Instance instance = m_instances.instance(cluster2.elementAt(i));
+//				for (int j = 0; j < m_instances.numAttributes(); j++) {
+//					fValues2[j] += instance.value(j);
+//				}
+//			}
+//			for (int j = 0; j < m_instances.numAttributes(); j++) {
+//				fValues1[j] /= cluster1.size();
+//				fValues2[j] /= cluster2.size();
+//			}
+//			// set up two instances for distance function
+//			Instance instance1 = (Instance) m_instances.instance(0).copy();
+//			Instance instance2 = (Instance) m_instances.instance(0).copy();
+//			for (int j = 0; j < m_instances.numAttributes(); j++) {
+//				instance1.setValue(j, fValues1[j]);
+//				instance2.setValue(j, fValues2[j]);
+//			}
+//			fBestDist = m_DistanceFunction.distance(instance1, instance2);
+//			break;
+//		case WARD:
+//		{
+//			// finds the distance of the change in caused by merging the cluster.
+//			// The information of a cluster is calculated as the error sum of squares of the
+//			// centroids of the cluster and its members.
+//			double ESS1 = calcESS(cluster1);
+//			double ESS2 = calcESS(cluster2);
+//			Vector<Integer> merged = new Vector<Integer>();
+//			merged.addAll(cluster1);
+//			merged.addAll(cluster2);
+//			double ESS = calcESS(merged);
+//			fBestDist = ESS * merged.size() - ESS1 * cluster1.size() - ESS2 * cluster2.size();
+//		}
+//		break;
+//		}
+//		return fBestDist;
+//	} // getDistanceGLG (float)
 
-	
+	private double getDistanceGLG(TriangularMatrix distancesMtx, Vector<Integer> cluster1, Vector<Integer> cluster2) {
+		double fBestDist = Double.MAX_VALUE;
+		switch (m_nLinkType) {
+		case SINGLE:
+			// find single link distance aka minimum link, which is the closest distance between
+			// any item in cluster1 and any item in cluster2
+			fBestDist = Double.MAX_VALUE;
+			for (int i = 0; i < cluster1.size(); i++) {
+				int i1 = cluster1.elementAt(i);
+				for (int j = 0; j < cluster2.size(); j++) {
+					int i2  = cluster2.elementAt(j);
+					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					double fDist = distancesMtx.get(i1, i2);
+					if (fBestDist > fDist) {
+						fBestDist = fDist;
+					}
+				}
+			}
+			break;
+		case COMPLETE:
+		case ADJCOMLPETE:
+			// find complete link distance aka maximum link, which is the largest distance between
+			// any item in cluster1 and any item in cluster2
+			fBestDist = 0;
+			for (int i = 0; i < cluster1.size(); i++) {
+				int i1 = cluster1.elementAt(i);
+				for (int j = 0; j < cluster2.size(); j++) {
+					int i2 = cluster2.elementAt(j);
+					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					double fDist = distancesMtx.get(i1, i2);
+					if (fBestDist < fDist) {
+						fBestDist = fDist;
+					}
+				}
+			}
+			if (m_nLinkType == COMPLETE) {
+				break;
+			}
+			// calculate adjustment, which is the largest within cluster distance
+			double fMaxDist = 0;
+			for (int i = 0; i < cluster1.size(); i++) {
+				int i1 = cluster1.elementAt(i);
+				for (int j = i+1; j < cluster1.size(); j++) {
+					int i2 = cluster1.elementAt(j);
+					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					double fDist = distancesMtx.get(i1, i2);
+					if (fMaxDist < fDist) {
+						fMaxDist = fDist;
+					}
+				}
+			}
+			for (int i = 0; i < cluster2.size(); i++) {
+				int i1 = cluster2.elementAt(i);
+				for (int j = i+1; j < cluster2.size(); j++) {
+					int i2 = cluster2.elementAt(j);
+					/** double fDist = fDistance[i1][i2]; */
+//					double fDist = JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					double fDist = distancesMtx.get(i1, i2);
+					if (fMaxDist < fDist) {
+						fMaxDist = fDist;
+					}
+				}
+			}
+			fBestDist -= fMaxDist;
+			break;
+		case AVERAGE:
+			// finds average distance between the elements of the two clusters
+			fBestDist = 0;
+			for (int i = 0; i < cluster1.size(); i++) {
+				int i1 = cluster1.elementAt(i);
+				for (int j = 0; j < cluster2.size(); j++) {
+					int i2 = cluster2.elementAt(j);
+					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					fBestDist += distancesMtx.get(i1, i2);
+				}
+			}
+			fBestDist /= (cluster1.size() * cluster2.size());
+			break;
+		case MEAN: 
+		{
+			// calculates the mean distance of a merged cluster (akak Group-average agglomerative clustering)
+			Vector<Integer> merged = new Vector<Integer>();
+			merged.addAll(cluster1);
+			merged.addAll(cluster2);
+			fBestDist = 0;
+			for (int i = 0; i < merged.size(); i++) {
+				int i1 = merged.elementAt(i);
+				for (int j = i+1; j < merged.size(); j++) {
+					int i2 = merged.elementAt(j);
+					/** fBestDist += fDistance[i1][i2]; */
+//					fBestDist += JoinAlignerGCTask.getValueFromVector(i1, i2, m_instances.numInstances(), distVec);
+					fBestDist += distancesMtx.get(i1, i2);
+				}
+			}
+			int n = merged.size();
+			fBestDist /= (n*(n-1.0)/2.0);
+		}
+		break;
+		case CENTROID:
+			// finds the distance of the centroids of the clusters
+			double [] fValues1 = new double[m_instances.numAttributes()];
+			for (int i = 0; i < cluster1.size(); i++) {
+				Instance instance = m_instances.instance(cluster1.elementAt(i));
+				for (int j = 0; j < m_instances.numAttributes(); j++) {
+					fValues1[j] += instance.value(j);
+				}
+			}
+			double [] fValues2 = new double[m_instances.numAttributes()];
+			for (int i = 0; i < cluster2.size(); i++) {
+				Instance instance = m_instances.instance(cluster2.elementAt(i));
+				for (int j = 0; j < m_instances.numAttributes(); j++) {
+					fValues2[j] += instance.value(j);
+				}
+			}
+			for (int j = 0; j < m_instances.numAttributes(); j++) {
+				fValues1[j] /= cluster1.size();
+				fValues2[j] /= cluster2.size();
+			}
+			// set up two instances for distance function
+			Instance instance1 = (Instance) m_instances.instance(0).copy();
+			Instance instance2 = (Instance) m_instances.instance(0).copy();
+			for (int j = 0; j < m_instances.numAttributes(); j++) {
+				instance1.setValue(j, fValues1[j]);
+				instance2.setValue(j, fValues2[j]);
+			}
+			fBestDist = m_DistanceFunction.distance(instance1, instance2);
+			break;
+		case WARD:
+		{
+			// finds the distance of the change in caused by merging the cluster.
+			// The information of a cluster is calculated as the error sum of squares of the
+			// centroids of the cluster and its members.
+			double ESS1 = calcESS(cluster1);
+			double ESS2 = calcESS(cluster2);
+			Vector<Integer> merged = new Vector<Integer>();
+			merged.addAll(cluster1);
+			merged.addAll(cluster2);
+			double ESS = calcESS(merged);
+			fBestDist = ESS * merged.size() - ESS1 * cluster1.size() - ESS2 * cluster2.size();
+		}
+		break;
+		}
+		return fBestDist;
+	} // getDistanceGLG (TriangularMatrix)
+
 	/** calculated error sum-of-squares for instances wrt centroid **/
 	double calcESS(Vector<Integer> cluster) {
 		double [] fValues1 = new double[m_instances.numAttributes()];

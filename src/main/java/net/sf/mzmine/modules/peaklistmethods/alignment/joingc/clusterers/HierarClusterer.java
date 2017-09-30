@@ -33,6 +33,7 @@ import javax.annotation.Nonnull;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.ClusteringProgression;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.JoinAlignerGCTask;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.Pair;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.TriangularMatrix;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.VisualizationType;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.hierarchical.DistanceType;
@@ -92,9 +93,10 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 
 	private double[][] distMtx;
 	//private Map<Pair<Integer, Integer>, Float> distancesMap;
-	private double[] distVect;
-	private float[] distFloatVect;
-	int numInstances;
+//	private double[] distVect;
+//	private float[] distFloatVect;
+	private TriangularMatrix distancesMtx;
+//	int numInstances;
 	double distThreshold;
 	
 	Instances dataSet;
@@ -128,23 +130,35 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 //		
 //		this.clustProgress = clustProgress;
 //	}
-	public HierarClusterer(ClusteringProgression clustProgress, double[] distancesVector, int numInstances, double distThreshold) {
+//	public HierarClusterer(ClusteringProgression clustProgress, double[] distancesVector, int numInstances, double distThreshold) {
+//		
+//		//this.distancesMap = distancesMap;
+//		this.distVect = distancesVector;
+//		this.numInstances = numInstances;
+//		this.distThreshold = distThreshold;
+//		this.dataSet = createSampleWekaDataset(numInstances);
+//		
+//		this.clustProgress = clustProgress;
+//	}
+//	public HierarClusterer(ClusteringProgression clustProgress, float[] distancesVector, int numInstances, double distThreshold) {
+//		
+//		//this.distancesMap = distancesMap;
+//		this.distFloatVect = distancesVector;
+//		this.numInstances = numInstances;
+//		this.distThreshold = distThreshold;
+//		this.dataSet = createSampleWekaDataset(numInstances);
+//		
+//		this.clustProgress = clustProgress;
+//	}
+	
+	public HierarClusterer(ClusteringProgression clustProgress, TriangularMatrix distancesMtx, double distThreshold) {
+
+//		this.numInstances = distancesMtx.getDimension();
 		
-		//this.distancesMap = distancesMap;
-		this.distVect = distancesVector;
-		this.numInstances = numInstances;
+		this.distancesMtx = distancesMtx;
+		
 		this.distThreshold = distThreshold;
-		this.dataSet = createSampleWekaDataset(numInstances);
-		
-		this.clustProgress = clustProgress;
-	}
-	public HierarClusterer(ClusteringProgression clustProgress, float[] distancesVector, int numInstances, double distThreshold) {
-		
-		//this.distancesMap = distancesMap;
-		this.distFloatVect = distancesVector;
-		this.numInstances = numInstances;
-		this.distThreshold = distThreshold;
-		this.dataSet = createSampleWekaDataset(numInstances);
+		this.dataSet = createSampleWekaDataset(distancesMtx.getDimension());//numInstances);
 		
 		this.clustProgress = clustProgress;
 	}
@@ -536,13 +550,14 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 			clusterer.setClusteringProgression(clustProgress);
 	        //
             JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (before...)");
-            System.out.println("Trying to build clusterer from numInstances:" + this.dataSet.numInstances());
+            System.out.println("Trying to build clusterer from numInstances: " + this.dataSet.numInstances());
             //clusterer.buildClusterer(this.dataSet, this.distMtx);
-            if (JoinAlignerGCTask.USE_DOUBLE_PRECISION_FOR_DIST)
-            	clusterer.buildClustererGLG(this.dataSet, this.distVect, this.distThreshold);
-            else
-            	clusterer.buildClustererGLG(this.dataSet, this.distFloatVect, this.distThreshold);
-	        //
+//            if (JoinAlignerGCTask.USE_DOUBLE_PRECISION_FOR_DIST)
+//            	clusterer.buildClustererGLG(this.dataSet, this.distVect, this.distThreshold);
+//            else
+//            	clusterer.buildClustererGLG(this.dataSet, this.distFloatVect, this.distThreshold);
+            clusterer.buildClustererGLG(this.dataSet, this.distancesMtx, this.distThreshold);
+            //
             JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER BUILD (after!!)");
 			//
 			Enumeration<?> e2 = dataSet.enumerateInstances();
@@ -658,10 +673,11 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 			
 			//return distancesMap.get(new Pair<Integer, Integer>(i, j));
 			
-			if (JoinAlignerGCTask.USE_DOUBLE_PRECISION_FOR_DIST)
-				return JoinAlignerGCTask.getValueFromVector(i, j, numInstances, distVect);
-			else
-				return JoinAlignerGCTask.getValueFromVector(i, j, numInstances, distFloatVect);
+//			if (JoinAlignerGCTask.USE_DOUBLE_PRECISION_FOR_DIST)
+//				return JoinAlignerGCTask.getValueFromVector(i, j, numInstances, distVect);
+//			else
+//				return JoinAlignerGCTask.getValueFromVector(i, j, numInstances, distFloatVect);
+			return distancesMtx.get(i, j);
 			/**
 			return distMtx[i][j];
 			*/
