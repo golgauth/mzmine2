@@ -587,6 +587,327 @@ public class HDBSCANStar {
 
 		return clusters;
 	}
+	/**
+	 * Blah, blah, ...
+	 */
+	public static ArrayList<Cluster> computeHierarchyAndClusterTreeGLG(UndirectedGraph mst,
+			int minClusterSize, boolean compactHierarchy, ArrayList<Constraint> constraints, 
+			String hierarchyOutputFile, String treeOutputFile, String delimiter, 
+			double[] pointNoiseLevels, int[] pointLastClusters, String visualizationOutputFile) throws IOException {
+
+		BufferedWriter hierarchyWriter = new BufferedWriter(new FileWriter(hierarchyOutputFile), FILE_BUFFER_SIZE);
+		BufferedWriter treeWriter = new BufferedWriter(new FileWriter(treeOutputFile), FILE_BUFFER_SIZE);
+		long hierarchyCharsWritten = 0;
+
+		int lineCount = 0; //Indicates the number of lines written into hierarchyFile.
+		
+		//The current edge being removed from the MST:
+		int currentEdgeIndex = mst.getNumEdges()-1;
+
+		int nextClusterLabel = 2;
+		boolean nextLevelSignificant = true;
+
+		//The previous and current cluster numbers of each point in the data set:
+		int[] previousClusterLabels = new int[mst.getNumVertices()];
+		int[] currentClusterLabels = new int[mst.getNumVertices()];
+		for (int i = 0; i < currentClusterLabels.length; i++) {
+			currentClusterLabels[i] = 1;
+			previousClusterLabels[i] = 1;
+		}
+
+		//A list of clusters in the cluster tree, with the 0th cluster (noise) null:
+		ArrayList<Cluster> clusters = new ArrayList<Cluster>();
+		clusters.add(null);
+		clusters.add(new Cluster(1, null, Double.NaN, mst.getNumVertices()));
+
+		//Calculate number of constraints satisfied for cluster 1:
+		TreeSet<Integer> clusterOne = new TreeSet<Integer>();
+		clusterOne.add(1);
+		calculateNumConstraintsSatisfied(clusterOne, clusters, constraints, currentClusterLabels);		
+
+		//Sets for the clusters and vertices that are affected by the edge(s) being removed:
+		TreeSet<Integer> affectedClusterLabels = new TreeSet<Integer>();
+		TreeSet<Integer> affectedVertices = new TreeSet<Integer>();		
+
+		while(currentEdgeIndex >= 0) {
+			double currentEdgeWeight = mst.getEdgeWeightAtIndex(currentEdgeIndex);
+			ArrayList<Cluster> newClusters = new ArrayList<Cluster>();
+
+			//Remove all edges tied with the current edge weight, and store relevant clusters and vertices:
+			while (currentEdgeIndex >= 0 && mst.getEdgeWeightAtIndex(currentEdgeIndex) == currentEdgeWeight){
+				int firstVertex = mst.getFirstVertexAtIndex(currentEdgeIndex);
+				int secondVertex = mst.getSecondVertexAtIndex(currentEdgeIndex);
+				mst.getEdgeListForVertex(firstVertex).remove((Integer)secondVertex);
+				mst.getEdgeListForVertex(secondVertex).remove((Integer)firstVertex);
+
+				if (currentClusterLabels[firstVertex] == 0) {
+					currentEdgeIndex--;
+					continue;
+				}
+
+				affectedVertices.add(firstVertex);
+				affectedVertices.add(secondVertex);
+				affectedClusterLabels.add(currentClusterLabels[firstVertex]);
+				currentEdgeIndex--;
+			}
+
+			if (affectedClusterLabels.isEmpty())
+				continue;
+
+			//Check each cluster affected for a possible split:
+			while (!affectedClusterLabels.isEmpty()) {
+				int examinedClusterLabel = affectedClusterLabels.last();
+				affectedClusterLabels.remove(examinedClusterLabel);
+				TreeSet<Integer> examinedVertices = new TreeSet<Integer>();
+
+				//Get all affected vertices that are members of the cluster currently being examined:
+				Iterator<Integer> vertexIterator = affectedVertices.iterator();
+				while (vertexIterator.hasNext()) {
+					int vertex = vertexIterator.next();
+
+					if (currentClusterLabels[vertex] == examinedClusterLabel) {
+						examinedVertices.add(vertex);
+						vertexIterator.remove();
+					}
+				}
+
+				TreeSet<Integer> firstChildCluster = null;
+				LinkedList<Integer> unexploredFirstChildClusterPoints = null;
+				int numChildClusters = 0;
+
+				/*
+				 * Check if the cluster has split or shrunk by exploring the graph from each affected
+				 * vertex.  If there are two or more valid child clusters (each has >= minClusterSize
+				 * points), the cluster has split.
+				 * Note that firstChildCluster will only be fully explored if there is a cluster
+				 * split, otherwise, only spurious components are fully explored, in order to label 
+				 * them noise.
+				 */
+				while (!examinedVertices.isEmpty()) {
+					TreeSet<Integer> constructingSubCluster = new TreeSet<Integer>();
+					LinkedList<Integer> unexploredSubClusterPoints = new LinkedList<Integer>();
+					boolean anyEdges = false;
+					boolean incrementedChildCount = false;
+
+					int rootVertex = examinedVertices.last();
+					constructingSubCluster.add(rootVertex);
+					unexploredSubClusterPoints.add(rootVertex);
+					examinedVertices.remove(rootVertex);
+
+					//Explore this potential child cluster as long as there are unexplored points:
+					while (!unexploredSubClusterPoints.isEmpty()) {
+						int vertexToExplore = unexploredSubClusterPoints.poll();
+
+						for (int neighbor : mst.getEdgeListForVertex(vertexToExplore)) {
+							anyEdges = true;
+							if (constructingSubCluster.add(neighbor)) {
+								unexploredSubClusterPoints.add(neighbor);
+								examinedVertices.remove(neighbor);
+							}	
+						}
+
+						//Check if this potential child cluster is a valid cluster:
+						//boolean is_compat = checkInternalCompatForClust(constructingSubCluster, constraints);
+						if (!incrementedChildCount && constructingSubCluster.size() >= minClusterSize && anyEdges /*&& is_compat*/) {
+							incrementedChildCount = true;
+							numChildClusters++;
+
+							//If this is the first valid child cluster, stop exploring it:
+							if (firstChildCluster == null) {
+								firstChildCluster = constructingSubCluster;
+								unexploredFirstChildClusterPoints = unexploredSubClusterPoints;
+								break;
+							}	
+						}
+					}
+
+					//If there could be a split, and this child cluster is valid:
+					//boolean is_compat = checkInternalCompatForClust(constructingSubCluster, constraints);
+					if (numChildClusters >= 2 && constructingSubCluster.size() >= minClusterSize && anyEdges /*&& is_compat*/) {
+
+						//Check this child cluster is not equal to the unexplored first child cluster:
+						int firstChildClusterMember = firstChildCluster.last();
+						if (constructingSubCluster.contains(firstChildClusterMember))
+							numChildClusters--;
+
+						//Otherwise, create a new cluster:
+						else {
+							Cluster newCluster = createNewCluster(constructingSubCluster, currentClusterLabels, 
+									clusters.get(examinedClusterLabel), nextClusterLabel, currentEdgeWeight);
+							newClusters.add(newCluster);
+							clusters.add(newCluster);
+							nextClusterLabel++;
+						}	
+					}
+
+					//If this child cluster is not valid cluster, assign it to noise:
+					else if ((constructingSubCluster.size() < minClusterSize || !anyEdges) /*&& is_compat*/){
+						createNewCluster(constructingSubCluster, currentClusterLabels, 
+								clusters.get(examinedClusterLabel), 0, currentEdgeWeight);
+						
+						for (int point : constructingSubCluster) {
+							pointNoiseLevels[point] = currentEdgeWeight;
+							pointLastClusters[point] = examinedClusterLabel;
+						}
+					}
+				}
+
+				//Finish exploring and cluster the first child cluster if there was a split and it was not already clustered:
+				if (numChildClusters >= 2 && currentClusterLabels[firstChildCluster.first()] == examinedClusterLabel) {
+
+					while (!unexploredFirstChildClusterPoints.isEmpty()) {
+						int vertexToExplore = unexploredFirstChildClusterPoints.poll();
+
+						for (int neighbor : mst.getEdgeListForVertex(vertexToExplore)) {
+							if (firstChildCluster.add(neighbor))
+								unexploredFirstChildClusterPoints.add(neighbor);
+						}
+					}
+
+					Cluster newCluster = createNewCluster(firstChildCluster, currentClusterLabels, 
+							clusters.get(examinedClusterLabel), nextClusterLabel, currentEdgeWeight);
+					newClusters.add(newCluster);
+					clusters.add(newCluster);
+					nextClusterLabel++;
+				}
+			}
+
+			//Write out the current level of the hierarchy:
+			if (!compactHierarchy || nextLevelSignificant || !newClusters.isEmpty()) {
+				int outputLength = 0;
+
+				String output = currentEdgeWeight + delimiter;
+				hierarchyWriter.write(output);
+				outputLength+=output.length();
+
+				for (int i = 0; i < previousClusterLabels.length-1; i++) {
+					output = previousClusterLabels[i] + delimiter;
+					hierarchyWriter.write(output);
+					outputLength+=output.length();
+				}
+
+				output = previousClusterLabels[previousClusterLabels.length-1] + "\n";
+				hierarchyWriter.write(output);
+				outputLength+=output.length();
+				
+				lineCount++;
+
+				hierarchyCharsWritten+=outputLength;
+			}
+
+			//Assign file offsets and calculate the number of constraints satisfied:
+			TreeSet<Integer> newClusterLabels = new TreeSet<Integer>();
+			for (Cluster newCluster : newClusters) {
+				newCluster.setFileOffset(hierarchyCharsWritten);
+				newClusterLabels.add(newCluster.getLabel());
+			}
+			if (!newClusterLabels.isEmpty())
+				calculateNumConstraintsSatisfied(newClusterLabels, clusters, constraints, currentClusterLabels);
+
+			for (int i = 0; i < previousClusterLabels.length; i++) {
+				previousClusterLabels[i] = currentClusterLabels[i];
+			}
+
+			if (newClusters.isEmpty())
+				nextLevelSignificant = false;
+			else
+				nextLevelSignificant = true;
+		}
+
+		//Write out the final level of the hierarchy (all points noise):
+		hierarchyWriter.write(0 + delimiter);
+		for (int i = 0; i < previousClusterLabels.length-1; i++) {
+			hierarchyWriter.write(0 + delimiter);
+		}
+		hierarchyWriter.write(0 + "\n");
+		lineCount++;
+
+		//Write out the cluster tree:
+		for (Cluster cluster : clusters) {
+			if (cluster == null)
+				continue;
+
+			treeWriter.write(cluster.getLabel() + delimiter);
+			treeWriter.write(cluster.getBirthLevel() + delimiter);
+			treeWriter.write(cluster.getDeathLevel() + delimiter);
+			treeWriter.write(cluster.getStability() + delimiter);
+
+			if (constraints != null) {
+				treeWriter.write((0.5 * cluster.getNumConstraintsSatisfied() / constraints.size()) + delimiter);
+				treeWriter.write((0.5 * cluster.getPropagatedNumConstraintsSatisfied() / constraints.size()) + delimiter);
+			}
+			else {
+				treeWriter.write(0 + delimiter);
+				treeWriter.write(0 + delimiter);
+			}
+
+			treeWriter.write(cluster.getFileOffset() + delimiter);
+
+			if (cluster.getParent() != null)
+				treeWriter.write(cluster.getParent().getLabel() + "\n");
+			else
+				treeWriter.write(0 + "\n");
+		}
+
+		/*Author: Fernando S. de Aguiar Neto
+		 *  Generating .vis File
+		 */
+		
+		String out = "";
+		if(!compactHierarchy)
+		{
+			out = "1\n";
+			
+		}
+		else
+		{
+			out = "0\n";
+		}
+		out = out + Integer.toString(lineCount);
+		
+		BufferedWriter visualizationWriter = new BufferedWriter(new FileWriter(visualizationOutputFile), FILE_BUFFER_SIZE);
+		visualizationWriter.write(out);
+		
+		/*End Author Fernando S. de Aguiar Neto*/
+		
+		
+		hierarchyWriter.close();
+		treeWriter.close();
+		visualizationWriter.close();
+
+		return clusters;
+	}
+
+
+
+	private static boolean checkInternalCompatForClust(TreeSet<Integer> constructingSubCluster,
+			ArrayList<Constraint> constraints) {
+		
+		boolean is_compat = true;
+		
+		for (int i: constructingSubCluster) {
+			for (int j: constructingSubCluster) {
+
+				for (Constraint constraint : constraints) {
+					
+					if (constraint.getType() == CONSTRAINT_TYPE.CANNOT_LINK) {
+						
+						if ((constraint.getPointA() == i && constraint.getPointB() == j)
+								|| (constraint.getPointA() == j && constraint.getPointB() == i)
+								) {
+							return false;
+						}
+						
+					}
+				}
+				
+			}
+		}
+		
+		
+		return is_compat;
+		
+	}
 
 
 	/**

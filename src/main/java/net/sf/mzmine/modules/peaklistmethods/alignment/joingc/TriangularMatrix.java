@@ -69,4 +69,20 @@ public abstract class TriangularMatrix {
     
     public abstract void printVector();
     
+
+	public double[][] toTwoDimArray() {
+		
+		double[][] arr = new double[this.dimension][this.dimension];
+		
+    	for (int i = 0; i < getDimension(); i++) {
+    		
+    		for (int j = 0; j < getDimension(); j++) {
+    			
+    			arr[i][j] = this.get(i,  j);
+    		}
+    	}
+		
+		return arr;
+	}
+    
 }

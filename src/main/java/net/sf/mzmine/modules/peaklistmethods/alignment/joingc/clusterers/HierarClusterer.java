@@ -472,7 +472,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 
 
 	//@Override
-	public ClusteringResult performClustering(LinkType link/*Instances dataset, ParameterSet parameters*/) {
+	public ClusteringResult performClustering(LinkType link/*Instances dataset, ParameterSet parameters*/, int minNumClusters) {
 
 		List<Integer> clusters = new ArrayList<Integer>();
 		/*HierarchicalClusterer*/ clusterer = new HierarchicalClustererWithProgress();
@@ -515,7 +515,7 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 
 		
 		options[4] = "-N";
-		options[5] = "1";
+		options[5] = "1"; //"" + minNumClusters; //"1";
 		
 		options[6] = "-P";
 //		options[7] = "-D";
@@ -568,8 +568,8 @@ public class HierarClusterer /*implements ClusteringAlgorithm*/ {
 	        //
             JoinAlignerGCTask.printMemoryUsage(run_time, prevTotal, prevFree, "WEKA CLUSTERER LISTED");
 			
-			ClusteringResult result = new ClusteringResult(
-					null, //clusters, //null,
+			ClusteringResult<Integer> result = new ClusteringResult<>(
+					clusters, //null,
 					//clusterer.toString(),
 					clusterer.toStringGLG(),
 					clusterer.getNumClusters(), 

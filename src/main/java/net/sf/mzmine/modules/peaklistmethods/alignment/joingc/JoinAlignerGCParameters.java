@@ -28,6 +28,7 @@ import net.sf.mzmine.parameters.impl.SimpleParameterSet;
 import net.sf.mzmine.parameters.parametertypes.BooleanParameter;
 import net.sf.mzmine.parameters.parametertypes.ComboParameter;
 import net.sf.mzmine.parameters.parametertypes.DoubleParameter;
+import net.sf.mzmine.parameters.parametertypes.IntegerParameter;
 import net.sf.mzmine.parameters.parametertypes.StringParameter;
 import net.sf.mzmine.parameters.parametertypes.filenames.FileNameParameter;
 import net.sf.mzmine.parameters.parametertypes.selectors.PeakListsParameter;
@@ -38,7 +39,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 
 
     // Clustering method 
-	// [0:RAM buggy but cool, 1: OK but poor parser, 2: Good but too many dependencies and may be less consuming]
+	// [0:RAM greedy but cool, 1: OK but poor parser, 2: Good but too many dependencies and may be less consuming]
     public static final int CLUST_METHOD = 1;
 
     
@@ -59,6 +60,36 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     */
     
     
+    // Clusterer choice
+    public static final ComboParameter<Integer> clusterer_type = new ComboParameter<Integer>(
+            "Clusterer", 
+            "...", 
+            new Integer[] { 0, 1, 2 },
+            1
+            );
+//    // Clusterer k
+//    public static final IntegerParameter clusterer_k = new IntegerParameter(
+//            "k", 
+//            "...", 
+//            1
+//            );
+//    // Clusterer cluster size
+//    public static final IntegerParameter clusterer_minClusterSize = new IntegerParameter(
+//            "minClusterSize", 
+//            "...", 
+//            1
+//            );
+//    public static final BooleanParameter clusterer_useConstraints = new BooleanParameter(
+//            "useConstraints", 
+//            "...",
+//            false
+//            );
+//    public static final BooleanParameter clusterer_selfEdges = new BooleanParameter(
+//            "selfEdges", 
+//            "...",
+//            true
+//            );
+    
     // Clustering linkage strategy
     public static final ComboParameter<ClusteringLinkageStrategyType> linkageStartegyType_0 = new ComboParameter<ClusteringLinkageStrategyType>(
             "Clustering strategy", 
@@ -66,13 +97,13 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
             ClusteringLinkageStrategyType.values(),
             ClusteringLinkageStrategyType.AVERAGE
             );
-    // Clustering linkage strategy
-    public static final ComboParameter<LinkType> linkageStartegyType_12 = new ComboParameter<LinkType>(
-            "Clustering strategy", 
-            "What strategy shall be used for the clustering algorithm decision making (See: \"Hierarchical clustering\" algorithms in general).", 
-            LinkType.values(),
-            LinkType.AVERAGE
-            );
+//    // Clustering linkage strategy
+//    public static final ComboParameter<LinkType> linkageStartegyType_12 = new ComboParameter<LinkType>(
+//            "Clustering strategy", 
+//            "What strategy shall be used for the clustering algorithm decision making (See: \"Hierarchical clustering\" algorithms in general).", 
+//            LinkType.values(),
+//            LinkType.AVERAGE
+//            );
     
     
     
@@ -184,7 +215,6 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     
     static private Parameter[] getParameters(int clust_method) {
     	
-    	if (clust_method == 0) {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
@@ -199,29 +229,12 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
         			
         			// Removed: used only for CLUST_METHOD == 0
-        			exportDendrogramPng, dendrogramPngFilename,
-        			exportDendrogramTxt, dendrogramTxtFilename
-        	};
-    	} else {
-    		return new Parameter[] { peakLists, 
-        			useOldestRDFAncestor, 
-        			/*comparisonOrder,*/
-        			linkageStartegyType_12,  peakListName, 
-        			MZTolerance, MZWeight,
-        			RTTolerance, RTWeight,
-        			minScore,
-        			//		IDWeight,
-        			useApex, useKnownCompoundsAsRef, 
-        			useDetectedMzOnly,
-        			RTToleranceAfter, 
-        			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
-        			
-        			// Removed: used only for CLUST_METHOD == 0
 //        			exportDendrogramNewickTxt, dendrogramNewickTxtFilename
         			dendrogramFormatType,
         			exportDendrogramTxt, dendrogramTxtFilename,
+        			
+        			clusterer_type//, clusterer_k, clusterer_minClusterSize, clusterer_useConstraints, clusterer_selfEdges
         	};
-    	}
     }
     
 

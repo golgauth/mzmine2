@@ -21,14 +21,14 @@ package net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering;
 
 import java.util.List;
 
-public class ClusteringResult {
+public class ClusteringResult<T> {
 
-    private List<Integer> clusters;
+    private List<T> clusters;
     private String hierarchicalCluster;
     private int numberOfGroups;
     private VisualizationType visualizationType;
 
-    public ClusteringResult(List<Integer> clusters, String hierarchicalCluster,
+    public ClusteringResult(List<T> clusters, String hierarchicalCluster,
 	    int numberOfGroups, VisualizationType visualizationType) {
 	this.clusters = clusters;
 	this.hierarchicalCluster = hierarchicalCluster;
@@ -36,7 +36,7 @@ public class ClusteringResult {
 	this.visualizationType = visualizationType;
     }
 
-    public List<Integer> getClusters() {
+    public List<T> getClusters() {
 	return clusters;
     }
 

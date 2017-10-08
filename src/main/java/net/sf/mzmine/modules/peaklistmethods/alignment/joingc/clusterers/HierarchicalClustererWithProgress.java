@@ -529,6 +529,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 				for (int j = 0; j < nClusterID[i].size(); j++) {
 					m_nClusterNr[nClusterID[i].elementAt(j)] = iCurrent;
 				}
+				System.out.println(m_clusters[iCurrent] + " | " + clusterNodes[i]);
 				m_clusters[iCurrent] = clusterNodes[i];
 				iCurrent++;
 			}
@@ -1069,6 +1070,9 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		while (nClusters > m_nNumClusters) {
 			int iMin1 = -1;
 			int iMin2 = -1;
+			
+//			boolean keep_going = false;
+			
 			// find closest two clusters
 			if (m_bDebug) {
 				/* simple but inefficient implementation */
@@ -1087,46 +1091,57 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 						}
 					}
 				}
-				/****/merge(iMin1, iMin2, fMinDistance, fMinDistance, nClusterID, clusterNodes);
+				merge(iMin1, iMin2, fMinDistance, fMinDistance, nClusterID, clusterNodes);
 			} else {
 				// use priority queue to find next best pair to cluster
 				Tuple t;
 				do {
 					t = queue.poll();
 				} while (t!=null && (nClusterID[t.m_iCluster1].size() != t.m_nClusterSize1 || nClusterID[t.m_iCluster2].size() != t.m_nClusterSize2));
-				iMin1 = t.m_iCluster1;
-				iMin2 = t.m_iCluster2;
-				/****/merge(iMin1, iMin2, t.m_fDist, t.m_fDist, nClusterID, clusterNodes);
+				
+				if (t != null) {
+					iMin1 = t.m_iCluster1;
+					iMin2 = t.m_iCluster2;
+					merge(iMin1, iMin2, t.m_fDist, t.m_fDist, nClusterID, clusterNodes);
+					
+				}
+				
+//				keep_going = (t != null);
 			}
 			// merge  clusters
 
-			// update distances & queue
-			for (int i = 0; i < nInstances; i++) {
-				if (i != iMin1 && nClusterID[i].size()!=0) {
-					int i1 = Math.min(iMin1,i);
-					int i2 = Math.max(iMin1,i);
-					/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
-//					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
-					double fDistance = getDistanceGLG(distancesMtx, nClusterID[i1], nClusterID[i2]);
-					if (m_bDebug) {
-						fClusterDistance[i1][i2] = fDistance;
-						fClusterDistance[i2][i1] = fDistance;
+//			if (keep_going) {
+				// update distances & queue
+				for (int i = 0; i < nInstances; i++) {
+					if (i != iMin1 && nClusterID[i].size()!=0) {
+						int i1 = Math.min(iMin1,i);
+						int i2 = Math.max(iMin1,i);
+						/** double fDistance = getDistance(fDistance0, nClusterID[i1], nClusterID[i2]);*/
+	//					double fDistance = getDistanceGLG(distVec, nClusterID[i1], nClusterID[i2]);
+						double fDistance = getDistanceGLG(distancesMtx, nClusterID[i1], nClusterID[i2]);
+						if (m_bDebug) {
+							fClusterDistance[i1][i2] = fDistance;
+							fClusterDistance[i2][i1] = fDistance;
+						}
+						//System.out.println(fDistance);
+//						if (fDistance < 350.0d) { //distThreshold) {
+							queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
+//						}
 					}
-					//if (fDistance < distThreshold) {
-						queue.add(new Tuple(fDistance, i1, i2, nClusterID[i1].size(), nClusterID[i2].size()));
-					//}
+		
+		//				// GLG HACK: progress stuff
+		//				double base_progress1 = 1d - (double) (nClusters) / (double) totalClusters;
+		//				double base_progress2 = 1d - (double) (nClusters-1) / (double) totalClusters;
+		//				double delta_progress = base_progress2 - base_progress1;
+		//				clustProgress.setProgress((base_progress1 + delta_progress * (double) i / (double) nInstances));
+		
 				}
-
-//				// GLG HACK: progress stuff
-//				double base_progress1 = 1d - (double) (nClusters) / (double) totalClusters;
-//				double base_progress2 = 1d - (double) (nClusters-1) / (double) totalClusters;
-//				double delta_progress = base_progress2 - base_progress1;
-//				clustProgress.setProgress((base_progress1 + delta_progress * (double) i / (double) nInstances));
-
-			}
+			
+//			}
+			
 			//
 			// GLG HACK: progress stuff
-			clustProgress.setProgress(1d - (double) nClusters / (double) totalClusters);
+			clustProgress.setProgress(1.0d - (double) nClusters / (double) totalClusters);
 			
 			nClusters--;
 
@@ -1134,7 +1149,7 @@ public class HierarchicalClustererWithProgress extends AbstractClusterer impleme
 		}
 
 		// GLG HACK: progress stuff
-		clustProgress.setProgress(1d);
+		clustProgress.setProgress(1.0d);
 
 	} // doLinkClusteringGLG (TriangularMatrix)
 
