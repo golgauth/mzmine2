@@ -445,7 +445,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
      * This method returns score between the these two peaks (the lower score,
      * the better match)
      */
-    double getScore() {
+    public double getScore() {
 	return score;
     }
 

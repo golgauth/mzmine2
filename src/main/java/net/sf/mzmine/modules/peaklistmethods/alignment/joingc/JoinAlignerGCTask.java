@@ -101,6 +101,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.LinkTyp
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.Tree;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeNode;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeParser;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.HybridDistanceCalculator;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.RowVsRowDistanceCatcher;
 //import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.XMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
@@ -1353,7 +1354,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 					useApex,
 					useKnownCompoundsAsRef,
 					useDetectedMzOnly,
-					rtToleranceAfter);
+					rtToleranceAfter,
+					maximumScore);
 
 			org.gnf.clustering.Node[] arNodes = null;
 			//int nRowCount = distancesGNF_Tri.getRowCount();
@@ -1380,9 +1382,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 				if (DEBUG_2)
 					System.out.println(distancesGNF_Tri.toString());
 				
-				if (saveRAMratherThanCPU) { // Required distances will recomputed on demand during "getValidatedClusters_3()"
-					distancesGNF_Tri_Bkp = null;
-				} else { // Otherwise, backing up the distance matrix (which will be deeply changed  during "clusterDM()")
+				if (saveRAMratherThanCPU) { // Requires: distances values will recomputed on demand during "getValidatedClusters_3()"
+					distancesGNF_Tri_Bkp = null; // No duplicate backup storage!
+				} else { // Otherwise, backing up the distance matrix (matrix being deeply changed during "clusterDM()", then no more exploitable)
 					distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
 					printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER BACKUP MATRIX");
 				}
@@ -1418,9 +1420,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 				// TODO: ...!
 				int nColCount = 1;
 
-				float[] arFloats = new float[nRowCount];
+				float[] arFloats = new float[nRowCount*nColCount];
 				for (int i=0; i < arFloats.length; i++) {
-					arFloats[i] = i; // / 2.0f;
+					arFloats[i] = (float) Math.random(); // i;
 				}
 				DataSource source = new FloatSource1D(arFloats, nRowCount, nColCount);
 
@@ -1433,7 +1435,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 						.getBestPeak().getRT());
 				double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
 				double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
-				((HybridDistanceCalculator) calculator).setDistanceCatcher(distCatcher, mzMaxDiff, rtMaxDiff);
+				((HybridDistanceCalculator) calculator).setDistanceCatcher(distCatcher, mzMaxDiff, rtMaxDiff, minScore);
 				
 				// <A> 1nd pass: use distances as usual... (simply not precomputed this time)
 				final HierarchicalClustering clusteringHier = new SequentialCacheClustering(calculator, linkageStartegyType_20);
@@ -1454,40 +1456,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 					// File output
 
 					outputPrefix = "hierar_2";
-
-//					String outGtr = outputPrefix + ".gtr";
-//					String outCdt = outputPrefix + ".cdt";
-//
-//
-//					System.out.println("Writing output to file...");
-//
-//					String[] colNames = new String[nColCount];
-//					colNames[nColCount-1] = "Id";
-//					String sep = "\t";
-//
-//
-//					if (do_print) {
-//						try {
-//
-//							// Sort Nodes by correlation score (Required in 'getValidatedClusters_3')
-//							int[] rowOrder = new int[nRowCount];
-//							System.out.println("Sorting tree nodes...");
-//							org.gnf.clustering.Utils.NodeSort(arNodes, nRowCount - 2, 0,  rowOrder);
-//
-//							/*org.gnf.clustering.Utils.*/JoinAlignerGCTask.GenerateCDT(outCdt, null, 
-//									nRowCount, nColCount, sep, rowNames, colNames, rowOrder);
-//						} catch (IOException e) {
-//							// TODO Auto-generated catch block
-//							e.printStackTrace();
-//						}
-//
-//
-//						org.gnf.clustering.Utils.WriteTreeToFile(outGtr, nRowCount - 1, arNodes, true);
-//
-//						printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER FILES PRINTED");
-//
-//					}
-					
+				
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -2695,13 +2664,20 @@ public class JoinAlignerGCTask extends AbstractTask {
 								Range<Double> rtRange = rtTolerance.getToleranceRange(row
 										.getBestPeak().getRT());
 								
-								RowVsRowScoreGC score = distCatcher.getScore(
-										leaves.get(i), leaves.get(j),
-										RangeUtils.rangeLength(mzRange) / 2.0,
-										RangeUtils.rangeLength(rtRange) / 2.0
-										);
+//								RowVsRowScoreGC score = distCatcher.getScore(
+//										leaves.get(i), leaves.get(j),
+//										RangeUtils.rangeLength(mzRange) / 2.0,
+//										RangeUtils.rangeLength(rtRange) / 2.0
+//										);
+//								
+//								dist = (float) (maximumScore - score.getScore());
 								
-								dist = (float) (maximumScore - score.getScore());
+								dist = (float) distCatcher.getRankedDistance(
+										leaves.get(i), leaves.get(j), 
+										RangeUtils.rangeLength(mzRange) / 2.0, 
+										RangeUtils.rangeLength(rtRange) / 2.0,  
+										minScore
+										);
 							}
 							if (max_dist_2 < dist) {
 								max_dist_2 = dist;
