@@ -21,10 +21,10 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers;
 
 public enum ClustererType {
 
-    CLASSIC_OLD("Classic (Original)"), // WEKA
+    CLASSIC_OLD("Classic(Original)"), // WEKA
     
-    CLASSIC("Classic (Base)"), 
-    CACHED("Classic (Cached)"), 
+    CLASSIC("Classic(Base)"), 
+    CACHED("Classic(Cached)"), 
     HYBRID("Hybrid");
 
     private final String name;

@@ -163,7 +163,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
-
 	public static String TASK_NAME = "Join aligner GC";
 
 	private final MZmineProject project;
@@ -359,7 +358,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		// 
 		ClusteringLinkageStrategyType linkageStartegyType_0 = parameters.getParameter(
 				JoinAlignerGCParameters.linkageStartegyType_0).getValue();
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 			switch (linkageStartegyType_0) {
 			case SINGLE:
 				linkageStartegyType_12 = LinkType.SINGLE;
@@ -498,7 +497,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 		// Create a new aligned peak list
 		alignedPeakList = new SimplePeakList(peakListName,
 				allDataFiles.toArray(new RawDataFile[0]));
-
 
 
 		/** RTAdjustement mapping **/
@@ -848,7 +846,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		
 		
 		//distances = new double[nbPeaks][nbPeaks];
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 			if (USE_DOUBLE_PRECISION_FOR_DIST) {
 				distances = new TriangularMatrixDouble(nbPeaks);
 			} else {
@@ -991,7 +989,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 						if (x == y) {
 							/** Row tested against himself => fill matrix diagonal with zeros */
 							//                            distances[x][y] = 0.0d;
-							if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
+							if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
 								distances.set(x, y, 0d);
 							else {
 								//distancesGNF.setValue(x, y, 0.0f);
@@ -1049,7 +1047,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 										//////scoreSet.add(score);
 										// The higher the score, the lower the distance!
 										//                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
-										if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
+										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
 											distances.set(x, y , maximumScore - score.getScore());
 										else
 											distancesGNF_Tri.setValue(x, y, (float) (maximumScore - score.getScore()));
@@ -1059,7 +1057,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 										////distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
 										//////distances[x][y] = Double.MAX_VALUE;
 										//                                        distances[x][y] = veryLongDistance;
-										if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
+										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
 											distances.set(x, y , veryLongDistance);
 										else
 											distancesGNF_Tri.setValue(x, y, veryLongDistance);
@@ -1072,7 +1070,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 									//distances[x][y] = Double.MAX_VALUE;//10.0d * veryLongDistance; // Need to rank distances for "rejected" cases
 									//////distances[x][y] = Double.MAX_VALUE;
 									//                                    distances[x][y] = 10.0d * veryLongDistance;
-									if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
+									if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
 										distances.set(x, y , 10.0d * veryLongDistance);
 									else
 										distancesGNF_Tri.setValue(x, y, 10.0f * veryLongDistance);
@@ -1083,7 +1081,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 								//distances[x][y] = Double.MAX_VALUE;//100.0d * veryLongDistance; // Need to rank distances for "rejected" cases
 								//////distances[x][y] = Double.MAX_VALUE;
 								//                                distances[x][y] = 100.0d * veryLongDistance;
-								if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
+								if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
 									distances.set(x, y , 100.0d * veryLongDistance);
 								else
 									distancesGNF_Tri.setValue(x, y, 100.0f * veryLongDistance);
@@ -1249,7 +1247,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		String newickCluster;
 		List<List<Integer>> gnfClusters = null;
 
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 
 			// WEKA hierarchical clustering
 			HierarClusterer hierarClusterer;
@@ -1577,7 +1575,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		int finalNbPeaks = 0;
 		Set<String> leaf_names = new HashSet<>();
 
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 
 			tot = 0;
 			tot2 = 0;
@@ -1887,6 +1885,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 				//processedRows++;
 
 			}
+
+//			// Notify MZmine about the change in the project, necessary ???
+//			MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+//			project.notifyObjectChanged(targetRow, false);
 		}
 
 		//        // Free mem
@@ -2093,25 +2095,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 			}
 
 
-			// Notify MZmine about the change in the project, necessary ???
-			MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
-			project.notifyObjectChanged(targetRow, false);
+//			// Notify MZmine about the change in the project, necessary ???
+//			MZmineProject project = MZmineCore.getProjectManager().getCurrentProject();
+//			this.project.notifyObjectChanged(targetRow, false);
 		}
 
-
-
-
-
-		// Add new aligned peak list to the project
-		project.addPeakList(alignedPeakList);
-
-		// Add task description to peakList
-		alignedPeakList
-		.addDescriptionOfAppliedTask(new SimplePeakListAppliedMethod(
-				JoinAlignerGCTask.TASK_NAME, parameters));
-
-		logger.info("Finished join aligner");
-		setStatus(TaskStatus.FINISHED);
 
 
 		//        if (DEBUG) {
@@ -2140,7 +2128,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//logger.info("Nb peaks ...: bip = " + bip);
 		logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
 
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 			
 			logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + tree_1.getLeafCount() + " | " + full_rows_list.size());                    
 		
@@ -2162,7 +2150,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		//----------------------------------------------------------------------
 
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) { // Newick => FigTree!
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) { // Newick => FigTree!
 
 			// Use long names instead of short default ones
 			boolean USE_EXPLICIT_NAMES = true;
@@ -2202,6 +2190,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 		}
 
 		//----------------------------------------------------------------------
+
+		// Add new aligned peak list to the project
+		this.project.addPeakList(alignedPeakList);
+		
+		for (RawDataFile rdf: alignedPeakList.getRawDataFiles())
+			System.out.println("RDF: " + rdf);
+
+		// Add task description to peakList
+		alignedPeakList
+			.addDescriptionOfAppliedTask(new SimplePeakListAppliedMethod(
+				JoinAlignerGCTask.TASK_NAME, parameters));
+
+		logger.info("Finished join aligner GC");
+		setStatus(TaskStatus.FINISHED);
+
 
 
 	}
