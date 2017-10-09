@@ -1,4 +1,4 @@
-package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
+package net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid;
 
 import java.util.Hashtable;
 import java.util.List;
@@ -8,6 +8,7 @@ import com.google.common.collect.Range;
 import net.sf.mzmine.datamodel.MZmineProject;
 import net.sf.mzmine.datamodel.PeakListRow;
 import net.sf.mzmine.datamodel.RawDataFile;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.RowVsRowScoreGC;
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.util.RangeUtils;
 

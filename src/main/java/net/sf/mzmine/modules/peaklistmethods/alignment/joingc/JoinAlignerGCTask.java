@@ -66,12 +66,18 @@ import javax.swing.JTextField;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.gnf.clustering.DataSource;
+import org.gnf.clustering.DistanceCalculator;
 import org.gnf.clustering.DistanceMatrix;
 import org.gnf.clustering.DistanceMatrix1D;
 import org.gnf.clustering.DistanceMatrix2D;
 import org.gnf.clustering.FloatSource1D;
 import org.gnf.clustering.FloatSource2D;
+import org.gnf.clustering.HierarchicalClustering;
 import org.gnf.clustering.LinkageMode;
+import org.gnf.clustering.hybrid.CentroidsCalculator;
+import org.gnf.clustering.hybrid.DefaultCentroidsCalculator;
+import org.gnf.clustering.hybrid.HybridClustering;
+import org.gnf.clustering.hybrid.TanimotoCentroidsCalculator;
 import org.gnf.clustering.sequentialcache.SequentialCacheClustering;
 
 import net.sf.mzmine.datamodel.Feature;
@@ -86,6 +92,7 @@ import net.sf.mzmine.datamodel.impl.SimplePeakList;
 import net.sf.mzmine.datamodel.impl.SimplePeakListAppliedMethod;
 import net.sf.mzmine.datamodel.impl.SimplePeakListRow;
 import net.sf.mzmine.main.MZmineCore;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.ClustererType;
 //import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.DBSCANClusterer;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HDBSCANClusterer;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.HDBSCANClustererELKI;
@@ -94,6 +101,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.LinkTyp
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.Tree;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeNode;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeParser;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.RowVsRowDistanceCatcher;
 //import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.XMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
@@ -170,6 +178,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 	//private ClusteringLinkageStrategyType linkageStartegyType_0;
 	private LinkType linkageStartegyType_12;
 	private LinkageMode linkageStartegyType_20;
+	
+	//private boolean use_hybrid_K;
+	private int hybrid_K_value;
 
 	
 	private boolean saveRAMratherThanCPU;
@@ -221,7 +232,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 	//private int clustering_method;
 
-	private static int CLUSTERER_TYPE; // = 5; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
+	private ClustererType CLUSTERER_TYPE; // = 5; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
 	//    private static int K;
 	//    private static int MIN_CLUSTER_SIZE;
 	//    
@@ -334,7 +345,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//
 
 		CLUSTERER_TYPE = parameters.getParameter(
-				JoinAlignerGCParameters.clusterer_type).getValue();
+				JoinAlignerGCParameters.clusterer_type).getValue();//.ordinal();
 		//        K = parameters.getParameter(
 		//                JoinAlignerGCParameters.clusterer_k).getValue();
 		//        MIN_CLUSTER_SIZE = parameters.getParameter(
@@ -348,7 +359,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		// 
 		ClusteringLinkageStrategyType linkageStartegyType_0 = parameters.getParameter(
 				JoinAlignerGCParameters.linkageStartegyType_0).getValue();
-		if (CLUSTERER_TYPE == 0) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
 			switch (linkageStartegyType_0) {
 			case SINGLE:
 				linkageStartegyType_12 = LinkType.SINGLE;
@@ -362,7 +373,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 			default:
 				break;
 			}
-		} else if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
+		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
 			switch (linkageStartegyType_0) {
 			case SINGLE:
 				linkageStartegyType_20 = LinkageMode.MIN;
@@ -377,6 +388,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 				break;
 			}
 		}
+		
+		this.hybrid_K_value = parameters.getParameter(
+				JoinAlignerGCParameters.hybrid_K_value).getValue();
 
 		//
 		maximumScore = mzWeight + rtWeight;
@@ -834,13 +848,13 @@ public class JoinAlignerGCTask extends AbstractTask {
 		
 		
 		//distances = new double[nbPeaks][nbPeaks];
-		if (CLUSTERER_TYPE == 0) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
 			if (USE_DOUBLE_PRECISION_FOR_DIST) {
 				distances = new TriangularMatrixDouble(nbPeaks);
 			} else {
 				distances = new TriangularMatrixFloat(nbPeaks);
 			}
-		} else if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
+		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
 			
 			int nRowCount = nbPeaks;
 			//distancesGNF_Tri = nRowCount < 20000 ? new DistanceMatrix1D(nRowCount) : new DistanceMatrixTriangular1D2D(nRowCount);
@@ -977,7 +991,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 						if (x == y) {
 							/** Row tested against himself => fill matrix diagonal with zeros */
 							//                            distances[x][y] = 0.0d;
-							if (CLUSTERER_TYPE == 0)
+							if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
 								distances.set(x, y, 0d);
 							else {
 								//distancesGNF.setValue(x, y, 0.0f);
@@ -1035,7 +1049,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 										//////scoreSet.add(score);
 										// The higher the score, the lower the distance!
 										//                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
-										if (CLUSTERER_TYPE == 0)
+										if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
 											distances.set(x, y , maximumScore - score.getScore());
 										else
 											distancesGNF_Tri.setValue(x, y, (float) (maximumScore - score.getScore()));
@@ -1045,7 +1059,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 										////distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
 										//////distances[x][y] = Double.MAX_VALUE;
 										//                                        distances[x][y] = veryLongDistance;
-										if (CLUSTERER_TYPE == 0)
+										if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
 											distances.set(x, y , veryLongDistance);
 										else
 											distancesGNF_Tri.setValue(x, y, veryLongDistance);
@@ -1058,7 +1072,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 									//distances[x][y] = Double.MAX_VALUE;//10.0d * veryLongDistance; // Need to rank distances for "rejected" cases
 									//////distances[x][y] = Double.MAX_VALUE;
 									//                                    distances[x][y] = 10.0d * veryLongDistance;
-									if (CLUSTERER_TYPE == 0)
+									if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
 										distances.set(x, y , 10.0d * veryLongDistance);
 									else
 										distancesGNF_Tri.setValue(x, y, 10.0f * veryLongDistance);
@@ -1069,7 +1083,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 								//distances[x][y] = Double.MAX_VALUE;//100.0d * veryLongDistance; // Need to rank distances for "rejected" cases
 								//////distances[x][y] = Double.MAX_VALUE;
 								//                                distances[x][y] = 100.0d * veryLongDistance;
-								if (CLUSTERER_TYPE == 0)
+								if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA)
 									distances.set(x, y , 100.0d * veryLongDistance);
 								else
 									distancesGNF_Tri.setValue(x, y, 100.0f * veryLongDistance);
@@ -1235,7 +1249,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		String newickCluster;
 		List<List<Integer>> gnfClusters = null;
 
-		if (CLUSTERER_TYPE == 0) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
 
 			// WEKA hierarchical clustering
 			HierarClusterer hierarClusterer;
@@ -1333,19 +1347,48 @@ public class JoinAlignerGCTask extends AbstractTask {
 			boolean do_print = true;
 			boolean do_data = false;
 
+			
+			RowVsRowDistanceCatcher distCatcher = new RowVsRowDistanceCatcher(
+					project, useOldestRDFAncestor,
+					rtAdjustementMapping, full_rows_list, 
+					mzWeight, rtWeight,
+					useApex,
+					useKnownCompoundsAsRef,
+					useDetectedMzOnly,
+					rtToleranceAfter);
+
 			org.gnf.clustering.Node[] arNodes = null;
-			if (CLUSTERER_TYPE == 1) { // Pure Hierar!
+			//int nRowCount = distancesGNF_Tri.getRowCount();
+			int nRowCount = full_rows_list.size();
+			
+			String[] rowNames = null;
+			if (do_print) {
+				rowNames = new String [nRowCount];
+				for (int i = 0; i < nRowCount; i++) {
+					rowNames[i] = "ID_" + i + "_" + full_rows_list.get(i).getID();//full_rows_list.get(i).getAverageRT();
+				}
+			}
+			String outputPrefix = null;
+			
+			if (CLUSTERER_TYPE == ClustererType.CLASSIC) { // Pure Hierar!
+				
+				outputPrefix = "hierar_0";
+				
+				throw new IllegalStateException("'" + ClustererType.CLASSIC.toString() + "' algorithm not yet implemented!");
+				
+			} else if (CLUSTERER_TYPE == ClustererType.CACHED) { // Pure Hierar!
 				
 				// TODO: ...!
 				if (DEBUG_2)
 					System.out.println(distancesGNF_Tri.toString());
 				
-				if (saveRAMratherThanCPU) // Required distances will recomputed on demand during "getValidatedClusters_3()"
+				if (saveRAMratherThanCPU) { // Required distances will recomputed on demand during "getValidatedClusters_3()"
 					distancesGNF_Tri_Bkp = null;
-				else // Otherwise, backing up the distance matrix (which will be deeply changed  during "clusterDM()")
+				} else { // Otherwise, backing up the distance matrix (which will be deeply changed  during "clusterDM()")
 					distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
+					printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER BACKUP MATRIX");
+				}
 				
-				int nRowCount = distancesGNF_Tri.getRowCount();
 				System.out.println("Clustering...");
 				if(distancesGNF_Tri != null)				
 					arNodes = org.gnf.clustering.sequentialcache
@@ -1368,98 +1411,162 @@ public class JoinAlignerGCTask extends AbstractTask {
 //				ClusteringResult<org.gnf.clustering.Node> clust_res = new ClusteringResult<>(
 //						Arrays.asList(arNodes), null, 0, null);
 				
-				String[] rowNames = new String [nRowCount];
-				for (int i = 0; i < nRowCount; i++) {
-					rowNames[i] = "ID_" + i + "_" + full_rows_list.get(i).getID();//full_rows_list.get(i).getAverageRT();
-				}
-//				Set<Integer> flatLeaves = new HashSet<>();
 				
-				
-				// Sort Nodes by correlation score (Required in 'getValidatedClusters_3')
-				int[] rowOrder = new int[nRowCount];
-				System.out.println("Sorting tree nodes...");
-				org.gnf.clustering.Utils.NodeSort(arNodes, nRowCount - 2, 0,  rowOrder);
-
-				
-				if (do_cluster) {
-					
-					RowVsRowDistanceCatcher distCatcher = new RowVsRowDistanceCatcher(
-							project, useOldestRDFAncestor,
-							rtAdjustementMapping, full_rows_list, 
-							mzWeight, rtWeight,
-							useApex,
-							useKnownCompoundsAsRef,
-							useDetectedMzOnly,
-							rtToleranceAfter);
-					
-					gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp, distCatcher);
-					
-	//				for (int i = 0; i < nRowCount; i++) {
-	//					if (!flatLeaves.contains(i)) {
-	//						List<Integer> cl_single = new ArrayList<>();
-	//						cl_single.add(i);
-	//						gnfClusters.add(cl_single);
-	//					}
-	//				}
-					
-					//-- Print
-					if (DEBUG_2 && do_verbose)
-						for (int i=0; i < gnfClusters.size(); i++) {
-							List<Integer> cl = gnfClusters.get(i);
-							String str = "";
-							for (int j = 0; j < cl.size(); j++) {
-								int r = cl.get(j);
-								str += cl.get(j) + "^(" + full_rows_list.get(r).getID() + ", " + full_rows_list.get(r).getAverageRT() + ")" + " ";
-							}
-							System.out.println(str);
-						}
-				}
-				
-				// File output
-				
-				String outputPrefix = "hierar_1";
-
-				String outGtr = outputPrefix + ".gtr";
-				String outCdt = outputPrefix + ".cdt";
-
-				
-				System.out.println("Writing output to file...");
-
-				int nColCount = 1;
-				String[] colNames = new String[nColCount];
-				colNames[nColCount-1] = "Id";
-				String sep = "\t";
-
-				
-				if (do_print) {
-					try {
-						
-						float[] arFloats = new float[nRowCount];
-						for (int i=0; i < arFloats.length; i++) {
-							arFloats[i] = i / 2.0f;
-						}
-						DataSource source = (do_data) ? new FloatSource1D(arFloats, nRowCount, nColCount) : null;
-						
-						/*org.gnf.clustering.Utils.*/JoinAlignerGCTask.GenerateCDT(outCdt, source/*null*/, 
-								nRowCount, nColCount, sep, rowNames, colNames, rowOrder);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	
-	
-					org.gnf.clustering.Utils./*JoinAlignerGCTask.*/WriteTreeToFile(outGtr, nRowCount - 1, arNodes, true);
-					
-					printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER FILES PRINTED");
-
-				}
+				outputPrefix = "hierar_1";
 
 
-			} else if (CLUSTERER_TYPE == 2) { // Hybrid!
-				
+			} else if (CLUSTERER_TYPE == ClustererType.HYBRID) { // Hybrid!
+
 				// TODO: ...!
-				arNodes = null;
+				int nColCount = 1;
+
+				float[] arFloats = new float[nRowCount];
+				for (int i=0; i < arFloats.length; i++) {
+					arFloats[i] = i; // / 2.0f;
+				}
+				DataSource source = new FloatSource1D(arFloats, nRowCount, nColCount);
+
+				DistanceCalculator calculator = new HybridDistanceCalculator();
+				//-
+				PeakListRow any_row = full_rows_list.get(0);
+				Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
+						.getBestPeak().getMZ());
+				Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
+						.getBestPeak().getRT());
+				double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
+				double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
+				((HybridDistanceCalculator) calculator).setDistanceCatcher(distCatcher, mzMaxDiff, rtMaxDiff);
+				
+				// <A> 1nd pass: use distances as usual... (simply not precomputed this time)
+				final HierarchicalClustering clusteringHier = new SequentialCacheClustering(calculator, linkageStartegyType_20);
+				System.out.println("Clustering...");
+
+				// <B> 2nd pass: use average on clusters
+				CentroidsCalculator calculatorCtr = new DefaultCentroidsCalculator(); 
+				//-
+				final HybridClustering clusteringHybrid = new HybridClustering(clusteringHier, calculatorCtr);
+				if(hybrid_K_value > 0)
+					clusteringHybrid.setK(hybrid_K_value);
+				//-
+				try {
+					arNodes = clusteringHybrid.cluster(source, null);
+
+					printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER DONE");
+
+					// File output
+
+					outputPrefix = "hierar_2";
+
+//					String outGtr = outputPrefix + ".gtr";
+//					String outCdt = outputPrefix + ".cdt";
+//
+//
+//					System.out.println("Writing output to file...");
+//
+//					String[] colNames = new String[nColCount];
+//					colNames[nColCount-1] = "Id";
+//					String sep = "\t";
+//
+//
+//					if (do_print) {
+//						try {
+//
+//							// Sort Nodes by correlation score (Required in 'getValidatedClusters_3')
+//							int[] rowOrder = new int[nRowCount];
+//							System.out.println("Sorting tree nodes...");
+//							org.gnf.clustering.Utils.NodeSort(arNodes, nRowCount - 2, 0,  rowOrder);
+//
+//							/*org.gnf.clustering.Utils.*/JoinAlignerGCTask.GenerateCDT(outCdt, null, 
+//									nRowCount, nColCount, sep, rowNames, colNames, rowOrder);
+//						} catch (IOException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//
+//
+//						org.gnf.clustering.Utils.WriteTreeToFile(outGtr, nRowCount - 1, arNodes, true);
+//
+//						printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER FILES PRINTED");
+//
+//					}
+					
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+
 			}
+			
+			
+			// Sort Nodes by correlation score (Required in 'getValidatedClusters_3')
+			int[] rowOrder = new int[nRowCount];
+			System.out.println("Sorting tree nodes...");
+			org.gnf.clustering.Utils.NodeSort(arNodes, nRowCount - 2, 0,  rowOrder);
+
+			
+			if (do_cluster) {
+				
+				gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp, distCatcher);
+				
+//				for (int i = 0; i < nRowCount; i++) {
+//					if (!flatLeaves.contains(i)) {
+//						List<Integer> cl_single = new ArrayList<>();
+//						cl_single.add(i);
+//						gnfClusters.add(cl_single);
+//					}
+//				}
+				
+				//-- Print
+				if (DEBUG_2 && do_verbose)
+					for (int i=0; i < gnfClusters.size(); i++) {
+						List<Integer> cl = gnfClusters.get(i);
+						String str = "";
+						for (int j = 0; j < cl.size(); j++) {
+							int r = cl.get(j);
+							str += cl.get(j) + "^(" + full_rows_list.get(r).getID() + ", " + full_rows_list.get(r).getAverageRT() + ")" + " ";
+						}
+						System.out.println(str);
+					}
+			}
+			
+			// File output
+
+			String outGtr = outputPrefix + ".gtr";
+			String outCdt = outputPrefix + ".cdt";
+
+			
+			System.out.println("Writing output to file...");
+
+			int nColCount = 1;
+			String[] colNames = new String[nColCount];
+			colNames[nColCount-1] = "Id";
+			String sep = "\t";
+
+			
+			if (do_print) {
+				try {
+					
+					float[] arFloats = new float[nRowCount];
+					for (int i=0; i < arFloats.length; i++) {
+						arFloats[i] = i / 2.0f;
+					}
+					DataSource source = (do_data) ? new FloatSource1D(arFloats, nRowCount, nColCount) : null;
+					
+					/*org.gnf.clustering.Utils.*/JoinAlignerGCTask.GenerateCDT(outCdt, source/*null*/, 
+							nRowCount, nColCount, sep, rowNames, colNames, rowOrder);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+
+				org.gnf.clustering.Utils./*JoinAlignerGCTask.*/WriteTreeToFile(outGtr, nRowCount - 1, arNodes, true);
+				
+				printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER FILES PRINTED");
+
+			}
+
+
 		}
 
 
@@ -1470,7 +1577,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		int finalNbPeaks = 0;
 		Set<String> leaf_names = new HashSet<>();
 
-		if (CLUSTERER_TYPE == 0) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
 
 			tot = 0;
 			tot2 = 0;
@@ -1555,7 +1662,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 			}
 
-		} else if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
+		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
 
 			// TODO: ...!
 			// Build peak list row clusters
@@ -2033,11 +2140,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//logger.info("Nb peaks ...: bip = " + bip);
 		logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
 
-		if (CLUSTERER_TYPE == 0) {
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) {
 			
 			logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + tree_1.getLeafCount() + " | " + full_rows_list.size());                    
 		
-		} else if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
+		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
 			//logger.info("Nb peaks treated - suite: " + leaf_names.size() + " | " + getClusterLeafs_2((RootedTree) tree_2, ((RootedTree) tree_2).getRootNode()) + " | " + full_rows_list.size());                    
 			
 			// TODO: ...!
@@ -2055,7 +2162,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		//----------------------------------------------------------------------
 
-		if (CLUSTERER_TYPE == 0) { // Newick => FigTree!
+		if (CLUSTERER_TYPE == ClustererType.CLASSIC_WEKA) { // Newick => FigTree!
 
 			// Use long names instead of short default ones
 			boolean USE_EXPLICIT_NAMES = true;
@@ -2088,7 +2195,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 				}
 			}
 
-		} else if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) { // CDT + GTR => TreeView!
+		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) { // CDT + GTR => TreeView!
 			
 			// TODO: ...!
 			

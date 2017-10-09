@@ -86,7 +86,7 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
 
     }
     
-    RowVsRowScoreGC(MZmineProject project, boolean useOldestRDFancestor,
+    public RowVsRowScoreGC(MZmineProject project, boolean useOldestRDFancestor,
             /*RawDataFile rawDF,*/ Hashtable<RawDataFile, List<double[]>> rtAdjustementMapping,
             PeakListRow peakListRow, PeakListRow alignedRow,
             double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight,

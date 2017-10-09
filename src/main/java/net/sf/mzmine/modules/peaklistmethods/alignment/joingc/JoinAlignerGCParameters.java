@@ -21,6 +21,7 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 
 import java.text.NumberFormat;
 
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.ClustererType;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.LinkType;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoundsIdentificationSingleTask;
 import net.sf.mzmine.parameters.Parameter;
@@ -46,7 +47,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     //-- Use unaltered RDF...
     public static final BooleanParameter saveRAMratherThanCPU = new BooleanParameter(
             "Save RAM (!! <LAST-PART-ONLY> !!)", 
-            "Save RAM rather than CPU during the 2nd step of the clustering (building clusters from tree).",
+            "Ignored if clusterer type is not 'Cached'. Saves RAM at the expense of CPU during the 2nd step of the clustering (building clusters from tree).",
             false
             );
 
@@ -68,12 +69,19 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     
     
     // Clusterer choice
-    public static final ComboParameter<Integer> clusterer_type = new ComboParameter<Integer>(
-            "Clusterer", 
-            "...", 
-            new Integer[] { 0, 1, 2 },
-            1
+    public static final ComboParameter<ClustererType> clusterer_type = new ComboParameter<ClustererType>(
+            "Hierarchical clusterer", 
+            "Which clustering algorithm should be used (See: \"Hierarchical clustering\" algorithms in general).", 
+            ClustererType.values(),
+            ClustererType.CACHED
             );
+//    public static final ComboParameter<Integer> clusterer_type = new ComboParameter<Integer>(
+//            "Clusterer", 
+//            "...", 
+//            new Integer[] { 0, 1, 2 },
+//            1
+//            );
+
 //    // Clusterer k
 //    public static final IntegerParameter clusterer_k = new IntegerParameter(
 //            "k", 
@@ -112,7 +120,17 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
 //            LinkType.AVERAGE
 //            );
     
-    
+    // Clusterer k
+//    public static final BooleanParameter use_hybrid_K = new BooleanParameter(
+//            "Use 'K' value (Hybrid clusterer)",
+//            "Shall we pass a K value to the 'Hybrid' clusterer, or let it decide.",
+//            false);
+    public static final IntegerParameter hybrid_K_value = new IntegerParameter(
+            "'K' value (Hybrid clusterer)", 
+            "Ignored if clusterer type is not 'Hybrid'. Number of clusters for 1st pass (-1 => Let the algorithm decide) - 'Hybrid' uses 'K-Mean algorithm' as a first clustering pass.", 
+            -1
+            );
+
     
     //-- Use unaltered RDF...
     public static final BooleanParameter useOldestRDFAncestor = new BooleanParameter(
@@ -225,8 +243,11 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
+        			clusterer_type,
         			saveRAMratherThanCPU,
-        			linkageStartegyType_0,  peakListName, 
+        			linkageStartegyType_0, 
+        			/*use_hybrid_K,*/ hybrid_K_value,
+        			peakListName, 
         			MZTolerance, MZWeight,
         			RTTolerance, RTWeight,
         			minScore,
@@ -241,7 +262,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			dendrogramFormatType,
         			exportDendrogramTxt, dendrogramTxtFilename,
         			
-        			clusterer_type//, clusterer_k, clusterer_minClusterSize, clusterer_useConstraints, clusterer_selfEdges
+        			//clusterer_type//, clusterer_k, clusterer_minClusterSize, clusterer_useConstraints, clusterer_selfEdges
         	};
     }
     
