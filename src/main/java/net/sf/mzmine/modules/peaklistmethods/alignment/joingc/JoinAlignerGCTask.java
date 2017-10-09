@@ -171,17 +171,20 @@ public class JoinAlignerGCTask extends AbstractTask {
 	private LinkType linkageStartegyType_12;
 	private LinkageMode linkageStartegyType_20;
 
+	
+	private boolean saveRAMratherThanCPU;
+	//
 	private boolean useOldestRDFAncestor;
 	private MZTolerance mzTolerance;
 	private RTTolerance rtTolerance;
 	private double mzWeight, rtWeight;
 	private double minScore;
 	private double idWeight;
-
+	//
 	private boolean useApex, useKnownCompoundsAsRef;
 	private boolean useDetectedMzOnly;
 	private RTTolerance rtToleranceAfter;
-
+	//
 	private boolean exportDendrogramAsPng;
 	private File dendrogramPngFilename;
 	private boolean exportDendrogramAsTxt;
@@ -256,6 +259,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//        			JoinAlignerGCParameters.linkageStartegyType_12).getValue();
 		//        }
 
+		saveRAMratherThanCPU = parameters.getParameter(
+				JoinAlignerGCParameters.saveRAMratherThanCPU).getValue();
+		
 		useOldestRDFAncestor = parameters.getParameter(
 				JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
 
@@ -858,6 +864,17 @@ public class JoinAlignerGCTask extends AbstractTask {
 //			}
 //		}
 		*/
+//		// Calculate limits for a row with which the row can be aligned
+//		//            Range<Double> mzRange = mzTolerance.getToleranceRange(row
+//		//                    .getAverageMZ());
+//		//            Range<Double> rtRange = rtTolerance.getToleranceRange(row
+//		//                    .getAverageRT());
+//		// GLG HACK: Use best peak rather than average. No sure it is better... ???
+//		PeakListRow any_row = peakLists[newIds[0]].getRow(0);
+//		Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
+//				.getBestPeak().getMZ());
+//		Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
+//				.getBestPeak().getRT());
 
 
 		RowVsRowScoreGC score;
@@ -902,11 +919,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 				if (isCanceled())
 					return;
 
-				// Calculate limits for a row with which the row can be aligned
-				//            Range<Double> mzRange = mzTolerance.getToleranceRange(row
-				//                    .getAverageMZ());
-				//            Range<Double> rtRange = rtTolerance.getToleranceRange(row
-				//                    .getAverageRT());
+//				// Calculate limits for a row with which the row can be aligned
+//				//            Range<Double> mzRange = mzTolerance.getToleranceRange(row
+//				//                    .getAverageMZ());
+//				//            Range<Double> rtRange = rtTolerance.getToleranceRange(row
+//				//                    .getAverageRT());
 				// GLG HACK: Use best peak rather than average. No sure it is better... ???
 				Range<Double> mzRange = mzTolerance.getToleranceRange(row
 						.getBestPeak().getMZ());
@@ -1323,7 +1340,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 				if (DEBUG_2)
 					System.out.println(distancesGNF_Tri.toString());
 				
-				distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
+				if (saveRAMratherThanCPU) // Required distances will recomputed on demand during "getValidatedClusters_3()"
+					distancesGNF_Tri_Bkp = null;
+				else // Otherwise, backing up the distance matrix (which will be deeply changed  during "clusterDM()")
+					distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
 				
 				int nRowCount = distancesGNF_Tri.getRowCount();
 				System.out.println("Clustering...");
@@ -1362,7 +1382,17 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 				
 				if (do_cluster) {
-					gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp);//distancesGNF_Tri);
+					
+					RowVsRowDistanceCatcher distCatcher = new RowVsRowDistanceCatcher(
+							project, useOldestRDFAncestor,
+							rtAdjustementMapping, full_rows_list, 
+							mzWeight, rtWeight,
+							useApex,
+							useKnownCompoundsAsRef,
+							useDetectedMzOnly,
+							rtToleranceAfter);
+					
+					gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp, distCatcher);
 					
 	//				for (int i = 0; i < nRowCount; i++) {
 	//					if (!flatLeaves.contains(i)) {
@@ -2409,7 +2439,9 @@ public class JoinAlignerGCTask extends AbstractTask {
 	private List<List<Integer>> getValidatedClusters_3(
 			org.gnf.clustering.Node[] arNodes, 
 			float minCorrValue, int level, 
-			double max_dist, DistanceMatrix distMtx) {
+			double max_dist, DistanceMatrix distMtx,
+			RowVsRowDistanceCatcher distCatcher
+			) {
 
 		List<List<Integer>> validatedClusters = new ArrayList<>();
 
@@ -2464,7 +2496,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 		if (nBest < 0) { nBest = -nBest - 1; }
 		
 		System.out.println("#TRACING BEST NODE '" + nBest + "' :");
-		validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx));
+		//**validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx));
+		validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx, distCatcher));
 		
 
 		if (DEBUG) {
@@ -2487,7 +2520,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 	List<List<Integer>> recursive_validate_clusters_3(
 			org.gnf.clustering.Node[] arNodes, int nNode, 
 			int level, /*float minCorrValue, */
-			double max_dist, DistanceMatrix distMtx) {
+			double max_dist, DistanceMatrix distMtx, RowVsRowDistanceCatcher distCatcher) {
 
 		List<List<Integer>> validatedClusters = new ArrayList<>();
 
@@ -2532,29 +2565,34 @@ public class JoinAlignerGCTask extends AbstractTask {
 				// Check validity
 				boolean node_is_cluster = true;
 				float max_dist_2 = Float.MIN_VALUE;
-
+				//-
 				boolean nb_leaves_ok = (leaves.size() <= level);
-				
-//				if (nb_leaves_ok) {
-//					//				for (int nLeft = 0; nLeft < left_leaves.size(); nLeft++) {
-//					//					for (int nRight = 0; nRight < right_leaves.size(); nRight++) {
-//					for (int nLeft: left_leaves) {
-//						for (int nRight: right_leaves) {
-//	
-//							// Get distance between left and right leafs
-//							float dist = distMtx.getValue(nLeft, nRight);
-//							if (max_dist_2 < dist) {
-//								max_dist_2 = dist;
-//							}
-//						}
-//					}
-//				}
+				//-
+				// Compare distances of each leaf to each other to check cluster's consistency
 				if (nb_leaves_ok) {
 					for (int i = 0; i < leaves.size(); i++) {
 						for (int j = i+1; j < leaves.size(); j++) {
 	
 							// Get distance between left and right leafs
-							float dist = distMtx.getValue(leaves.get(i), leaves.get(j));
+							float dist = 0.0f;
+							if (distMtx != null) {
+								dist = distMtx.getValue(leaves.get(i), leaves.get(j));
+							} else {
+								
+								PeakListRow row = full_rows_list.get(leaves.get(i));
+								Range<Double> mzRange = mzTolerance.getToleranceRange(row
+										.getBestPeak().getMZ());
+								Range<Double> rtRange = rtTolerance.getToleranceRange(row
+										.getBestPeak().getRT());
+								
+								RowVsRowScoreGC score = distCatcher.getScore(
+										leaves.get(i), leaves.get(j),
+										RangeUtils.rangeLength(mzRange) / 2.0,
+										RangeUtils.rangeLength(rtRange) / 2.0
+										);
+								
+								dist = (float) (maximumScore - score.getScore());
+							}
 							if (max_dist_2 < dist) {
 								max_dist_2 = dist;
 							}
@@ -2586,7 +2624,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 					if (node.m_nLeft < 0)
 						validatedClusters.addAll(recursive_validate_clusters_3(
 								arNodes, node.m_nLeft, level, /*minCorrValue,*/
-								max_dist, distMtx));
+								max_dist, distMtx, 
+								distCatcher));
 					// Is leaf: Append
 					else
 						validatedClusters.add(Arrays.asList(new Integer[] { node.m_nLeft } ));
@@ -2595,7 +2634,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 					if (node.m_nRight < 0)
 						validatedClusters.addAll(recursive_validate_clusters_3(
 								arNodes, node.m_nRight, level, /*minCorrValue,*/
-								max_dist, distMtx));
+								max_dist, distMtx, 
+								distCatcher));
 					// Is leaf: Append
 					else
 						validatedClusters.add(Arrays.asList(new Integer[] { node.m_nRight } ));

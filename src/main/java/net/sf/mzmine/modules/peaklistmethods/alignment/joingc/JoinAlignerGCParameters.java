@@ -43,6 +43,13 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     public static final int CLUST_METHOD = 1;
 
     
+    //-- Use unaltered RDF...
+    public static final BooleanParameter saveRAMratherThanCPU = new BooleanParameter(
+            "Save RAM (!! <LAST-PART-ONLY> !!)", 
+            "Save RAM rather than CPU during the 2nd step of the clustering (building clusters from tree).",
+            false
+            );
+
 	
 	
     public static final PeakListsParameter peakLists = new PeakListsParameter();
@@ -218,6 +225,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
+        			saveRAMratherThanCPU,
         			linkageStartegyType_0,  peakListName, 
         			MZTolerance, MZWeight,
         			RTTolerance, RTWeight,
