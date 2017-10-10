@@ -7,7 +7,7 @@ import org.gnf.clustering.DistanceCalculator;
 public class HybridDistanceCalculator implements DistanceCalculator 
 {
 	
-	RowVsRowDistanceCatcher distanceCatcher;
+	RowVsRowDistanceProvider distanceProvider;
 	double mzMaxDiff;
 	double rtMaxDiff;
 	double minScore;
@@ -17,13 +17,9 @@ public class HybridDistanceCalculator implements DistanceCalculator
 	public void dispose() {}
 
 	
-//	public void setDistanceCatcher(RowVsRowDistanceCatcher distanceCatcher) {
-//		
-//		this.distanceCatcher = distanceCatcher;
-//	}
-	public void setDistanceCatcher(RowVsRowDistanceCatcher distanceCatcher, double mzMaxDiff, double rtMaxDiff, double minScore) {
+	public void setDistanceProvider(RowVsRowDistanceProvider distanceProvider, double mzMaxDiff, double rtMaxDiff, double minScore) {
 		
-		this.distanceCatcher = distanceCatcher;
+		this.distanceProvider = distanceProvider;
 		this.mzMaxDiff = mzMaxDiff;
 		this.rtMaxDiff = rtMaxDiff;
 		
@@ -36,10 +32,11 @@ public class HybridDistanceCalculator implements DistanceCalculator
 		
 		float val = Float.MAX_VALUE;
 		
-		if (this.distanceCatcher != null) {
-			val = (float) (this.distanceCatcher.getRankedDistance(nIndexOne, nIndexTwo, mzMaxDiff, rtMaxDiff, 0));
+		if (this.distanceProvider != null) {
+			//val = (float) (this.distanceProvider.getRankedDistance(nIndexOne, nIndexTwo, mzMaxDiff, rtMaxDiff, minScore));
+			val = (float) (this.distanceProvider.getSimpleDistance(nIndexOne, nIndexTwo, mzMaxDiff, rtMaxDiff, minScore));
 		} else {
-			throw new IllegalStateException("Cannot compute distances without a proper 'RowVsRowDistanceCatcher' !" + distanceCatcher);
+			throw new IllegalStateException("Cannot compute distances without a proper 'RowVsRowDistanceProvider' !" + distanceProvider);
 		}
 		
 		return val; 

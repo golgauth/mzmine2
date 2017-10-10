@@ -65,24 +65,25 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
     private MZmineProject project;
     private boolean useOldestRDF;
     
+    private static final boolean DEBUG = false;
     
-    
+
     @Deprecated // Is there any use of this somewhere?
     RowVsRowScoreGC(PeakListRow peakListRow, PeakListRow alignedRow,
-	    double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight) {
-        
-	this.peakListRow = peakListRow;
-	this.alignedRow = alignedRow;
+    		double mzMaxDiff, double mzWeight, double rtMaxDiff, double rtWeight) {
 
-	// Calculate differences between m/z and RT values
-	double mzDiff = Math.abs(peakListRow.getAverageMZ()
-		- alignedRow.getAverageMZ());
+    	this.peakListRow = peakListRow;
+    	this.alignedRow = alignedRow;
 
-	double rtDiff = Math.abs(peakListRow.getAverageRT()
-		- alignedRow.getAverageRT());
+    	// Calculate differences between m/z and RT values
+    	double mzDiff = Math.abs(peakListRow.getAverageMZ()
+    			- alignedRow.getAverageMZ());
 
-	score = ((1 - mzDiff / mzMaxDiff) * mzWeight)
-		+ ((1 - rtDiff / rtMaxDiff) * rtWeight);
+    	double rtDiff = Math.abs(peakListRow.getAverageRT()
+    			- alignedRow.getAverageRT());
+
+    	score = ((1 - mzDiff / mzMaxDiff) * mzWeight)
+    			+ ((1 - rtDiff / rtMaxDiff) * rtWeight);
 
     }
     
@@ -96,6 +97,26 @@ public class RowVsRowScoreGC implements Comparable<RowVsRowScoreGC> {
             //, PeakListRow[] allRows, PeakListRow[] candidateRows
             ) 
     {
+    	
+    	if (DEBUG) {
+	    	System.out.println(
+	    			"RowVsRowScoreGC = \n" +
+	    					"\t" + project + "\n" +
+	    					"\t" + useOldestRDFancestor + "\n" +
+	    					"\t" + rtAdjustementMapping + "\n" +
+	    					"\t" + peakListRow + "\n" +
+	    					"\t" + alignedRow + "\n" +
+	    					"\t" + mzMaxDiff + "\n" +
+	    					"\t" + mzWeight + "\n" +
+	    					"\t" + rtMaxDiff + "\n" +
+	    					"\t" + rtWeight + "\n" +
+	    					"\t" + idWeight + "\n" +
+	    					"\t" + useApex + "\n" +
+	    					"\t" + useKnownCompoundsAsRef + "\n" +
+	    					"\t" + useDetectedMzOnly + "\n" +
+	    					"\t" + rtToleranceAfter
+	    			);
+    	}
         
         this.project = project;
         this.useOldestRDF = (project != null && useOldestRDFancestor);

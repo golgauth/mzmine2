@@ -102,7 +102,7 @@ import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.Tree;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeNode;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.TreeParser;
 import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.HybridDistanceCalculator;
-import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.RowVsRowDistanceCatcher;
+import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.clusterers.hybrid.RowVsRowDistanceProvider;
 //import net.sf.mzmine.modules.peaklistmethods.alignment.joingc.weka.XMeansClusterer;
 import net.sf.mzmine.modules.peaklistmethods.dataanalysis.clustering.ClusteringResult;
 import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompound;
@@ -183,7 +183,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 	private int hybrid_K_value;
 
 	
-	private boolean saveRAMratherThanCPU;
+	private boolean saveRAMratherThanCPU_1;
+	private boolean saveRAMratherThanCPU_2;
 	//
 	private boolean useOldestRDFAncestor;
 	private MZTolerance mzTolerance;
@@ -270,8 +271,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//        			JoinAlignerGCParameters.linkageStartegyType_12).getValue();
 		//        }
 
-		saveRAMratherThanCPU = parameters.getParameter(
-				JoinAlignerGCParameters.saveRAMratherThanCPU).getValue();
+		saveRAMratherThanCPU_1 = parameters.getParameter(
+				JoinAlignerGCParameters.saveRAMratherThanCPU_1).getValue();
+		saveRAMratherThanCPU_2 = parameters.getParameter(
+				JoinAlignerGCParameters.saveRAMratherThanCPU_2).getValue();
 		
 		useOldestRDFAncestor = parameters.getParameter(
 				JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
@@ -845,19 +848,21 @@ public class JoinAlignerGCTask extends AbstractTask {
 			logger.info("> Peaklist '" + peakList.getName() + "' [" + newIds[i] + "] has '" + peakList.getNumberOfRows() + "' rows.");
 		}
 		
-		
-		//distances = new double[nbPeaks][nbPeaks];
-		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
-			if (USE_DOUBLE_PRECISION_FOR_DIST) {
-				distances = new TriangularMatrixDouble(nbPeaks);
-			} else {
-				distances = new TriangularMatrixFloat(nbPeaks);
+		// If 'Hybrid' or no distance matrix: no need for a matrix
+		if (CLUSTERER_TYPE == ClustererType.HYBRID || !saveRAMratherThanCPU_1) {
+			//distances = new double[nbPeaks][nbPeaks];
+			if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
+				if (USE_DOUBLE_PRECISION_FOR_DIST) {
+					distances = new TriangularMatrixDouble(nbPeaks);
+				} else {
+					distances = new TriangularMatrixFloat(nbPeaks);
+				}
+			} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
+				
+				int nRowCount = nbPeaks;
+				//distancesGNF_Tri = nRowCount < 20000 ? new DistanceMatrix1D(nRowCount) : new DistanceMatrixTriangular1D2D(nRowCount);
+				distancesGNF_Tri = new DistanceMatrixTriangular1D2D(nRowCount);
 			}
-		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) {
-			
-			int nRowCount = nbPeaks;
-			//distancesGNF_Tri = nRowCount < 20000 ? new DistanceMatrix1D(nRowCount) : new DistanceMatrixTriangular1D2D(nRowCount);
-			distancesGNF_Tri = new DistanceMatrixTriangular1D2D(nRowCount);
 		}
 
 		short_names = new String[nbPeaks];
@@ -889,260 +894,319 @@ public class JoinAlignerGCTask extends AbstractTask {
 //		Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
 //				.getBestPeak().getRT());
 
-
-		RowVsRowScoreGC score;
-		int x = 0;
+//		RowVsRowScoreGC score;
 		//BigInteger short_names_unid = BigInteger.ZERO;
 		long short_names_unid = 0;
 		String long_name;
 		for (int i = 0; i < newIds.length; ++i) {
 
-
 			PeakList peakList = peakLists[newIds[i]];
 
 			PeakListRow allRows[] = peakList.getRows();
-			logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
-
-			// Calculate scores for all possible alignments of this row
 			for (int j = 0; j < allRows.length; ++j) {
 
-				/** if (x >= nbPeaks - 1) { break; } */
-				////int x = (i * allRows.length) + j;
-
 				PeakListRow row = allRows[j];
-
-				// Each name HAS to be unique
-				//short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-				short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-
-				// Produce human readable names
-				RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
-				// Avoid exception if ancestor RDFs have been removed...
-				String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
-				long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-				dendro_names_dict.put(short_names[x], long_name);
-				//short_names_unid.add(BigInteger.ONE);
-				short_names_unid++;
-
-				row_names_dict.put(short_names[x], row);
-				full_rows_list.add(row);
-				rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
-
-
-				if (isCanceled())
-					return;
-
-//				// Calculate limits for a row with which the row can be aligned
-//				//            Range<Double> mzRange = mzTolerance.getToleranceRange(row
-//				//                    .getAverageMZ());
-//				//            Range<Double> rtRange = rtTolerance.getToleranceRange(row
-//				//                    .getAverageRT());
-				// GLG HACK: Use best peak rather than average. No sure it is better... ???
-				Range<Double> mzRange = mzTolerance.getToleranceRange(row
-						.getBestPeak().getMZ());
-				Range<Double> rtRange = rtTolerance.getToleranceRange(row
-						.getBestPeak().getRT());
-
-				// Get all rows of the aligned peaklist within parameter limits
-				/*
-            PeakListRow candidateRows[] = alignedPeakList
-                    .getRowsInsideScanAndMZRange(rtRange, mzRange);
-				 */
-				//////List<PeakListRow> candidateRows = new ArrayList<>();
-
-
-
-				int y = 0; // Cover only the upper triangle (half the squared matrix)
-
-
-				for (int k = 0; k < newIds.length; ++k) {
-
-
+				
+				if (exportDendrogramAsTxt) {
 					
-					if (isCanceled())
-						return;
-
-					//                    // !!! Skip the diagonal !!!
-					//                    if (x == y) { continue; }
-					//                    
-
-
-					PeakList k_peakList = peakLists[newIds[k]];
-					PeakListRow k_allRows[] = k_peakList.getRows();
-
-					//                  if (k != i) {
-					for (int l = 0; l < k_allRows.length; ++l) {
-
-						// Cover only the upper triangle (half the squared matrix),  Skip the lower triangle
-						if (x > y) { ++y; continue; }
-						/**if (y < x + 1) { ++y; continue; }
-						if (y >= nbPeaks) { break; }*/
-
-
-						////int y = (k * k_allRows.length) + l;
-
-
-						PeakListRow k_row = k_allRows[l];
-
-						double normalized_rt_dist = Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) / ((RangeUtils.rangeLength(rtRange) / 2.0));
-
-
-						if (x == y) {
-							/** Row tested against himself => fill matrix diagonal with zeros */
-							//                            distances[x][y] = 0.0d;
-							if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
-								distances.set(x, y, 0d);
-							else {
-								//distancesGNF.setValue(x, y, 0.0f);
-								// Do nothing on diagonal with this impl of dist matrix!
-							}
-							//continue; 
-						} else {
-
-							if (k != i) {
-
-								// Is candidate
-								if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
-										&& Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
-									//////candidateRows.add(k_row);
-
-									/** Row is candidate => Distance is the score */
-									//                                    
-									//                                    if (newIds[i] == 0) {
-									//                                        missing1
-									//                                        score = new RowVsRowScoreGC(
-									//                                                this.project, useOldestRDFAncestor,
-									//                                                k_row.getRawDataFiles()[0], rtAdjustementMapping,
-									//                                                k_row, row,
-									//                                                RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-									//                                                RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
-									//                                                idWeight,
-									//                                                useApex, useKnownCompoundsAsRef, 
-									//                                                useDetectedMzOnly,
-									//                                                rtToleranceAfter);
-									//                                    } else {
-
-									score = new RowVsRowScoreGC(
-											this.project, useOldestRDFAncestor,
-											/*row.getRawDataFiles()[0],*/ rtAdjustementMapping,
-											row, k_row,
-											RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-											RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
-											idWeight,
-											useApex, useKnownCompoundsAsRef, 
-											useDetectedMzOnly,
-											rtToleranceAfter);
-
-									//                                        if (Math.abs(score.getScore() - 1.0d) < EPSILON) {
-									//                                            System.out.println("Found quite a heavy chem. sim. between: " + row.getBestPeak() + " and " + k_row.getBestPeak());
-									//                                        }
-
-									//                                    }
-
-									//-
-									// If match was not rejected afterwards and score is acceptable
-									// (Acceptable score => higher than absolute min ever and higher than user defined min)
-									// 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
-									//if (score.getScore() > Jmissing1DXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
-									if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
-										//////scoreSet.add(score);
-										// The higher the score, the lower the distance!
-										//                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
-										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
-											distances.set(x, y , maximumScore - score.getScore());
-										else
-											distancesGNF_Tri.setValue(x, y, (float) (maximumScore - score.getScore()));
-									} else {
-										/** Score too low => Distance is Infinity */
-										//distances[x][y] = veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
-										////distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
-										//////distances[x][y] = Double.MAX_VALUE;
-										//                                        distances[x][y] = veryLongDistance;
-										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
-											distances.set(x, y , veryLongDistance);
-										else
-											distancesGNF_Tri.setValue(x, y, veryLongDistance);
-									}
-
-								} else {
-									/** Row is not candidate => Distance is Infinity */
-									////distances[x][y] = 10.0d * veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
-									//distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
-									//distances[x][y] = Double.MAX_VALUE;//10.0d * veryLongDistance; // Need to rank distances for "rejected" cases
-									//////distances[x][y] = Double.MAX_VALUE;
-									//                                    distances[x][y] = 10.0d * veryLongDistance;
-									if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
-										distances.set(x, y , 10.0d * veryLongDistance);
-									else
-										distancesGNF_Tri.setValue(x, y, 10.0f * veryLongDistance);
-								}
-							} else {
-								/** Both rows belong to same list => Distance is Infinity */
-								////distances[x][y] = 100.0d * veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
-								//distances[x][y] = Double.MAX_VALUE;//100.0d * veryLongDistance; // Need to rank distances for "rejected" cases
-								//////distances[x][y] = Double.MAX_VALUE;
-								//                                distances[x][y] = 100.0d * veryLongDistance;
-								if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
-									distances.set(x, y , 100.0d * veryLongDistance);
-								else
-									distancesGNF_Tri.setValue(x, y, 100.0f * veryLongDistance);
-							}
-						}
-
-						//                        // 28.499
-						//                        if (row.getBestPeak().getRT() > 28.499d && row.getBestPeak().getRT() < 28.500d) {
-						//                            System.out.println("28.499 scored: " + row.getBestPeak().getRT() + " | " + k_row.getBestPeak().getRT());
-						//                            System.out.println("\t => " + distances[x][y]);
-						//                        }
-
-						//                        if (x == y) {
-						//                            /** Row tested against himself => fill matrix diagonal with zeros */
-						//                            distances[x][y] = 0.0d;
-						//                            //continue; 
-						//                        } else {
-						//
-						//                            if (k != i) {
-						//                                
-						//                                RowVsRowScoreGC score = new RowVsRowScoreGC(
-						//                                        this.project, useOldestRDFAncestor,
-						//                                        /*row.getRawDataFiles()[0],*/ rtAdjustementMapping,
-						//                                        row, k_row,
-						//                                        RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
-						//                                        RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
-						//                                        idWeight,
-						//                                        useApex, useKnownCompoundsAsRef, 
-						//                                        useDetectedMzOnly,
-						//                                        rtToleranceAfter);
-						//                                
-						//                                distances[x][y] = maximumScore - score.getScore();
-						//                                
-						//                            } else {
-						//                                
-						//                                  /** Both rows belong to same list => Distance is Infinity */
-						//                                  distances[x][y] = 5.0d * veryLongDistance; // Need to rank distances for "rejected" cases
-						//                            }
-						//                        }missing1
-						//                        
-						//                        // 28.499
-						//                        if (row.getBestPeak().getRT() > 28.499d && row.getBestPeak().getRT() < 28.500d) {
-						//                            System.out.println("28.499 scored: " + row.getBestPeak().getRT() + " | " + k_row.getBestPeak().getRT());
-						//                            System.out.println("\t => " + distances[x][y]);
-						//                        }
-
-
-						++y;
-					}
-					//                  } else {
-					//                      /** Both rows belong to same list => Distance is Infinity */
-					//                      distances[x][y] = Double.MAX_VALUE;
-					//                  }
+					int x = full_rows_list.size();
+	
+					// Each name HAS to be unique
+					//short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+					short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+	
+					// Produce human readable names
+					RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
+					// Avoid exception if ancestor RDFs have been removed...
+					String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
+					long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+					dendro_names_dict.put(short_names[x], long_name);
+					//short_names_unid.add(BigInteger.ONE);
+					short_names_unid++;
+	
+					row_names_dict.put(short_names[x], row);
+					rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
 				}
-
-				processedRows++;
-
-				++x;
+				
+				full_rows_list.add(row);
 			}
+		}
+		RowVsRowDistanceProvider distProvider = new RowVsRowDistanceProvider(
+				project, useOldestRDFAncestor,
+				rtAdjustementMapping, full_rows_list, 
+				mzWeight, rtWeight,
+				useApex,
+				useKnownCompoundsAsRef,
+				useDetectedMzOnly,
+				rtToleranceAfter,
+				maximumScore);
 
+
+//		// Go build matrix if required!
+//		int x = 0;
+//		for (int i = 0; i < newIds.length; ++i) {
+//
+//
+//			PeakList peakList = peakLists[newIds[i]];
+//
+//			PeakListRow allRows[] = peakList.getRows();
+//			logger.info("Treating list " + peakList + " / NB rows: " + allRows.length);
+//
+//			// Calculate scores for all possible alignments of this row
+//			for (int j = 0; j < allRows.length; ++j) {
+//
+//				/** if (x >= nbPeaks - 1) { break; } */
+//				////int x = (i * allRows.length) + j;
+//
+//				PeakListRow row = allRows[j];
+//
+////				// Each name HAS to be unique
+////				//short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+////				short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+////
+////				// Produce human readable names
+////				RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
+////				// Avoid exception if ancestor RDFs have been removed...
+////				String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
+////				long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+////				dendro_names_dict.put(short_names[x], long_name);
+////				//short_names_unid.add(BigInteger.ONE);
+////				short_names_unid++;
+////
+////				row_names_dict.put(short_names[x], row);
+////				full_rows_list.add(row);
+////				rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
+//
+//
+//				if (isCanceled())
+//					return;
+//
+////				// Calculate limits for a row with which the row can be aligned
+////				//            Range<Double> mzRange = mzTolerance.getToleranceRange(row
+////				//                    .getAverageMZ());
+////				//            Range<Double> rtRange = rtTolerance.getToleranceRange(row
+////				//                    .getAverageRT());
+//				// GLG HACK: Use best peak rather than average. No sure it is better... ???
+//				Range<Double> mzRange = mzTolerance.getToleranceRange(row
+//						.getBestPeak().getMZ());
+//				Range<Double> rtRange = rtTolerance.getToleranceRange(row
+//						.getBestPeak().getRT());
+//
+//				// Get all rows of the aligned peaklist within parameter limits
+//				/*
+//            PeakListRow candidateRows[] = alignedPeakList
+//                    .getRowsInsideScanAndMZRange(rtRange, mzRange);
+//				 */
+//				//////List<PeakListRow> candidateRows = new ArrayList<>();
+//
+//
+//
+//				int y = 0; // Cover only the upper triangle (half the squared matrix)
+//
+//
+//				for (int k = 0; k < newIds.length; ++k) {
+//
+//
+//					
+//					if (isCanceled())
+//						return;
+//
+//					//                    // !!! Skip the diagonal !!!
+//					//                    if (x == y) { continue; }
+//					//                    
+//
+//
+//					PeakList k_peakList = peakLists[newIds[k]];
+//					PeakListRow k_allRows[] = k_peakList.getRows();
+//
+//					//                  if (k != i) {
+//					for (int l = 0; l < k_allRows.length; ++l) {
+//
+//						// Cover only the upper triangle (half the squared matrix),  Skip the lower triangle
+//						if (x > y) { ++y; continue; }
+//						/**if (y < x + 1) { ++y; continue; }
+//						if (y >= nbPeaks) { break; }*/
+//
+//
+//						////int y = (k * k_allRows.length) + l;
+//
+//
+//						PeakListRow k_row = k_allRows[l];
+//
+//						double normalized_rt_dist = Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) / ((RangeUtils.rangeLength(rtRange) / 2.0));
+//
+//
+//						if (x == y) {
+//							/** Row tested against himself => fill matrix diagonal with zeros */
+//							//                            distances[x][y] = 0.0d;
+//							if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+//								distances.set(x, y, 0d);
+//							else {
+//								//distancesGNF.setValue(x, y, 0.0f);
+//								// Do nothing on diagonal with this impl of dist matrix!
+//							}
+//							//continue; 
+//						} else {
+////							double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
+////							double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
+////							System.out.println("(1) CaseRT: " + Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT())
+////							+ " >= " + rtMaxDiff + "? " + (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) >= rtMaxDiff));
+////							System.out.println("(1) CaseMZ: " + Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ())
+////							+ " >= " + mzMaxDiff + "? " + (Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) >= mzMaxDiff));
+////							System.out.println("(1) Rows: (" 
+////									+ x + "," + y + ") - (" + full_rows_list.indexOf(row) + "," + full_rows_list.indexOf(k_row) + ")" + row + " | " + k_row);
+//
+//							if (k != i) {
+//								
+////								System.out.println("(1.1) CaseRT: " + Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT())
+////								+ " < " + rtTolerance.getTolerance() / 2.0 + "? " + (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0));
+////								System.out.println("(1.1) CaseMZ: " + Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ())
+////								+ " < " + mzTolerance.getMzTolerance() / 2.0 + "? " + (Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0));
+////								System.out.println("(1.1) Rows: (" 
+////										+ x + "," + y + ") - (" + full_rows_list.indexOf(row) + "," + full_rows_list.indexOf(k_row) + ")" + row + " | " + k_row);
+//
+//								// Is candidate
+//								if (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) < rtTolerance.getTolerance() / 2.0 
+//										&& Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) < mzTolerance.getMzTolerance() / 2.0) {
+//									//////candidateRows.add(k_row);
+//
+//									/** Row is candidate => Distance is the score */
+//									score = new RowVsRowScoreGC(
+//											this.project, useOldestRDFAncestor,
+//											/*row.getRawDataFiles()[0],*/ rtAdjustementMapping,
+//											row, k_row,
+//											RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
+//											RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
+//											idWeight,
+//											useApex, useKnownCompoundsAsRef, 
+//											useDetectedMzOnly,
+//											rtToleranceAfter);
+//
+//									//-
+//									// If match was not rejected afterwards and score is acceptable
+//									// (Acceptable score => higher than absolute min ever and higher than user defined min)
+//									// 0.0 is OK for a minimum score only in "Dot Product" method (Not with "Person Correlation")
+//									//if (score.getScore() > Jmissing1DXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE)
+//									if (score.getScore() > Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
+//										//////scoreSet.add(score);
+//										// The higher the score, the lower the distance!
+//										//                                        distances[x][y] = maximumScore - score.getScore();//(mzWeight + rtWeight) - score.getScore();
+//										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+//											distances.set(x, y , maximumScore - score.getScore());
+//										else
+//											distancesGNF_Tri.setValue(x, y, (float) (maximumScore - score.getScore()));
+//									} else {
+//										/** Score too low => Distance is Infinity */
+//										//distances[x][y] = veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
+//										////distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
+//										//////distances[x][y] = Double.MAX_VALUE;
+//										//                                        distances[x][y] = veryLongDistance;
+//										if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+//											distances.set(x, y , veryLongDistance);
+//										else
+//											distancesGNF_Tri.setValue(x, y, veryLongDistance);
+//									}
+//
+//								} else {
+//									/** Row is not candidate => Distance is Infinity */
+//									////distances[x][y] = 10.0d * veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
+//									//distances[x][y] = veryLongDistance; // Need to rank distances for "rejected" cases
+//									//distances[x][y] = Double.MAX_VALUE;//10.0d * veryLongDistance; // Need to rank distances for "rejected" cases
+//									//////distances[x][y] = Double.MAX_VALUE;
+//									//                                    distances[x][y] = 10.0d * veryLongDistance;
+//									if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+//										distances.set(x, y , 10.0d * veryLongDistance);
+//									else
+//										distancesGNF_Tri.setValue(x, y, 10.0f * veryLongDistance);
+//								}
+//							} else {
+//								/** Both rows belong to same list => Distance is Infinity */
+//								////distances[x][y] = 100.0d * veryLongDistance * (1.0d + normalized_rt_dist); // Need to rank distances for "rejected" cases
+//								//distances[x][y] = Double.MAX_VALUE;//100.0d * veryLongDistance; // Need to rank distances for "rejected" cases
+//								//////distances[x][y] = Double.MAX_VALUE;
+//								//                                distances[x][y] = 100.0d * veryLongDistance;
+//								if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+//									distances.set(x, y , 100.0d * veryLongDistance);
+//								else
+//									distancesGNF_Tri.setValue(x, y, 100.0f * veryLongDistance);
+//							}
+//							
+//							System.out.println("(1) Final dist: " + distancesGNF_Tri.getValue(x, y));
+//						}
+//
+//						//                        // 28.499
+//						//                        if (row.getBestPeak().getRT() > 28.499d && row.getBestPeak().getRT() < 28.500d) {
+//						//                            System.out.println("28.499 scored: " + row.getBestPeak().getRT() + " | " + k_row.getBestPeak().getRT());
+//						//                            System.out.println("\t => " + distances[x][y]);
+//						//                        }
+//
+//						//                        if (x == y) {
+//						//                            /** Row tested against himself => fill matrix diagonal with zeros */
+//						//                            distances[x][y] = 0.0d;
+//						//                            //continue; 
+//						//                        } else {
+//						//
+//						//                            if (k != i) {
+//						//                                
+//						//                                RowVsRowScoreGC score = new RowVsRowScoreGC(
+//						//                                        this.project, useOldestRDFAncestor,
+//						//                                        /*row.getRawDataFiles()[0],*/ rtAdjustementMapping,
+//						//                                        row, k_row,
+//						//                                        RangeUtils.rangeLength(mzRange) / 2.0, mzWeight,
+//						//                                        RangeUtils.rangeLength(rtRange) / 2.0, rtWeight,
+//						//                                        idWeight,
+//						//                                        useApex, useKnownCompoundsAsRef, 
+//						//                                        useDetectedMzOnly,
+//						//                                        rtToleranceAfter);
+//						//                                
+//						//                                distances[x][y] = maximumScore - score.getScore();
+//						//                                
+//						//                            } else {
+//						//                                
+//						//                                  /** Both rows belong to same list => Distance is Infinity */
+//						//                                  distances[x][y] = 5.0d * veryLongDistance; // Need to rank distances for "rejected" cases
+//						//                            }
+//						//                        }missing1
+//						//                        
+//						//                        // 28.499
+//						//                        if (row.getBestPeak().getRT() > 28.499d && row.getBestPeak().getRT() < 28.500d) {
+//						//                            System.out.println("28.499 scored: " + row.getBestPeak().getRT() + " | " + k_row.getBestPeak().getRT());
+//						//                            System.out.println("\t => " + distances[x][y]);
+//						//                        }
+//
+//
+//						++y;
+//					}
+//					//                  } else {
+//					//                      /** Both rows belong to same list => Distance is Infinity */
+//					//                      distances[x][y] = Double.MAX_VALUE;
+//					//                  }
+//				}
+//
+//				processedRows++;
+//
+//				++x;
+//			}
+//
+//		}
+
+		// If 'Hybrid' or no distance matrix: no need for a matrix
+		if (CLUSTERER_TYPE == ClustererType.HYBRID || !saveRAMratherThanCPU_1) {
+			
+			for (int x = 0; x < nbPeaks; ++x) {
+			
+				for (int y = x; y < nbPeaks; ++y) {
+					
+					float dist = (float) distProvider.getRankedDistance(x, y, mzTolerance.getMzTolerance(), rtTolerance.getTolerance(), minScore);
+	
+					if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD)
+						distances.set(x, y , dist);
+					else
+						distancesGNF_Tri.setValue(x, y, dist);
+					
+					processedRows++;
+				}
+			}
 		}
 
 		if (DEBUG) {
@@ -1346,16 +1410,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 			boolean do_print = true;
 			boolean do_data = false;
 
-			
-			RowVsRowDistanceCatcher distCatcher = new RowVsRowDistanceCatcher(
-					project, useOldestRDFAncestor,
-					rtAdjustementMapping, full_rows_list, 
-					mzWeight, rtWeight,
-					useApex,
-					useKnownCompoundsAsRef,
-					useDetectedMzOnly,
-					rtToleranceAfter,
-					maximumScore);
 
 			org.gnf.clustering.Node[] arNodes = null;
 			//int nRowCount = distancesGNF_Tri.getRowCount();
@@ -1382,7 +1436,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 				if (DEBUG_2)
 					System.out.println(distancesGNF_Tri.toString());
 				
-				if (saveRAMratherThanCPU) { // Requires: distances values will recomputed on demand during "getValidatedClusters_3()"
+				if (saveRAMratherThanCPU_2) { // Requires: distances values will be recomputed on demand during "getValidatedClusters_3()"
 					distancesGNF_Tri_Bkp = null; // No duplicate backup storage!
 				} else { // Otherwise, backing up the distance matrix (matrix being deeply changed during "clusterDM()", then no more exploitable)
 					distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
@@ -1393,6 +1447,27 @@ public class JoinAlignerGCTask extends AbstractTask {
 				if(distancesGNF_Tri != null)				
 					arNodes = org.gnf.clustering.sequentialcache
 					.SequentialCacheClustering.clusterDM(distancesGNF_Tri, linkageStartegyType_20, null, nRowCount);
+				
+//				if (true) {
+//					
+//					for (int i=0; i<distancesGNF_Tri_Bkp.getRowCount(); i++) {
+//						for (int j=0; j<distancesGNF_Tri_Bkp.getRowCount(); j++) {
+//							
+//							PeakListRow any_row = full_rows_list.get(i);
+//							
+//							Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
+//									.getBestPeak().getMZ());
+//							Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
+//									.getBestPeak().getRT());
+//
+//							double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
+//							double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
+//							System.out.println(distancesGNF_Tri_Bkp.getValue(i,  j) + " | " 
+//									+ distProvider.getRankedDistance(i, j, mzMaxDiff, rtMaxDiff, minScore));
+//						}
+//					}
+//				}
+				
 				
 				distancesGNF_Tri = null;
 				System.gc();
@@ -1428,14 +1503,16 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 				DistanceCalculator calculator = new HybridDistanceCalculator();
 				//-
-				PeakListRow any_row = full_rows_list.get(0);
-				Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
-						.getBestPeak().getMZ());
-				Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
-						.getBestPeak().getRT());
-				double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
-				double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
-				((HybridDistanceCalculator) calculator).setDistanceCatcher(distCatcher, mzMaxDiff, rtMaxDiff, minScore);
+//				PeakListRow any_row = full_rows_list.get(0);
+//				Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
+//						.getBestPeak().getMZ());
+//				Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
+//						.getBestPeak().getRT());
+//				double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
+//				double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
+				double mzMaxDiff = mzTolerance.getMzTolerance();
+				double rtMaxDiff = rtTolerance.getTolerance();
+				((HybridDistanceCalculator) calculator).setDistanceProvider(distProvider, mzMaxDiff, rtMaxDiff, minScore);
 				
 				// <A> 1nd pass: use distances as usual... (simply not precomputed this time)
 				final HierarchicalClustering clusteringHier = new SequentialCacheClustering(calculator, linkageStartegyType_20);
@@ -1473,7 +1550,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 			
 			if (do_cluster) {
 				
-				gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp, distCatcher);
+				gnfClusters = getValidatedClusters_3(arNodes, 0.0f, newIds.length, max_dist, distancesGNF_Tri_Bkp, distProvider);
 				
 //				for (int i = 0; i < nRowCount; i++) {
 //					if (!flatLeaves.contains(i)) {
@@ -2519,7 +2596,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 			org.gnf.clustering.Node[] arNodes, 
 			float minCorrValue, int level, 
 			double max_dist, DistanceMatrix distMtx,
-			RowVsRowDistanceCatcher distCatcher
+			RowVsRowDistanceProvider distProvider
 			) {
 
 		List<List<Integer>> validatedClusters = new ArrayList<>();
@@ -2576,7 +2653,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 		
 		System.out.println("#TRACING BEST NODE '" + nBest + "' :");
 		//**validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx));
-		validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx, distCatcher));
+		validatedClusters.addAll(recursive_validate_clusters_3(arNodes, nBest, level, max_dist, distMtx, distProvider));
 		
 
 		if (DEBUG) {
@@ -2599,7 +2676,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 	List<List<Integer>> recursive_validate_clusters_3(
 			org.gnf.clustering.Node[] arNodes, int nNode, 
 			int level, /*float minCorrValue, */
-			double max_dist, DistanceMatrix distMtx, RowVsRowDistanceCatcher distCatcher) {
+			double max_dist, DistanceMatrix distMtx, RowVsRowDistanceProvider distProvider) {
 
 		List<List<Integer>> validatedClusters = new ArrayList<>();
 
@@ -2658,13 +2735,13 @@ public class JoinAlignerGCTask extends AbstractTask {
 								dist = distMtx.getValue(leaves.get(i), leaves.get(j));
 							} else {
 								
-								PeakListRow row = full_rows_list.get(leaves.get(i));
-								Range<Double> mzRange = mzTolerance.getToleranceRange(row
-										.getBestPeak().getMZ());
-								Range<Double> rtRange = rtTolerance.getToleranceRange(row
-										.getBestPeak().getRT());
+//								PeakListRow row = full_rows_list.get(leaves.get(i));
+//								Range<Double> mzRange = mzTolerance.getToleranceRange(row
+//										.getBestPeak().getMZ());
+//								Range<Double> rtRange = rtTolerance.getToleranceRange(row
+//										.getBestPeak().getRT());
 								
-//								RowVsRowScoreGC score = distCatcher.getScore(
+//								RowVsRowScoreGC score = distProvider.getScore(
 //										leaves.get(i), leaves.get(j),
 //										RangeUtils.rangeLength(mzRange) / 2.0,
 //										RangeUtils.rangeLength(rtRange) / 2.0
@@ -2672,12 +2749,15 @@ public class JoinAlignerGCTask extends AbstractTask {
 //								
 //								dist = (float) (maximumScore - score.getScore());
 								
-								dist = (float) distCatcher.getRankedDistance(
+								dist = (float) distProvider.getRankedDistance(
 										leaves.get(i), leaves.get(j), 
-										RangeUtils.rangeLength(mzRange) / 2.0, 
-										RangeUtils.rangeLength(rtRange) / 2.0,  
+//										RangeUtils.rangeLength(mzRange) / 2.0, 
+//										RangeUtils.rangeLength(rtRange) / 2.0,  
+										mzTolerance.getMzTolerance(), 
+										rtTolerance.getTolerance(),
 										minScore
 										);
+								
 							}
 							if (max_dist_2 < dist) {
 								max_dist_2 = dist;
@@ -2711,7 +2791,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 						validatedClusters.addAll(recursive_validate_clusters_3(
 								arNodes, node.m_nLeft, level, /*minCorrValue,*/
 								max_dist, distMtx, 
-								distCatcher));
+								distProvider));
 					// Is leaf: Append
 					else
 						validatedClusters.add(Arrays.asList(new Integer[] { node.m_nLeft } ));
@@ -2721,7 +2801,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 						validatedClusters.addAll(recursive_validate_clusters_3(
 								arNodes, node.m_nRight, level, /*minCorrValue,*/
 								max_dist, distMtx, 
-								distCatcher));
+								distProvider));
 					// Is leaf: Append
 					else
 						validatedClusters.add(Arrays.asList(new Integer[] { node.m_nRight } ));

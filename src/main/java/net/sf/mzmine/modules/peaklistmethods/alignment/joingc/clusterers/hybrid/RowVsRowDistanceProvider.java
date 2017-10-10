@@ -13,7 +13,7 @@ import net.sf.mzmine.modules.peaklistmethods.normalization.rtadjuster.JDXCompoun
 import net.sf.mzmine.parameters.parametertypes.tolerances.RTTolerance;
 import net.sf.mzmine.util.RangeUtils;
 
-public class RowVsRowDistanceCatcher {
+public class RowVsRowDistanceProvider {
 	
 	MZmineProject project;
 	boolean useOldestRDFancestor;
@@ -30,7 +30,7 @@ public class RowVsRowDistanceCatcher {
 	
 	
 
-	public RowVsRowDistanceCatcher(
+	public RowVsRowDistanceProvider(
 			MZmineProject project, boolean useOldestRDFancestor,
 			Hashtable<RawDataFile, List<double[]>> rtAdjustementMapping,
 			List<PeakListRow> full_rows_list,
@@ -48,6 +48,7 @@ public class RowVsRowDistanceCatcher {
 		this.rtWeight = rtWeight;
 		this.useApex = useApex;
 		this.useKnownCompoundsAsRef = useKnownCompoundsAsRef;
+		this.useDetectedMzOnly = useDetectedMzOnly;
 		this.rtToleranceAfter = rtToleranceAfter;
 		
 		this.maximumScore = maximumScore;
@@ -80,31 +81,65 @@ public class RowVsRowDistanceCatcher {
 //		return this.maximumScore;
 //	}
 
-	public double getRankedDistance(int row_id, int aligned_row_id, double mzMaxDiff, double rtMaxDiff, double minScore) {
+	
+	public double getSimpleDistance(int i, int j, double mzMaxDiff, double rtMaxDiff, double minScore) {
 		
-		PeakListRow row = full_rows_list.get(row_id);
-		PeakListRow k_row = full_rows_list.get(aligned_row_id);
+		// Itself
+		if (i == j) { return 0d; }
+				
+		return this.maximumScore - this.getScore(i, j, mzMaxDiff, rtMaxDiff).getScore();
+	}
+
+	public double getRankedDistance(int i, int j, double mzMaxDiff, double rtMaxDiff, double minScore) {
 		
+		// Itself
+		if (i == j)
+			return 0d;
+		
+//		if (row_id > aligned_row_id) {
+//			int tmp = row_id;
+//			row_id = aligned_row_id;
+//			aligned_row_id = tmp;
+//		}
+//		if (row_id < aligned_row_id) {
+//			int tmp = row_id;
+//			row_id = aligned_row_id;
+//			aligned_row_id = tmp;
+//		}
+			
+		PeakListRow row = full_rows_list.get(i);
+		PeakListRow k_row = full_rows_list.get(j);
+		
+//		System.out.println("(2) Rows: (" + i + "," + j + ")" + row + " | " + k_row);
 		
 //		// Same list
 //		if ((row_id < 45 && aligned_row_id < 45) 
 //				|| (row_id >= 45 && aligned_row_id >= 45 && row_id < 102 && aligned_row_id < 102)
 //				|| (row_id >= 102 && aligned_row_id >= 102)) {
-////		if (row.getRawDataFiles()[0] == k_row.getRawDataFiles()[0]) {
-//			return 1000.0d;
-//		} 
-//		// Not candidate
-//		else if ((Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) >= rtMaxDiff 
-//				|| Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) >= mzMaxDiff)) {
-//			return 100.0d;
-//		}
-//		
-		double score = this.getScore(row_id, aligned_row_id, mzMaxDiff, rtMaxDiff).getScore();
+		if (row.getRawDataFiles()[0] == k_row.getRawDataFiles()[0]) {
+			return 1000.0d;
+		} 
+		// Not candidate
+		else {
+//			System.out.println("(2) CaseRT: " + Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT())
+//					+ " >= " + rtMaxDiff/2.0 + "? " + (Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) >= rtMaxDiff/2.0));
+//			System.out.println("(2) CaseMZ: " + Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ())
+//					+ " >= " + mzMaxDiff/2.0 + "? " + (Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) >= mzMaxDiff/2.0));
+			if ((Math.abs(row.getBestPeak().getRT() - k_row.getBestPeak().getRT()) >= rtMaxDiff/2.0 
+				|| Math.abs(row.getBestPeak().getMZ() - k_row.getBestPeak().getMZ()) >= mzMaxDiff/2.0)) {
+				return 100.0d;
+			}
+		}
+		
+		double score = this.getScore(i, j, mzMaxDiff, rtMaxDiff).getScore();
 		// Score too low
 		if (score <= Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore)) {
+//			System.out.println("Found score " + score + " < " + Math.max(JDXCompoundsIdentificationSingleTask.MIN_SCORE_ABSOLUTE, minScore) + "!");
+//			System.out.println("(2) Final dist: " + 10.0f);
 			return 10.0d;
 		}
-
+		
+		
 		// Score OK
 		return this.maximumScore - score;
 	}

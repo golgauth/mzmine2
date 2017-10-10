@@ -44,8 +44,14 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     public static final int CLUST_METHOD = 1;
 
     
-    //-- Use unaltered RDF...
-    public static final BooleanParameter saveRAMratherThanCPU = new BooleanParameter(
+    //-- Save RAM 1
+    public static final BooleanParameter saveRAMratherThanCPU_1 = new BooleanParameter(
+            "Save RAM (!! <FULL-EXPENSE-ON-CPU> !!)", 
+            "Ignored if clusterer type is not 'Cached'. Saves RAM at the expense of CPU during the whole clustering process (NO precomputed distances).",
+            false
+            );
+    //-- Save RAM 2
+    public static final BooleanParameter saveRAMratherThanCPU_2 = new BooleanParameter(
             "Save RAM (!! <LAST-PART-ONLY> !!)", 
             "Ignored if clusterer type is not 'Cached'. Saves RAM at the expense of CPU during the 2nd step of the clustering (building clusters from tree).",
             false
@@ -244,7 +250,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
         			clusterer_type,
-        			saveRAMratherThanCPU,
+        			saveRAMratherThanCPU_1, saveRAMratherThanCPU_2,
         			linkageStartegyType_0, 
         			/*use_hybrid_K,*/ hybrid_K_value,
         			peakListName, 
