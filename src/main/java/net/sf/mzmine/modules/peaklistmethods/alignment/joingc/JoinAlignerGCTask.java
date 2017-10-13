@@ -1204,8 +1204,11 @@ public class JoinAlignerGCTask extends AbstractTask {
 					else
 						distancesGNF_Tri.setValue(x, y, dist);
 					
-					processedRows++;
 				}
+				
+				processedRows++;
+				logger.info("Treating lists: " + (Math.round(100 * processedRows / (double) nbPeaks)) + " %");
+
 			}
 		}
 

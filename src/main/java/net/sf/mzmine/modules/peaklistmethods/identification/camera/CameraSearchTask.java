@@ -50,9 +50,13 @@ import net.sf.mzmine.taskcontrol.TaskStatus;
 import net.sf.mzmine.util.DataPointSorter;
 import net.sf.mzmine.util.SortingDirection;
 import net.sf.mzmine.util.SortingProperty;
+import net.sf.mzmine.util.R.RLocationDetection;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
+import com.github.rcaller.rstuff.RCaller;
+import com.github.rcaller.rstuff.RCode;
+import com.github.rcaller.util.Globals;
 import com.google.common.collect.Range;
 
 /**
@@ -66,7 +70,7 @@ public class CameraSearchTask extends AbstractTask {
 			.getName());
 
 	// Required version of CAMERA.
-	private static final String CAMERA_VERSION = "1.12";
+	private static final String CAMERA_VERSION = "1.32.0";
 
 	// Minutes to seconds conversion factor.
 	private static final double SECONDS_PER_MINUTE = 60.0;
@@ -191,17 +195,45 @@ public class CameraSearchTask extends AbstractTask {
 		errorMsg = null;
 		try {
 
-			String[] reqPackages = { "CAMERA" };
-			String[] reqPackagesVersions = { CAMERA_VERSION };
-			this.rSession = new RSessionWrapper("Camera search feature", reqPackages, reqPackagesVersions);
-			this.rSession.open();	
+//			String[] reqPackages = { "CAMERA" };
+//			String[] reqPackagesVersions = { CAMERA_VERSION };
+//			this.rSession = new RSessionWrapper("Camera search feature", reqPackages, reqPackagesVersions);
+//			this.rSession.open();	
+//
+//
+//			// Create empty peaks matrix.
+//			this.rSession.eval("columnHeadings <- c('mz','mzmin','mzmax','rt','rtmin','rtmax','into','intb','maxo','sn')");
+//			this.rSession.eval("peaks <- matrix(nrow=0, ncol=length(columnHeadings))");
+//			this.rSession.eval("colnames(peaks) <- columnHeadings");
 
+			//---------------------------------
+			
+//			Globals.R_Linux = "/media/golgauth/DATA-MINT/R-3.4.0/bin/R";
+//			Globals.RScript_Linux = "/media/golgauth/DATA-MINT/R-3.4.0/bin/Rscript";
+			Globals.R_Linux = RLocationDetection.getRExecutablePath();
+			Globals.RScript_Linux = RLocationDetection.getRScriptExecutablePath();
+			RCaller caller = RCaller.create();
+			RCode code = RCode.create();
+			String loadCode = "library(" + "CAMERA" + ")"; //+ ", logical.return = TRUE)";
+			code.addRCode(loadCode);
+			
+//			double[] arr = new double[] { 1.0, 2.0, 3.0 };
+//			code.addDoubleArray("myarr", arr);
+//			code.addRCode("avg <- mean(myarr)");
+//			caller.setRCode(code);
+//			caller.runAndReturnResult("avg");
+//			double[] result = caller.getParser().getAsDoubleArray("avg");
+//			System.out.println(result[0]);
 
-			// Create empty peaks matrix.
-			this.rSession.eval("columnHeadings <- c('mz','mzmin','mzmax','rt','rtmin','rtmax','into','intb','maxo','sn')");
-			this.rSession.eval("peaks <- matrix(nrow=0, ncol=length(columnHeadings))");
-			this.rSession.eval("colnames(peaks) <- columnHeadings");
-
+			
+			code.addRCode("columnHeadings <- c('mz','mzmin','mzmax','rt','rtmin','rtmax','into','intb','maxo','sn')");
+			code.addRCode("peaks <- matrix(nrow=0, ncol=length(columnHeadings))");
+			code.addRCode("colnames(peaks) <- columnHeadings");
+			
+			
+			//---------------------------------
+			
+			
 			// Initialize.
 			final Feature[] peaks = peakList.getPeaks(rawFile);
 			progress = 0.0;
@@ -279,7 +311,19 @@ public class CameraSearchTask extends AbstractTask {
 						.getRawDataPointsRTRange() : rtRange).upperEndpoint();
 
 				// Add peak row.
-				this.rSession.eval("peaks <- rbind(peaks, c(" + mz + ", " // mz
+//				this.rSession.eval("peaks <- rbind(peaks, c(" + mz + ", " // mz
+//						+ mz + ", " // mzmin: use the same as mz.
+//						+ mz + ", " // mzmax: use the same as mz.
+//						+ peak.getRT() + ", " // rt
+//						+ rtMin + ", " // rtmin
+//						+ rtMax + ", " // rtmax
+//						+ area + ", " // into: peak area.
+//						+ area + ", " // intb: doesn't affect result, use area.
+//						+ maxo + ", " // maxo
+//						+ SIGNAL_TO_NOISE + "))", 
+//						false);
+
+				String code0 = "peaks <- rbind(peaks, c(" + mz + ", " // mz
 						+ mz + ", " // mzmin: use the same as mz.
 						+ mz + ", " // mzmax: use the same as mz.
 						+ peak.getRT() + ", " // rt
@@ -288,9 +332,11 @@ public class CameraSearchTask extends AbstractTask {
 						+ area + ", " // into: peak area.
 						+ area + ", " // intb: doesn't affect result, use area.
 						+ maxo + ", " // maxo
-						+ SIGNAL_TO_NOISE + "))", 
-						false);
+						+ SIGNAL_TO_NOISE + "))";
+				
+				code.addRCode(code0);
 
+				
 				progress += progressInc;
 			}
 
@@ -323,65 +369,126 @@ public class CameraSearchTask extends AbstractTask {
 			}
 
 			// Set vectors.
-			this.rSession.assign("scantime", scanTimes);
-			this.rSession.assign("scanindex", scanIndices);
-			this.rSession.assign("mass", masses);
-			this.rSession.assign("intensity", intensities);
+//			this.rSession.assign("scantime", scanTimes);
+//			this.rSession.assign("scanindex", scanIndices);
+//			this.rSession.assign("mass", masses);
+//			this.rSession.assign("intensity", intensities);
+			
+			code.addDoubleArray("scantime", scanTimes);
+			code.addIntArray("scanindex", scanIndices);
+			code.addDoubleArray("mass", masses);
+			code.addDoubleArray("intensity", intensities);
 
+			
 			// Construct xcmsRaw object
-			this.rSession.eval("xRaw <- new(\"xcmsRaw\")");
-			this.rSession.eval("xRaw@tic <- intensity");
-			this.rSession.eval("xRaw@scantime <- scantime * " + SECONDS_PER_MINUTE);
-			this.rSession.eval("xRaw@scanindex <- scanindex");
-			this.rSession.eval("xRaw@env$mz <- mass");
-			this.rSession.eval("xRaw@env$intensity <- intensity");
+//			this.rSession.eval("xRaw <- new(\"xcmsRaw\")");
+//			this.rSession.eval("xRaw@tic <- intensity");
+//			this.rSession.eval("xRaw@scantime <- scantime * " + SECONDS_PER_MINUTE);
+//			this.rSession.eval("xRaw@scanindex <- scanindex");
+//			this.rSession.eval("xRaw@env$mz <- mass");
+//			this.rSession.eval("xRaw@env$intensity <- intensity");
+			
+			code.addRCode("xRaw <- new(\"xcmsRaw\")");
+			code.addRCode("xRaw@tic <- intensity");
+			code.addRCode("xRaw@scantime <- scantime * " + SECONDS_PER_MINUTE);
+			code.addRCode("xRaw@scanindex <- as.integer(scanindex)");
+			code.addRCode("xRaw@env$mz <- mass");
+			code.addRCode("xRaw@env$intensity <- intensity");
+			
 
 			// Create the xcmsSet object.
-			this.rSession.eval("xs <- new(\"xcmsSet\")");
+//			this.rSession.eval("xs <- new(\"xcmsSet\")");
+
+			code.addRCode("xs <- new(\"xcmsSet\")");
 
 			// Set peaks.
-			this.rSession.eval("xs@peaks <- peaks");
+//			this.rSession.eval("xs@peaks <- peaks");
+			
+			code.addRCode("xs@peaks <- peaks");
 
 			// Set file (dummy) file path.
-			this.rSession.eval("xs@filepaths  <- ''");
+//			this.rSession.eval("xs@filepaths  <- ''");
+
+			code.addRCode("xs@filepaths  <- ''");
 
 			// Set sample name.
-			this.rSession.assign("sampleName", peakList.getName());
-			this.rSession.eval("sampnames(xs) <- sampleName");
+//			this.rSession.assign("sampleName", peakList.getName());
+//			this.rSession.eval("sampnames(xs) <- sampleName");
 
+			code.addString("sampleName", peakList.getName());
+			code.addRCode("sampnames(xs) <- sampleName");
+			
+			
 			// Create an empty xsAnnotate.
-			this.rSession.eval("an <- xsAnnotate(xs, sample=1)");
+//			this.rSession.eval("an <- xsAnnotate(xs, sample=1)");
+			
+			code.addRCode("an <- xsAnnotate(xs, sample=1)");
+			
 
 			// Group by RT.
-			this.rSession.eval("an <- groupFWHM(an, sigma=" + fwhmSigma
+//			this.rSession.eval("an <- groupFWHM(an, sigma=" + fwhmSigma
+//					+ ", perfwhm=" + fwhmPercentage + ')');
+			
+			code.addRCode("an <- groupFWHM(an, sigma=" + fwhmSigma
 					+ ", perfwhm=" + fwhmPercentage + ')');
+
 			progress += progressInc;
 
 			// Identify isotopes.
-			this.rSession.eval(
+//			this.rSession.eval(
+//					"an <- findIsotopes(an, maxcharge=" + isoMaxCharge
+//					+ ", maxiso=" + isoMaxCount + ", ppm="
+//					+ isoMassTolerance.getPpmTolerance() + ", mzabs="
+//					+ isoMassTolerance.getMzTolerance() + ')');
+			
+			code.addRCode(
 					"an <- findIsotopes(an, maxcharge=" + isoMaxCharge
 					+ ", maxiso=" + isoMaxCount + ", ppm="
 					+ isoMassTolerance.getPpmTolerance() + ", mzabs="
 					+ isoMassTolerance.getMzTolerance() + ')');
+			
 			progress += progressInc;
 
 			// Split groups by correlating peak shape (need to set xraw to raw
 			// data).
-			this.rSession.eval(
+//			this.rSession.eval(
+//					"an <- groupCorr(an, calcIso=TRUE, xraw=xRaw, cor_eic_th="
+//							+ corrThreshold + ", pval=" + corrPValue + ')');
+
+			code.addRCode(
 					"an <- groupCorr(an, calcIso=TRUE, xraw=xRaw, cor_eic_th="
 							+ corrThreshold + ", pval=" + corrPValue + ')');
+			
 			progress += progressInc;
 
 			// Get the peak list.
-			this.rSession.eval("peakList <- getPeaklist(an)");
+//			this.rSession.eval("peakList <- getPeaklist(an)");
+
+			code.addRCode("peakList <- getPeaklist(an)");
 
 			// Extract the pseudo-spectra and isotope annotations from the peak
 			// list.
-			rSession.eval("pcgroup <- as.integer(peakList$pcgroup)");
-			rSession.eval("isotopes <- peakList$isotopes");
-			final int[] spectra = (int[]) rSession.collect("pcgroup");
-			final String[] isotopes = (String[]) rSession.collect("isotopes");
+//			rSession.eval("pcgroup <- as.integer(peakList$pcgroup)");
+//			rSession.eval("isotopes <- peakList$isotopes");
 
+			code.addRCode("pcgroup <- as.integer(peakList$pcgroup)");
+			code.addRCode("isotopes <- peakList$isotopes");
+			
+			
+//			final int[] spectra = (int[]) rSession.collect("pcgroup");
+//			final String[] isotopes = (String[]) rSession.collect("isotopes");
+
+			
+			code.addRCode("result <- list(pcgroup=pcgroup, isotopes=isotopes)");
+			caller.setRCode ( code ) ;
+			caller.runAndReturnResult ( "result" ) ;
+			
+			final int[] spectra = caller.getParser().getAsIntArray("pcgroup");
+			//caller. ( "pcgroup" ) ;isotopes
+			final String[] isotopes = caller.getParser().getAsStringArray("isotopes");
+
+			
+			
 			// Add identities.
 			if (spectra != null) {
 
@@ -389,15 +496,15 @@ public class CameraSearchTask extends AbstractTask {
 			}
 			progress += progressInc;
 			// Turn off R instance, once task ended gracefully.
-			if (!this.userCanceled) this.rSession.close(false);
+//			if (!this.userCanceled) this.rSession.close(false);
 
 		} 
-		catch (RSessionWrapperException e) {
-			if (!this.userCanceled) {
-				errorMsg = "'R computing error' during CAMERA search. \n" + e.getMessage();
-				e.printStackTrace();
-			}
-		}
+//		catch (RSessionWrapperException e) {
+//			if (!this.userCanceled) {
+//				errorMsg = "'R computing error' during CAMERA search. \n" + e.getMessage();
+//				e.printStackTrace();
+//			}
+//		}
 		catch (Exception e) {
 			if (!this.userCanceled) {
 				errorMsg = "'Unknown error' during CAMERA search. \n" + e.getMessage();
@@ -406,19 +513,19 @@ public class CameraSearchTask extends AbstractTask {
 		}
 
 		// Turn off R instance, once task ended UNgracefully.
-		try {
-			if (!this.userCanceled) this.rSession.close(this.userCanceled);
-		}
-		catch (RSessionWrapperException e) {
-			if (!this.userCanceled) {
-				// Do not override potential previous error message.
-				if (errorMsg == null) {
-					errorMsg = e.getMessage();
-				}
-			} else {
-				// User canceled: Silent.
-			}
-		}
+//		try {
+//			if (!this.userCanceled) this.rSession.close(this.userCanceled);
+//		}
+//		catch (RSessionWrapperException e) {
+//			if (!this.userCanceled) {
+//				// Do not override potential previous error message.
+//				if (errorMsg == null) {
+//					errorMsg = e.getMessage();
+//				}
+//			} else {
+//				// User canceled: Silent.
+//			}
+//		}
 
 
 		// Report error.
