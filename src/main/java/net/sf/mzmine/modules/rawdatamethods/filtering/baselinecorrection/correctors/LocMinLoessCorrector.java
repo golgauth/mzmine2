@@ -78,7 +78,7 @@ public class LocMinLoessCorrector extends BaselineCorrector {
         rSession.eval("bseoff <- bslnoff(mat, method=\"" + method + "\", bw="
                 + bw + ", breaks=breaks, qntl=" + qntl + ")");
         rSession.eval("baseline <- mat[,2] - bseoff[,2]");
-        baseline = (double[]) rSession.collect("baseline", RCallerResultType.DOUBLE_ARRAY);
+        baseline = (double[]) rSession.collect("baseline"/*, RCallerResultType.DOUBLE_ARRAY*/);
 		// Done: Refresh R code stack
 		rSession.clearCode();
 

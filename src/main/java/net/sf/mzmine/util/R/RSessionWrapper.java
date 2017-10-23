@@ -50,6 +50,7 @@ import com.github.rcaller.exception.ExecutionException;
 import com.github.rcaller.exception.ParseException;
 import com.github.rcaller.rstuff.RCaller;
 import com.github.rcaller.rstuff.RCode;
+import com.github.rcaller.rstuff.ROutputParser;
 //import com.github.rcaller.scriptengine.RCallerScriptEngine;
 import com.github.rcaller.util.Globals;
 
@@ -421,7 +422,7 @@ public class RSessionWrapper {
                     
                     // Quick test
                     ((RCaller) this.rEngine).getRCode().addRCode("r_version <- R.version.string");
-                    LOG.log(logLvl, ((String[]) this.collect("r_version", RCallerResultType.STRING_ARRAY))[0]);
+                    LOG.log(logLvl, ((String[]) this.collect("r_version"/*, RCallerResultType.STRING_ARRAY*/))[0]);
             		// Done: Refresh R code stack
             		this.clearCode();
                     
@@ -548,8 +549,8 @@ public class RSessionWrapper {
 				boolean version_ok = false;
 				try {
 					this.eval("version_ok <- " + checkVersionCode);
-					version_ok = ((boolean[]) this.collect("version_ok", 
-							RCallerResultType.BOOL_ARRAY))[0];
+					version_ok = ((boolean[]) this.collect("version_ok"/*, 
+							RCallerResultType.BOOL_ARRAY*/))[0];
 //					// Need it reset to begin with the true computing result to come
 //					// (Since RCaller terminates Rscript process right after collect)
 //					this.initNewRCaller();
@@ -883,11 +884,11 @@ public class RSessionWrapper {
      * @return
      * @throws RSessionWrapperException
      */
-    public Object collect(String obj) throws RSessionWrapperException {
-        return collect(obj, true);
+    private Object collectRserve(String obj) throws RSessionWrapperException {
+        return collectRserve(obj, true);
     }
     //
-    public Object collect(String obj, boolean stopOnError)
+    private Object collectRserve(String obj, boolean stopOnError)
             throws RSessionWrapperException {
 
         Object object = null;
@@ -928,19 +929,19 @@ public class RSessionWrapper {
     }
 
     // < Rsession/RCaller: adaptable collect >
-    public Object collect(String objOrExp, RCallerResultType type) throws RSessionWrapperException {
-    	return this.collect(objOrExp, type, false, true);
+    public Object collect(String objOrExp/*, RCallerResultType type*/) throws RSessionWrapperException {
+    	return this.collect(objOrExp, /*type,*/ false, true);
     }
-    public Object collect(String objOrExp, RCallerResultType type, boolean stopOnError) throws RSessionWrapperException {
-    	return this.collect(objOrExp, type, false, stopOnError);
+    public Object collect(String objOrExp, /*RCallerResultType type,*/ boolean stopOnError) throws RSessionWrapperException {
+    	return this.collect(objOrExp, /*type,*/ false, stopOnError);
     }
     //
-    public Object collect(String objOrExp, RCallerResultType type, boolean tryEval, boolean stopOnError) throws RSessionWrapperException {
+    public Object collect(String objOrExp, /*RCallerResultType type,*/ boolean tryEval, boolean stopOnError) throws RSessionWrapperException {
 
     	// Rsession: ignore type
     	if (this.rEngineType == REngineType.RSESSION) {
     		 
-        	return collect(objOrExp, stopOnError);
+        	return collectRserve(objOrExp, stopOnError);
         	
         } else { // RCaller
 	
@@ -971,10 +972,63 @@ public class RSessionWrapper {
 				}
 	    		//
 				
-				((RCaller) this.rEngine).runAndReturnResultOnline(obj);
+				String obj_type_var = obj + "_type";
+        		((RCaller) this.rEngine).getRCode().addRCode(obj_type_var + " <- typeof(" + obj + ")");
+				String obj_ismatrix_var = obj + "_ismatrix";
+        		((RCaller) this.rEngine).getRCode().addRCode(obj_ismatrix_var + " <- inherits(" + obj + ", \"matrix\")");
+				String obj_isarray_var = obj + "_isarray";
+        		((RCaller) this.rEngine).getRCode().addRCode(obj_isarray_var + " <- inherits(" + obj + ", \"array\")");
+				
+//        		System.out.println("Added code: " + str_obj_type + " <- typeof(" + obj + ")");
+//        		System.out.println("Global code: " + ((RCaller) this.rEngine).getRCode().getCode());
+        		
+        		String code = "obj_lst <- list("
+        				+ obj + "=" + obj + "," 
+        				+ obj_type_var + "=" + obj_type_var  + ","
+        				+ obj_ismatrix_var + "=" + obj_ismatrix_var  + ","
+        				+ obj_isarray_var + "=" + obj_isarray_var
+        				+ ")";
+        		((RCaller) this.rEngine).getRCode().addRCode(code);
+        		//
+        		((RCaller) this.rEngine).runAndReturnResultOnline("obj_lst");
+
+        		
+//        		try {
+//        			System.out.println("Parser XML: " + ((RCaller) this.rEngine).getParser().getXMLFileAsString());
+//        		} catch (IOException e1) {
+//        			// TODO Auto-generated catch block
+//        			e1.printStackTrace();
+//        		}
 	        	
-	
+        		//System.out.println("Found type: " + str_obj_type + " for obj: " + obj);
+        		String obj_type_value = ((RCaller) this.rEngine).getParser().getAsStringArray(obj_type_var)[0];
+        		boolean obj_ismatrix_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_ismatrix_var)[0];
+        		boolean obj_isarray_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_isarray_var)[0];
+
+//        		System.out.println("Found type: \"" + t + "\" for obj: '" + obj + "'");
+        		
 	        	try {
+	        		
+//		        	if (type == RCallerResultType.DOUBLE_ARRAY) {
+//		        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
+//		        	} else if (type == RCallerResultType.DOUBLE_MATRIX) {
+////		        		System.out.println(((RCaller) this.rEngine).getParser().getType(obj));
+////		        		System.out.println(((RCaller) this.rEngine).getParser().getXMLFileAsString());
+////		        		System.out.println(((RCaller) this.rEngine).getParser().getDimensions(obj));
+//		        		return ((RCaller) this.rEngine).getParser().getAsDoubleMatrix(obj);
+//		        	} else if (type == RCallerResultType.INT_ARRAY) {
+//		        		return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
+//		        	} else if (type == RCallerResultType.BOOL_ARRAY) {
+//		        		return ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj);
+//		        	} else if (type == RCallerResultType.STRING_ARRAY) {
+//		        		return ((RCaller) this.rEngine).getParser().getAsStringArray(obj);
+//		        	} else {
+//		        		String msg = this.rEngineType + ": Wrong type passed: '" + type + "' for object: '" + obj + "'!";
+//		        		throw new RSessionWrapperException(msg);
+//		        	}
+	        		
+	        		// Find out proper type automatically
+	        		RCallerResultType type = getRCallerResultType(obj, obj_type_value, obj_ismatrix_value, obj_isarray_value);
 	        		
 		        	if (type == RCallerResultType.DOUBLE_ARRAY) {
 		        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
@@ -1025,6 +1079,70 @@ public class RSessionWrapper {
     		}
         }
     }
+    
+    private RCallerResultType getRCallerResultType(String var, String typeofvar, boolean ismatrix, boolean isarray) {
+    
+    	if (this.rEngineType != REngineType.RCALLER) { return null; }
+    	
+    	ROutputParser parser = ((RCaller) this.rEngine).getParser();
+	    
+    	//String vartype = parser.getType(var);
+	    
+//	    System.out.println("Testing for type: " + vartype);
+//	    try {
+//			System.out.println("\t> XML:\n" + parser.getXMLFileAsString());
+//		} catch (IOException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
+	    
+    	RCallerResultType type;
+    	
+    	/** System.out.println("Testing for type: " + typeofvar + ", ismatrix: " + ismatrix + ", isarray: " + isarray); */
+//    	int[] dimension;
+//		try {
+//	        //System.out.println(parser.getXMLFileAsString());
+//	        dimension = parser.getDimensions(var);
+//	    } catch (Exception e) {
+//	    	
+//	    	// Not array or matrix
+//	    	if (typeofvar.equals("double")) {//vartype.equals("numeric")) {
+//		        type = RCallerResultType.DOUBLE_ARRAY;//(parser.getAsDoubleArray(var));
+//		    } else if (typeofvar.equals("integer")) {//(vartype.equals("character")) {
+//		        type = RCallerResultType.INT_ARRAY;//(parser.getAsStringArray(var));
+//		    } else if (typeofvar.equals("logical")) {//(vartype.equals("character")) {
+//		        type = RCallerResultType.BOOL_ARRAY;//(parser.getAsStringArray(var));
+//		    } else if (typeofvar.equals("character")) {//(vartype.equals("character")) {
+//		        type = RCallerResultType.STRING_ARRAY;//(parser.getAsStringArray(var));
+//		    } else {
+//		    	type = RCallerResultType.UNKNOWN;//(parser.getAsStringArray(var));
+//		    }
+//	    	return type;
+//    	}
+		
+		// Is array or matrix
+//		System.out.println("Found array of size: " + dimension[0] + "x" + dimension[1]);
+	    if (ismatrix) { // /*dimension[0] == 0 || dimension[1] == 0 ||*/ (dimension[0] > 1 && dimension[1] > 1)) {
+	        type = RCallerResultType.DOUBLE_MATRIX;//(parser.getAsDoubleMatrix(var));
+	    } else { //if (isarray) { 
+	    	if (typeofvar.equals("double")) {//vartype.equals("numeric")) {
+		        type = RCallerResultType.DOUBLE_ARRAY;//(parser.getAsDoubleArray(var));
+		    } else if (typeofvar.equals("integer")) {//(vartype.equals("character")) {
+		        type = RCallerResultType.INT_ARRAY;//(parser.getAsStringArray(var));
+		    } else if (typeofvar.equals("logical")) {//(vartype.equals("character")) {
+		        type = RCallerResultType.BOOL_ARRAY;//(parser.getAsStringArray(var));
+		    } else if (typeofvar.equals("character")) {//(vartype.equals("character")) {
+		        type = RCallerResultType.STRING_ARRAY;//(parser.getAsStringArray(var));
+		    } else {
+		    	type = RCallerResultType.UNKNOWN;//(parser.getAsStringArray(var));
+		    }
+	    }
+
+	    /** System.out.println("Testing for type conluded to: " + type); */
+	    
+	    return type;
+    }
+
 //    //
 //    public Object collect(String objOrExp, RCallerResultType type, boolean stopOnError) throws RSessionWrapperException {
 //
@@ -1234,13 +1352,16 @@ public class RSessionWrapper {
 //    	return collected;
 //    }
 	// Latest eval of a serie of evals, and no need for collecting!
-//	public void ultimateEval() {
-//		
-//		if (this.rEngineType == REngineType.RCALLER) {
-//			((RCaller) this.rEngine).runOnly();
-//		}
-//	}
-//	//
+	public void ultimateEval() {
+		
+		if (this.rEngineType == REngineType.RCALLER) {
+			//((RCaller) this.rEngine).runOnly();
+			// Cannot 'runOnly()', all the stuff being run 'online'
+			// => this would collide with "this.close()"
+			((RCaller) this.rEngine).runAndReturnResultOnline("TRUE");
+		}
+	}
+	//
 	public void clearCode() {
 		
 		if (this.rEngineType == REngineType.RCALLER) {

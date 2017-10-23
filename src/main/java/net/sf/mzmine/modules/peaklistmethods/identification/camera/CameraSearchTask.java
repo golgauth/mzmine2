@@ -384,8 +384,8 @@ public class CameraSearchTask extends AbstractTask {
 			this.rSession.eval("pcgroup <- as.integer(peakList$pcgroup)");
 			this.rSession.eval("isotopes <- peakList$isotopes");
 			
-			final int[] spectra = (int[]) rSession.collect("pcgroup", RCallerResultType.INT_ARRAY);
-			final String[] isotopes = (String[]) rSession.collect("isotopes", RCallerResultType.STRING_ARRAY);
+			final int[] spectra = (int[]) rSession.collect("pcgroup"/*, RCallerResultType.INT_ARRAY*/);
+			final String[] isotopes = (String[]) rSession.collect("isotopes"/*, RCallerResultType.STRING_ARRAY*/);
 
 //			Object[] collected = rSession.collectSeveral(
 //					new String[] { "pcgroup", "isotopes" }, 

@@ -267,12 +267,12 @@ public class CentWaveDetector implements PeakResolver {
                 + ", ROI.list=ROIs)");
 
         // Get rid of 'NA' values potentially found in the resulting matrix
-        rSession.eval("mtx[is.na(mtx)] <- " + RSessionWrapper.NA_DOUBLE);
+        rSession.eval("mtx[is.na(mtx)] <- " + RSessionWrapper.NA_DOUBLE); // + "0");//
         
         
         final Object centWave = roi <= 1 ? null : (double[][]) rSession
     		  .collect("mtx", 
-    				  RCallerResultType.DOUBLE_MATRIX,
+    				  /*RCallerResultType.DOUBLE_MATRIX,*/
     				  false);
        
         

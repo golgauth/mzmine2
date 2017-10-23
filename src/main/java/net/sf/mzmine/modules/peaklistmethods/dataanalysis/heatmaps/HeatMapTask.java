@@ -272,6 +272,8 @@ public class HeatMapTask extends AbstractTask {
 
             rSession.eval("dev.off()", false);
             
+            rSession.ultimateEval();
+            
 			// Done: Refresh R code stack
 			this.rSession.clearCode();
             
