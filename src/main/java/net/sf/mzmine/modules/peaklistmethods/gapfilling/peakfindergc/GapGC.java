@@ -435,7 +435,8 @@ class GapGC {
             Feature[] peaks = null;
             try {
                 peaks = resolver.resolvePeaks(chromatogram,
-                        scanNumbers, retentionTimes, intensities, resolverParams,
+                        //scanNumbers, retentionTimes, intensities, 
+                        resolverParams,
                         null);
             } catch (RSessionWrapperException e) {
                 // TODO Auto-generated catch block
@@ -464,11 +465,26 @@ class GapGC {
 
         @Override
         public Feature[] resolvePeaks(final Feature chromatogram,
-                final int[] scanNumbers, final double[] retentionTimes,
-                final double[] intensities, ParameterSet parameters,
+                //final int[] scanNumbers, final double[] retentionTimes, final double[] intensities, 
+                ParameterSet parameters,
                 RSessionWrapper rSession) {
 
+            int scanNumbers[] = chromatogram.getScanNumbers();
             final int scanCount = scanNumbers.length;
+            double retentionTimes[] = new double[scanCount];
+            double intensities[] = new double[scanCount];
+            RawDataFile dataFile = chromatogram.getDataFile();
+            for (int i = 0; i < scanCount; i++) {
+                final int scanNum = scanNumbers[i];
+                retentionTimes[i] = dataFile.getScan(scanNum).getRetentionTime();
+                DataPoint dp = chromatogram.getDataPoint(scanNum);
+                if (dp != null)
+                    intensities[i] = dp.getIntensity();
+                else
+                    intensities[i] = 0.0;
+            }
+
+//            final int scanCount = scanNumbers.length;
             final int lastScan = scanCount - 1;
 
             assert scanCount > 0;

@@ -48,6 +48,7 @@ import net.sf.mzmine.parameters.dialogs.ParameterSetupDialogWithChromatogramPrev
 import net.sf.mzmine.parameters.parametertypes.selectors.ScanSelection;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
@@ -216,7 +217,7 @@ public class BaselineCorrectorSetupDialog extends
             try {
                 String[] reqPackages = baselineCorrector.getRequiredRPackages();
                 this.rSession = new RSessionWrapper(
-                        baselineCorrector.getName(), reqPackages, null);
+                        REngineType.RCALLER, baselineCorrector.getName(), reqPackages, null);
                 this.rSession.open();
             } catch (RSessionWrapperException e) {
                 errorMsg = e.getMessage();

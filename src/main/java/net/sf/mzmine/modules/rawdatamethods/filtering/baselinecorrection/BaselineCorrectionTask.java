@@ -32,6 +32,7 @@ import net.sf.mzmine.modules.MZmineProcessingStep;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
@@ -118,8 +119,8 @@ public class BaselineCorrectionTask extends AbstractTask {
                     .getRequiredRPackages();
             String callerFeatureName = this.baselineCorrectorProcStep
                     .getModule().getName();
-            this.rSession = new RSessionWrapper(callerFeatureName, reqPackages,
-                    null);
+            this.rSession = new RSessionWrapper(REngineType.RCALLER, 
+            		callerFeatureName, reqPackages, null);
 
             this.rSession.open();
 
@@ -162,6 +163,7 @@ public class BaselineCorrectionTask extends AbstractTask {
             if (!isCanceled()) {
                 errorMsg = "'Unknown error' during baseline correction. \n"
                         + e.getMessage();
+                e.printStackTrace();
             }
         }
 

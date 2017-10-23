@@ -26,6 +26,7 @@ import net.sf.mzmine.modules.rawdatamethods.filtering.baselinecorrection.Baselin
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
+import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
 
 /**
  * @description Rubber Band baseline corrector. Estimates a trend based on
@@ -77,8 +78,10 @@ public class RubberBandCorrector extends BaselineCorrector {
         rSession.eval("baseline <- spc.rubberband(spc + bend, noise = noise, df = "
                 + df + ", spline=" + (spline ? "T" : "F") + ") - bend");
         rSession.eval("baseline <- orderwl(baseline)[[1]]");
-        baseline = ((double[][]) rSession.collect("baseline"))[0];
-
+        baseline = ((double[][]) rSession.collect("baseline", RCallerResultType.DOUBLE_MATRIX))[0];
+		// Done: Refresh R code stack
+		rSession.clearCode();
+        
         return baseline;
     }
 //    public class RubberBandCorrector extends BaselineCorrector {

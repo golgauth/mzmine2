@@ -51,6 +51,7 @@ import net.sf.mzmine.modules.visualization.tic.TICToolBar;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.dialogs.ParameterSetupDialog;
 import net.sf.mzmine.util.GUIUtils;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
@@ -218,20 +219,20 @@ public class PeakResolverSetupDialog extends ParameterSetupDialog {
 
                     // Load the intensities and RTs into array.
                     final Feature previewPeak = previewRow.getPeaks()[0];
-                    final RawDataFile dataFile = previewPeak.getDataFile();
-                    final int[] scanNumbers = dataFile.getScanNumbers(1);
-                    final int scanCount = scanNumbers.length;
-                    final double[] retentionTimes = new double[scanCount];
-                    final double[] intensities = new double[scanCount];
-                    for (int i = 0; i < scanCount; i++) {
-
-                        final int scanNumber = scanNumbers[i];
-                        final DataPoint dp = previewPeak
-                                .getDataPoint(scanNumber);
-                        intensities[i] = dp != null ? dp.getIntensity() : 0.0;
-                        retentionTimes[i] = dataFile.getScan(scanNumber)
-                                .getRetentionTime();
-                    }
+//                    final RawDataFile dataFile = previewPeak.getDataFile();
+//                    final int[] scanNumbers = dataFile.getScanNumbers(1);
+//                    final int scanCount = scanNumbers.length;
+//                    final double[] retentionTimes = new double[scanCount];
+//                    final double[] intensities = new double[scanCount];
+//                    for (int i = 0; i < scanCount; i++) {
+//
+//                        final int scanNumber = scanNumbers[i];
+//                        final DataPoint dp = previewPeak
+//                                .getDataPoint(scanNumber);
+//                        intensities[i] = dp != null ? dp.getIntensity() : 0.0;
+//                        retentionTimes[i] = dataFile.getScan(scanNumber)
+//                                .getRetentionTime();
+//                    }
 
                     // Resolve peaks.
                     Feature[] resolvedPeaks = {};
@@ -246,7 +247,8 @@ public class PeakResolverSetupDialog extends ParameterSetupDialog {
                             String[] reqPackagesVersions = peakResolver
                                     .getRequiredRPackagesVersions();
                             String callerFeatureName = peakResolver.getName();
-                            rSession = new RSessionWrapper(callerFeatureName,
+                            rSession = new RSessionWrapper(REngineType.RCALLER, 
+                            		callerFeatureName,
                                     reqPackages, reqPackagesVersions);
                             rSession.open();
                         } else {
@@ -254,7 +256,7 @@ public class PeakResolverSetupDialog extends ParameterSetupDialog {
                         }
 
                         resolvedPeaks = peakResolver.resolvePeaks(previewPeak,
-                                scanNumbers, retentionTimes, intensities,
+                                //scanNumbers, retentionTimes, intensities,
                                 parameters, rSession);
 
                         // Turn off R instance.

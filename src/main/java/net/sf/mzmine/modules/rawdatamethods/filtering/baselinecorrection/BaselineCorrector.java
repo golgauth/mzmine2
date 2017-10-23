@@ -113,7 +113,9 @@ public abstract class BaselineCorrector implements BaselineProvider,
             final ParameterSet commonParameters) throws IOException,
             RSessionWrapperException {
 
-        if (isAborted(dataFile) || !rSession.isSessionRunning())
+//        if (isAborted(dataFile) || !rSession.isSessionRunning())
+//            return null;
+        if (isAborted(dataFile))
             return null;
         // Get very last information from root module setup
         // this.setGeneralParameters(MZmineCore.getConfiguration().getModuleParameters(BaselineCorrectionModule.class));

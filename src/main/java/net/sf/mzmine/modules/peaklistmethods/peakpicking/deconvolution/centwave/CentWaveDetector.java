@@ -35,14 +35,19 @@ import java.util.logging.Logger;
 
 import javax.annotation.Nonnull;
 
+import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.PeakResolver;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.ResolvedPeak;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.centwave.CentWaveDetectorParameters.PeakIntegrationMethod;
 import net.sf.mzmine.parameters.ParameterSet;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
+import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
 
+import com.github.rcaller.rstuff.RCaller;
 import com.google.common.collect.Range;
 
 /**
@@ -61,7 +66,7 @@ public class CentWaveDetector implements PeakResolver {
     private static final double SECONDS_PER_MINUTE = 60.0;
 
     // Required minimum version of XCMS.
-    private static final String XCMS_VERSION = "1.33.2";
+    private static final String XCMS_VERSION = "1.33.2";//1.52.0
 
     @Nonnull
     @Override
@@ -94,10 +99,25 @@ public class CentWaveDetector implements PeakResolver {
 
     @Override
     public Feature[] resolvePeaks(final Feature chromatogram,
-            final int[] scanNumbers, final double[] retentionTimes,
-            final double[] intensities, final ParameterSet parameters,
+            //final int[] scanNumbers, final double[] retentionTimes, final double[] intensities, 
+            final ParameterSet parameters,
             RSessionWrapper rSession) throws RSessionWrapperException {
-        // Call findPeaks.centWave.
+        
+        int scanNumbers[] = chromatogram.getScanNumbers();
+        final int scanCount = scanNumbers.length;
+        double retentionTimes[] = new double[scanCount];
+        double intensities[] = new double[scanCount];
+        RawDataFile dataFile = chromatogram.getDataFile();
+        for (int i = 0; i < scanCount; i++) {
+            final int scanNum = scanNumbers[i];
+            retentionTimes[i] = dataFile.getScan(scanNum).getRetentionTime();
+            DataPoint dp = chromatogram.getDataPoint(scanNum);
+            if (dp != null)
+                intensities[i] = dp.getIntensity();
+            else
+                intensities[i] = 0.0;
+        }
+        
         double[][] peakMatrix = null;
 
         peakMatrix = centWave(rSession, retentionTimes, intensities,
@@ -193,6 +213,7 @@ public class CentWaveDetector implements PeakResolver {
 
         final double[][] peaks;
 
+        
         // Set vectors.
         rSession.assign("scantime", scanTime);
         rSession.assign("intensity", intensity);
@@ -236,20 +257,32 @@ public class CentWaveDetector implements PeakResolver {
             }
         }
 
-        // Do peak picking.
+        rSession.eval("mtx <- findPeaks.centWave(xRaw, ppm=0, mzdiff=0, verbose=TRUE"
+                + ", peakwidth=c(" + peakWidth.lowerEndpoint()
+                * SECONDS_PER_MINUTE + ", "
+                + peakWidth.upperEndpoint()
+                * SECONDS_PER_MINUTE + ')' + ", snthresh="
+                + snrThreshold + ", integrate="
+                + integrationMethod.getIndex()
+                + ", ROI.list=ROIs)");
+
+        // Get rid of 'NA' values potentially found in the resulting matrix
+        rSession.eval("mtx[is.na(mtx)] <- " + RSessionWrapper.NA_DOUBLE);
+        
+        
         final Object centWave = roi <= 1 ? null : (double[][]) rSession
-                .collect(
-                        "findPeaks.centWave(xRaw, ppm=0, mzdiff=0, verbose=TRUE"
-                                + ", peakwidth=c(" + peakWidth.lowerEndpoint()
-                                * SECONDS_PER_MINUTE + ", "
-                                + peakWidth.upperEndpoint()
-                                * SECONDS_PER_MINUTE + ')' + ", snthresh="
-                                + snrThreshold + ", integrate="
-                                + integrationMethod.getIndex()
-                                + ", ROI.list=ROIs)", false);
-
+    		  .collect("mtx", 
+    				  RCallerResultType.DOUBLE_MATRIX,
+    				  false);
+       
+        
+		// Done: Refresh R code stack
+		rSession.clearCode();
+        
         peaks = (centWave == null) ? null : (double[][]) centWave;
-
+        
+//        rSession.close(false);
+        
         return peaks;
     }
 }

@@ -41,6 +41,7 @@ import net.sf.mzmine.modules.peaklistmethods.qualityparameters.QualityParameters
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
@@ -131,7 +132,8 @@ public class DeconvolutionTask extends AbstractTask {
                                 .getRequiredRPackagesVersions();
                         String callerFeatureName = resolver.getModule()
                                 .getName();
-                        this.rSession = new RSessionWrapper(callerFeatureName,
+                        this.rSession = new RSessionWrapper(REngineType.RCALLER, 
+                        		callerFeatureName,
                                 reqPackages, reqPackagesVersions);
                         this.rSession.open();
                     } else {
@@ -166,6 +168,7 @@ public class DeconvolutionTask extends AbstractTask {
                     errorMsg = "'R computing error' during CentWave detection. \n"
                             + e.getMessage();
                 } catch (Exception e) {
+                	e.printStackTrace();
                     errorMsg = "'Unknown error' during CentWave detection. \n"
                             + e.getMessage();
                 } catch (Throwable t) {
@@ -212,14 +215,14 @@ public class DeconvolutionTask extends AbstractTask {
 
         // Get data file information.
         final RawDataFile dataFile = peakList.getRawDataFile(0);
-        final int[] scanNumbers = dataFile.getScanNumbers(1);
-        final int scanCount = scanNumbers.length;
-        final double[] retentionTimes = new double[scanCount];
-        for (int i = 0; i < scanCount; i++) {
-
-            retentionTimes[i] = dataFile.getScan(scanNumbers[i])
-                    .getRetentionTime();
-        }
+//        final int[] scanNumbers = dataFile.getScanNumbers(1);
+//        final int scanCount = scanNumbers.length;
+//        final double[] retentionTimes = new double[scanCount];
+//        for (int i = 0; i < scanCount; i++) {
+//
+//            retentionTimes[i] = dataFile.getScan(scanNumbers[i])
+//                    .getRetentionTime();
+//        }
 
         // Peak resolver.
 
@@ -254,19 +257,20 @@ public class DeconvolutionTask extends AbstractTask {
 
             final Feature chromatogram = chromatograms[index];
 
-            // Load the intensities into array.
-            final double[] intensities = new double[scanCount];
-            for (int i = 0; i < scanCount; i++) {
-
-                final DataPoint dp = chromatogram.getDataPoint(scanNumbers[i]);
-                intensities[i] = dp != null ? dp.getIntensity() : 0.0;
-            }
+//            // Load the intensities into array.
+//            final double[] intensities = new double[scanCount];
+//            for (int i = 0; i < scanCount; i++) {
+//
+//                final DataPoint dp = chromatogram.getDataPoint(scanNumbers[i]);
+//                intensities[i] = dp != null ? dp.getIntensity() : 0.0;
+//            }
 
             // Resolve peaks.
             final PeakResolver resolverModule = resolver.getModule();
             final ParameterSet resolverParams = resolver.getParameterSet();
             final Feature[] peaks = resolverModule.resolvePeaks(chromatogram,
-                    scanNumbers, retentionTimes, intensities, resolverParams,
+                    //scanNumbers, retentionTimes, intensities, 
+                    resolverParams,
                     rSession);
 
             // Add peaks to the new peak list.

@@ -52,8 +52,8 @@ public interface PeakResolver extends MZmineModule {
      * 
      * @throws RSessionWrapperException
      */
-    public Feature[] resolvePeaks(Feature chromatogram, int scanNumbers[],
-            double retentionTimes[], double intensities[],
+    public Feature[] resolvePeaks(Feature chromatogram, 
+    		//int scanNumbers[], double retentionTimes[], double intensities[],
             ParameterSet parameters, RSessionWrapper rSession)
             throws RSessionWrapperException;
 

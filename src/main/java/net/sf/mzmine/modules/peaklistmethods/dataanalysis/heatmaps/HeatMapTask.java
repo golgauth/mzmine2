@@ -39,6 +39,7 @@ import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.UserParameter;
 import net.sf.mzmine.taskcontrol.AbstractTask;
 import net.sf.mzmine.taskcontrol.TaskStatus;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 import net.sf.mzmine.util.R.Rsession.Rsession;
@@ -146,8 +147,8 @@ public class HeatMapTask extends AbstractTask {
 
             // Load gplots library
             String[] reqPackages = { "gplots" };
-            rSession = new RSessionWrapper("HeatMap analysis module",
-                    reqPackages, null);
+            rSession = new RSessionWrapper(REngineType.RCALLER,
+            		"HeatMap analysis module", reqPackages, null);
             rSession.open();
 
             finishedPercentage = 0.3f;
@@ -270,6 +271,11 @@ public class HeatMapTask extends AbstractTask {
             }
 
             rSession.eval("dev.off()", false);
+            
+			// Done: Refresh R code stack
+			this.rSession.clearCode();
+            
+            
             finishedPercentage = 1.0;
 
             // Turn off R instance, once task ended gracefully.

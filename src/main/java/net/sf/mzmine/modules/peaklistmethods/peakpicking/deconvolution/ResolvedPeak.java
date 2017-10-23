@@ -84,12 +84,13 @@ public class ResolvedPeak implements Feature {
 	// Make an array of scan numbers of this peak
 	scanNumbers = new int[regionEnd - regionStart + 1];
 
-	// Note that we cannot use chromatogram.getScanNumbers() here, because
-	// the chromatogram may already have been deconvoluted -> scan numbers
-	// would be a subset of all scans. The regionStart and regionEnd indexes
-	// refer to all MS1 scans, therefore we use datafile.getScanNumbers(1)
-	int chromatogramScanNumbers[] = chromatogram.getDataFile()
-		.getScanNumbers(1);
+//	// Note that we cannot use chromatogram.getScanNumbers() here, because
+//	// the chromatogram may already have been deconvoluted -> scan numbers
+//	// would be a subset of all scans. The regionStart and regionEnd indexes
+//	// refer to all MS1 scans, therefore we use datafile.getScanNumbers(1)
+//	int chromatogramScanNumbers[] = chromatogram.getDataFile()
+//		.getScanNumbers(1);
+    int chromatogramScanNumbers[] = chromatogram.getScanNumbers();
 
 	System.arraycopy(chromatogramScanNumbers, regionStart, scanNumbers, 0,
 		regionEnd - regionStart + 1);
@@ -99,43 +100,49 @@ public class ResolvedPeak implements Feature {
 
 	// Set raw data point ranges, height, rt and representative scan
 	height = Double.MIN_VALUE;
+
+        double mzValue = chromatogram.getMZ();
 	for (int i = 0; i < scanNumbers.length; i++) {
 
+            dataPointMZValues[i] = mzValue;
+            
 	    DataPoint dp = chromatogram.getDataPoint(scanNumbers[i]);
 	    if (dp == null) {
-		String error = "Cannot create a resolved peak in a region with missing data points: chromatogram "
-			+ chromatogram
-			+ " scans "
-			+ chromatogramScanNumbers[regionStart]
-			+ "-"
-			+ chromatogramScanNumbers[regionEnd]
-			+ ", missing data point in scan " + scanNumbers[i];
-		throw new IllegalArgumentException(error);
+            continue;
+            /*
+    String error = "Cannot create a resolved peak in a region with missing data points: chromatogram "
+            + chromatogram + " scans "
+            + chromatogramScanNumbers[regionStart] + "-"
+            + chromatogramScanNumbers[regionEnd]
+            + ", missing data point in scan " + scanNumbers[i];
+
+    throw new IllegalArgumentException(error);*/
 	    }
 
-	    dataPointMZValues[i] = dp.getMZ();
+            //dataPointMZValues[i] = dp.getMZ();
 	    dataPointIntensityValues[i] = dp.getIntensity();
 
 	    if (rawDataPointsIntensityRange == null) {
 		rawDataPointsIntensityRange = Range
 			.singleton(dp.getIntensity());
-		rawDataPointsRTRange = Range.singleton(dataFile.getScan(
-			scanNumbers[i]).getRetentionTime());
+                rawDataPointsRTRange = Range.singleton(
+                        dataFile.getScan(scanNumbers[i]).getRetentionTime());
 		rawDataPointsMZRange = Range.singleton(dp.getMZ());
 	    } else {
-		rawDataPointsRTRange = rawDataPointsRTRange.span(Range
-			.singleton(dataFile.getScan(scanNumbers[i])
+                rawDataPointsRTRange = rawDataPointsRTRange
+                        .span(Range.singleton(dataFile.getScan(scanNumbers[i])
 				.getRetentionTime()));
 		rawDataPointsIntensityRange = rawDataPointsIntensityRange
 			.span(Range.singleton(dp.getIntensity()));
-		rawDataPointsMZRange = rawDataPointsMZRange.span(Range
-			.singleton(dp.getMZ()));
+                rawDataPointsMZRange = rawDataPointsMZRange
+                        .span(Range.singleton(dp.getMZ()));
 	    }
 
 	    if (height < dp.getIntensity()) {
 		height = dp.getIntensity();
 		rt = dataFile.getScan(scanNumbers[i]).getRetentionTime();
 		representativeScan = scanNumbers[i];
+                
 	    }
 	}
 
@@ -159,8 +166,34 @@ public class ResolvedPeak implements Feature {
 	}
 
 	// Update fragment scan
+        double lowerBound = rawDataPointsMZRange.lowerEndpoint();
+        double upperBound = rawDataPointsMZRange.upperEndpoint();
+        double mid = (upperBound+lowerBound)/2;
+//        lowerBound = mid - msmsRange/2;
+//        upperBound = mid + msmsRange/2;
+        if(lowerBound <0){
+        	lowerBound =0;
+        }
+        Range<Double> searchingRange = Range
+        		.closed(lowerBound,upperBound);
+        double lowerBoundRT = rawDataPointsRTRange.lowerEndpoint();
+        double upperBoundRT = rawDataPointsRTRange.upperEndpoint();
+        double midRT = (upperBoundRT+lowerBoundRT)/2;
+//        lowerBoundRT = midRT - RTRangeMSMS/2;
+//        upperBoundRT = midRT + RTRangeMSMS/2;
+        if(lowerBound <0){
+        	lowerBound =0;
+        }
+        Range<Double> searchingRangeRT = Range
+        		.closed(lowerBoundRT,upperBoundRT);
+        
+//        if (msmsRange == 0)
+//        	searchingRange = rawDataPointsMZRange;
+//        if (RTRangeMSMS == 0)
+//        	searchingRangeRT =  rawDataPointsRTRange;
+        
 	fragmentScan = ScanUtils.findBestFragmentScan(dataFile,
-		rawDataPointsRTRange, rawDataPointsMZRange);
+        		searchingRangeRT, searchingRange);
 
 	if (fragmentScan > 0) {
 	    Scan fragmentScanObject = dataFile.getScan(fragmentScan);

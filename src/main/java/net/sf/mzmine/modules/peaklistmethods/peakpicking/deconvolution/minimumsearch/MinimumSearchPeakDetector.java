@@ -31,7 +31,9 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
+import net.sf.mzmine.datamodel.DataPoint;
 import net.sf.mzmine.datamodel.Feature;
+import net.sf.mzmine.datamodel.RawDataFile;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.PeakResolver;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.ResolvedPeak;
 import net.sf.mzmine.parameters.ParameterSet;
@@ -55,11 +57,26 @@ public class MinimumSearchPeakDetector implements PeakResolver {
 
     @Override
     public Feature[] resolvePeaks(final Feature chromatogram,
-            final int[] scanNumbers, final double[] retentionTimes,
-            final double[] intensities, ParameterSet parameters,
+    		//final int[] scanNumbers, final double[] retentionTimes, final double[] intensities, 
+            ParameterSet parameters,
             RSessionWrapper rSession) {
 
+        int scanNumbers[] = chromatogram.getScanNumbers();
         final int scanCount = scanNumbers.length;
+        double retentionTimes[] = new double[scanCount];
+        double intensities[] = new double[scanCount];
+        RawDataFile dataFile = chromatogram.getDataFile();
+        for (int i = 0; i < scanCount; i++) {
+            final int scanNum = scanNumbers[i];
+            retentionTimes[i] = dataFile.getScan(scanNum).getRetentionTime();
+            DataPoint dp = chromatogram.getDataPoint(scanNum);
+            if (dp != null)
+                intensities[i] = dp.getIntensity();
+            else
+                intensities[i] = 0.0;
+        }
+
+//        final int scanCount = scanNumbers.length;
         final int lastScan = scanCount - 1;
 
         assert scanCount > 0;
@@ -74,7 +91,7 @@ public class MinimumSearchPeakDetector implements PeakResolver {
                 parameters.getParameter(MIN_RELATIVE_HEIGHT).getValue()
                         * chromatogram.getHeight());
 
-        final List<ResolvedPeak> resolvedPeaks = new ArrayList<ResolvedPeak>(2);
+        final List<ResolvedPeak> resolvedPeaks = new ArrayList<ResolvedPeak>();
 
         // First, remove all data points below chromatographic threshold.
         final double chromatographicThresholdLevel = MathUtils.calcQuantile(
@@ -91,15 +108,18 @@ public class MinimumSearchPeakDetector implements PeakResolver {
 
         // Current region is a region between two minima, representing a
         // candidate for a resolved peak.
-        startSearch: for (int currentRegionStart = 0; currentRegionStart < lastScan - 2; currentRegionStart++) {
+        startSearch: for (int currentRegionStart = 0; currentRegionStart < lastScan
+                - 2; currentRegionStart++) {
 
             // Find at least two consecutive non-zero data points
-            if (intensities[currentRegionStart] != 0.0
-                    && intensities[currentRegionStart + 1] != 0.0) {
+            if (intensities[currentRegionStart] == 0.0
+                    || intensities[currentRegionStart + 1] == 0.0)
+                continue;
 
                 double currentRegionHeight = intensities[currentRegionStart];
 
-                endSearch: for (int currentRegionEnd = currentRegionStart + 1; currentRegionEnd < scanCount; currentRegionEnd++) {
+            endSearch: for (int currentRegionEnd = currentRegionStart
+                    + 1; currentRegionEnd < scanCount; currentRegionEnd++) {
 
                     // Update height of current region.
                     currentRegionHeight = Math.max(currentRegionHeight,
@@ -116,10 +136,8 @@ public class MinimumSearchPeakDetector implements PeakResolver {
 
                         // Check the shape of the peak.
                         if (currentRegionHeight >= minHeight
-                                && currentRegionHeight >= peakMinLeft
-                                        * minRatio
-                                && currentRegionHeight >= peakMinRight
-                                        * minRatio
+                            && currentRegionHeight >= peakMinLeft * minRatio
+                            && currentRegionHeight >= peakMinRight * minRatio
                                 && peakDuration
                                         .contains(retentionTimes[currentRegionEnd]
                                                 - retentionTimes[currentRegionStart])) {
@@ -200,7 +218,6 @@ public class MinimumSearchPeakDetector implements PeakResolver {
                     }
                 }
             }
-        }
 
         return resolvedPeaks.toArray(new Feature[resolvedPeaks.size()]);
     }
