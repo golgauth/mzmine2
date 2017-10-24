@@ -28,14 +28,11 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.lang.model.SourceVersion;
-import javax.script.ScriptException;
-
 import org.rosuda.REngine.REXP;
 import org.rosuda.REngine.REXPDouble;
 import org.rosuda.REngine.REXPInteger;
@@ -57,7 +54,6 @@ import com.github.rcaller.util.Globals;
 import net.sf.mzmine.util.LoggerStream;
 import net.sf.mzmine.util.TextUtils;
 import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
-import net.sf.mzmine.util.R.Rsession.EvalListener;
 import net.sf.mzmine.util.R.Rsession.RserverConf;
 import net.sf.mzmine.util.R.Rsession.Rsession;
 
@@ -976,8 +972,8 @@ public class RSessionWrapper {
         		((RCaller) this.rEngine).getRCode().addRCode(obj_type_var + " <- typeof(" + obj + ")");
 				String obj_ismatrix_var = obj + "_ismatrix";
         		((RCaller) this.rEngine).getRCode().addRCode(obj_ismatrix_var + " <- inherits(" + obj + ", \"matrix\")");
-				String obj_isarray_var = obj + "_isarray";
-        		((RCaller) this.rEngine).getRCode().addRCode(obj_isarray_var + " <- inherits(" + obj + ", \"array\")");
+//				String obj_isarray_var = obj + "_isarray";
+//        		((RCaller) this.rEngine).getRCode().addRCode(obj_isarray_var + " <- inherits(" + obj + ", \"array\")");
 				
 //        		System.out.println("Added code: " + str_obj_type + " <- typeof(" + obj + ")");
 //        		System.out.println("Global code: " + ((RCaller) this.rEngine).getRCode().getCode());
@@ -985,8 +981,8 @@ public class RSessionWrapper {
         		String code = "obj_lst <- list("
         				+ obj + "=" + obj + "," 
         				+ obj_type_var + "=" + obj_type_var  + ","
-        				+ obj_ismatrix_var + "=" + obj_ismatrix_var  + ","
-        				+ obj_isarray_var + "=" + obj_isarray_var
+        				+ obj_ismatrix_var + "=" + obj_ismatrix_var  //+ ","
+//        				+ obj_isarray_var + "=" + obj_isarray_var
         				+ ")";
         		((RCaller) this.rEngine).getRCode().addRCode(code);
         		//
@@ -1004,7 +1000,7 @@ public class RSessionWrapper {
         		//System.out.println("Found type: " + str_obj_type + " for obj: " + obj);
         		String obj_type_value = ((RCaller) this.rEngine).getParser().getAsStringArray(obj_type_var)[0];
         		boolean obj_ismatrix_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_ismatrix_var)[0];
-        		boolean obj_isarray_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_isarray_var)[0];
+//        		boolean obj_isarray_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_isarray_var)[0];
 
 //        		System.out.println("Found type: \"" + t + "\" for obj: '" + obj + "'");
         		
@@ -1029,7 +1025,7 @@ public class RSessionWrapper {
 //		        	}
 	        		
 	        		// Find out proper type automatically
-	        		RCallerResultType type = getRCallerResultType(obj, obj_type_value, obj_ismatrix_value, obj_isarray_value);
+	        		RCallerResultType type = getRCallerResultType(obj, obj_type_value, obj_ismatrix_value/*, obj_isarray_value*/);
 	        		
 		        	if (type == RCallerResultType.DOUBLE_ARRAY) {
 		        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
@@ -1081,7 +1077,7 @@ public class RSessionWrapper {
         }
     }
     
-    private RCallerResultType getRCallerResultType(String var, String typeofvar, boolean ismatrix, boolean isarray) {
+    private RCallerResultType getRCallerResultType(String var, String typeofvar, boolean ismatrix/*, boolean isarray*/) {
     
     	if (this.rEngineType != REngineType.RCALLER) { return null; }
     	

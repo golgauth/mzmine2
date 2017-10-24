@@ -1,4 +1,4 @@
-package net.sf.mzmine.util.R;
+package net.sf.mzmine.util.R.Rcaller;
 
 import java.io.BufferedReader;
 import java.io.IOException;
