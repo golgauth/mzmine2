@@ -33,6 +33,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.lang.model.SourceVersion;
+//import javax.script.ScriptException;
+
 import org.rosuda.REngine.REXP;
 import org.rosuda.REngine.REXPDouble;
 import org.rosuda.REngine.REXPInteger;
@@ -545,11 +547,7 @@ public class RSessionWrapper {
 				boolean version_ok = false;
 				try {
 					this.eval("version_ok <- " + checkVersionCode);
-					version_ok = ((boolean[]) this.collect("version_ok"/*, 
-							RCallerResultType.BOOL_ARRAY*/))[0];
-//					// Need it reset to begin with the true computing result to come
-//					// (Since RCaller terminates Rscript process right after collect)
-//					this.initNewRCaller();
+					version_ok = ((boolean[]) this.collect("version_ok"))[0];
 				} catch (ExecutionException ee) {
 					//
 				}
@@ -584,7 +582,7 @@ public class RSessionWrapper {
         // ...Since 'Rscript' (used by RCaller) has this "lovely" feature of not 
         // loading the (base package) methods for us...
         if (this.rEngineType == REngineType.RCALLER) {
-	        this.loadPackage("methods");
+	        this.loadPackage("methods"); // Contains 'new' to instantiate classes, etc...
 //	        this.loadPackage("utils");
         }
 
@@ -741,8 +739,9 @@ public class RSessionWrapper {
 	    		} else if (object instanceof Double) {
 	    			((RCaller) this.rEngine).getRCode().addDouble(objName, (Double) object);
 	    		} else {
-	    			
-	    			// TODO: ...
+		            String msg = "RCaller error: couldn't assign R object '" + objName
+		                    + "' (Unhandled type for object '" + object + "').";
+		            throw new RSessionWrapperException(msg);
 	    		}
 
 //    			((RCallerScriptEngine2) this.rEngine).put(objName, object);
@@ -925,22 +924,26 @@ public class RSessionWrapper {
     }
 
     // < Rsession/RCaller: adaptable collect >
-    public Object collect(String objOrExp/*, RCallerResultType type*/) throws RSessionWrapperException {
-    	return this.collect(objOrExp, /*type,*/ false, true);
+    public Object collect(String objOrExp) throws RSessionWrapperException {
+    	return this.collect(objOrExp, false, true);
     }
-    public Object collect(String objOrExp, /*RCallerResultType type,*/ boolean stopOnError) throws RSessionWrapperException {
-    	return this.collect(objOrExp, /*type,*/ false, stopOnError);
+    public Object collect(String objOrExp, boolean stopOnError) throws RSessionWrapperException {
+    	return this.collect(objOrExp, false, stopOnError);
     }
     //
-    public Object collect(String objOrExp, /*RCallerResultType type,*/ boolean tryEval, boolean stopOnError) throws RSessionWrapperException {
+    public Object collect(String objOrExp, boolean tryEval, boolean stopOnError) throws RSessionWrapperException {
 
-    	// Rsession: ignore type
+    	// Rsession
     	if (this.rEngineType == REngineType.RSESSION) {
     		 
         	return collectRserve(objOrExp, stopOnError);
         	
         } else { // RCaller
 	
+        	// Skip evaluation if user canceled
+        	if (this.userCanceled) { return null; }
+        	
+        	// Evaluate
     		try {
 
     			String obj;
@@ -966,73 +969,37 @@ public class RSessionWrapper {
 				{
 					obj = objOrExp;
 				}
-	    		//
-				
+	    		
+
+				// Collect expression result + collect additional type info at once!
 				String obj_type_var = obj + "_type";
         		((RCaller) this.rEngine).getRCode().addRCode(obj_type_var + " <- typeof(" + obj + ")");
 				String obj_ismatrix_var = obj + "_ismatrix";
         		((RCaller) this.rEngine).getRCode().addRCode(obj_ismatrix_var + " <- inherits(" + obj + ", \"matrix\")");
-//				String obj_isarray_var = obj + "_isarray";
-//        		((RCaller) this.rEngine).getRCode().addRCode(obj_isarray_var + " <- inherits(" + obj + ", \"array\")");
-				
-//        		System.out.println("Added code: " + str_obj_type + " <- typeof(" + obj + ")");
-//        		System.out.println("Global code: " + ((RCaller) this.rEngine).getRCode().getCode());
-        		
+        		//
         		String code = "obj_lst <- list("
         				+ obj + "=" + obj + "," 
         				+ obj_type_var + "=" + obj_type_var  + ","
-        				+ obj_ismatrix_var + "=" + obj_ismatrix_var  //+ ","
-//        				+ obj_isarray_var + "=" + obj_isarray_var
+        				+ obj_ismatrix_var + "=" + obj_ismatrix_var
         				+ ")";
         		((RCaller) this.rEngine).getRCode().addRCode(code);
         		//
         		((RCaller) this.rEngine).runAndReturnResultOnline("obj_lst");
-        		// 
         		this.wasRunAndReturned = true;
         		
-//        		try {
-//        			System.out.println("Parser XML: " + ((RCaller) this.rEngine).getParser().getXMLFileAsString());
-//        		} catch (IOException e1) {
-//        			// TODO Auto-generated catch block
-//        			e1.printStackTrace();
-//        		}
-	        	
-        		//System.out.println("Found type: " + str_obj_type + " for obj: " + obj);
-        		String obj_type_value = ((RCaller) this.rEngine).getParser().getAsStringArray(obj_type_var)[0];
-        		boolean obj_ismatrix_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_ismatrix_var)[0];
-//        		boolean obj_isarray_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_isarray_var)[0];
 
-//        		System.out.println("Found type: \"" + t + "\" for obj: '" + obj + "'");
-        		
-	        	try {
-	        		
-//		        	if (type == RCallerResultType.DOUBLE_ARRAY) {
-//		        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
-//		        	} else if (type == RCallerResultType.DOUBLE_MATRIX) {
-////		        		System.out.println(((RCaller) this.rEngine).getParser().getType(obj));
-////		        		System.out.println(((RCaller) this.rEngine).getParser().getXMLFileAsString());
-////		        		System.out.println(((RCaller) this.rEngine).getParser().getDimensions(obj));
-//		        		return ((RCaller) this.rEngine).getParser().getAsDoubleMatrix(obj);
-//		        	} else if (type == RCallerResultType.INT_ARRAY) {
-//		        		return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
-//		        	} else if (type == RCallerResultType.BOOL_ARRAY) {
-//		        		return ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj);
-//		        	} else if (type == RCallerResultType.STRING_ARRAY) {
-//		        		return ((RCaller) this.rEngine).getParser().getAsStringArray(obj);
-//		        	} else {
-//		        		String msg = this.rEngineType + ": Wrong type passed: '" + type + "' for object: '" + obj + "'!";
-//		        		throw new RSessionWrapperException(msg);
-//		        	}
+        		// Let's get objects
+        		try {
 	        		
 	        		// Find out proper type automatically
+	         		String obj_type_value = ((RCaller) this.rEngine).getParser().getAsStringArray(obj_type_var)[0];
+	        		boolean obj_ismatrix_value = ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj_ismatrix_var)[0];
 	        		RCallerResultType type = getRCallerResultType(obj, obj_type_value, obj_ismatrix_value/*, obj_isarray_value*/);
 	        		
+	        		// Do get the objects
 		        	if (type == RCallerResultType.DOUBLE_ARRAY) {
 		        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
 		        	} else if (type == RCallerResultType.DOUBLE_MATRIX) {
-//		        		System.out.println(((RCaller) this.rEngine).getParser().getType(obj));
-//		        		System.out.println(((RCaller) this.rEngine).getParser().getXMLFileAsString());
-//		        		System.out.println(((RCaller) this.rEngine).getParser().getDimensions(obj));
 		        		return ((RCaller) this.rEngine).getParser().getAsDoubleMatrix(obj);
 		        	} else if (type == RCallerResultType.INT_ARRAY) {
 		        		return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
@@ -1063,13 +1030,11 @@ public class RSessionWrapper {
 	    			}
 	    		}
         		
-    		} catch (/*ScriptException |*/ ParseException e) {
+    		} catch (ParseException e) {
     			
-				//e.printStackTrace();
     			if (stopOnError)
     				throw new RSessionWrapperException(e.getMessage());
     			else {
-    				System.out.println("Failure Parsing >>> \n");
     				e.printStackTrace();
     				return null;
     			}
@@ -1079,23 +1044,12 @@ public class RSessionWrapper {
     
     private RCallerResultType getRCallerResultType(String var, String typeofvar, boolean ismatrix/*, boolean isarray*/) {
     
+    	// Make sure RCaller engine is used
     	if (this.rEngineType != REngineType.RCALLER) { return null; }
     	
-    	ROutputParser parser = ((RCaller) this.rEngine).getParser();
-	    
-    	//String vartype = parser.getType(var);
-	    
-//	    System.out.println("Testing for type: " + vartype);
-//	    try {
-//			System.out.println("\t> XML:\n" + parser.getXMLFileAsString());
-//		} catch (IOException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
-	    
+    	
     	RCallerResultType type;
     	
-    	/** System.out.println("Testing for type: " + typeofvar + ", ismatrix: " + ismatrix + ", isarray: " + isarray); */
 //    	int[] dimension;
 //		try {
 //	        //System.out.println(parser.getXMLFileAsString());
@@ -1103,253 +1057,32 @@ public class RSessionWrapper {
 //	    } catch (Exception e) {
 //	    	
 //	    	// Not array or matrix
-//	    	if (typeofvar.equals("double")) {//vartype.equals("numeric")) {
-//		        type = RCallerResultType.DOUBLE_ARRAY;//(parser.getAsDoubleArray(var));
-//		    } else if (typeofvar.equals("integer")) {//(vartype.equals("character")) {
-//		        type = RCallerResultType.INT_ARRAY;//(parser.getAsStringArray(var));
-//		    } else if (typeofvar.equals("logical")) {//(vartype.equals("character")) {
-//		        type = RCallerResultType.BOOL_ARRAY;//(parser.getAsStringArray(var));
-//		    } else if (typeofvar.equals("character")) {//(vartype.equals("character")) {
-//		        type = RCallerResultType.STRING_ARRAY;//(parser.getAsStringArray(var));
-//		    } else {
-//		    	type = RCallerResultType.UNKNOWN;//(parser.getAsStringArray(var));
-//		    }
+//	    	//...
 //	    	return type;
 //    	}
 		
 		// Is array or matrix
-//		System.out.println("Found array of size: " + dimension[0] + "x" + dimension[1]);
-	    if (ismatrix) { // /*dimension[0] == 0 || dimension[1] == 0 ||*/ (dimension[0] > 1 && dimension[1] > 1)) {
-	        type = RCallerResultType.DOUBLE_MATRIX;//(parser.getAsDoubleMatrix(var));
+	    if (ismatrix) { // (dimension[0] > 1 && dimension[1] > 1)) {
+	        type = RCallerResultType.DOUBLE_MATRIX;
 	    } else { //if (isarray) { 
-	    	if (typeofvar.equals("double")) {//vartype.equals("numeric")) {
-		        type = RCallerResultType.DOUBLE_ARRAY;//(parser.getAsDoubleArray(var));
-		    } else if (typeofvar.equals("integer")) {//(vartype.equals("character")) {
-		        type = RCallerResultType.INT_ARRAY;//(parser.getAsStringArray(var));
-		    } else if (typeofvar.equals("logical")) {//(vartype.equals("character")) {
-		        type = RCallerResultType.BOOL_ARRAY;//(parser.getAsStringArray(var));
-		    } else if (typeofvar.equals("character")) {//(vartype.equals("character")) {
-		        type = RCallerResultType.STRING_ARRAY;//(parser.getAsStringArray(var));
+	    	if (typeofvar.equals("double")) {
+		        type = RCallerResultType.DOUBLE_ARRAY;
+		    } else if (typeofvar.equals("integer")) {
+		        type = RCallerResultType.INT_ARRAY;
+		    } else if (typeofvar.equals("logical")) {
+		        type = RCallerResultType.BOOL_ARRAY;
+		    } else if (typeofvar.equals("character")) {
+		        type = RCallerResultType.STRING_ARRAY;
 		    } else {
-		    	type = RCallerResultType.UNKNOWN;//(parser.getAsStringArray(var));
+		    	type = RCallerResultType.UNKNOWN;
 		    }
 	    }
-
-	    /** System.out.println("Testing for type conluded to: " + type); */
 	    
 	    return type;
     }
 
-//    //
-//    public Object collect(String objOrExp, RCallerResultType type, boolean stopOnError) throws RSessionWrapperException {
-//
-//    	// Rsession: ignore type
-//    	if (this.rEngineType == REngineType.RSESSION) {
-//    		 
-//        	return collect(objOrExp, stopOnError);
-//        	
-//        } else { // RCaller
-//	
-//    		try {
-//
-//    			String obj;
-//				// If expression is complex code (not a simple object name),
-//				// turn it into single collectible object name
-//				if (!SourceVersion.isName(objOrExp)) 
-//				// Not a valid name for a java variable, assuming we have the same 
-//				// requirement in R... Probably untrue, but let's say sufficient here...
-//				{ 
-//	        		obj = "result" + UUID.randomUUID().toString().replace("-", "");
-//	        		String code = obj + " <- " + objOrExp;
-//	        		((RCaller) this.rEngine).getRCode().addRCode(code);
-//	        		System.out.println("Gonna run code => \n" + code);
-////					((RCallerScriptEngine2) this.rEngine).eval(code);
-//				} else 
-//				// The expression is an object name
-//				{
-//					obj = objOrExp;
-//				}
-//	    		//
-//			
-//			System.out.println("collect => ?" + (!this.wasRunAndReturned) + " => '" + obj + "'");
-//			
-//        	// Run code if not done already
-////        	if (!this.wasRunAndReturned) {
-////
-////        		try {
-////        			
-////        			((RCaller) this.rEngine).runAndReturnResultOnline(obj);
-////        			
-////        		} catch (ExecutionException ee) { // RCaller exception
-////
-////        			if (stopOnError)
-////        				throw new RSessionWrapperException(ee.getMessage());
-////        			else
-////        				return null;
-////        		}
-////        		//
-////        		this.wasRunAndReturned = true;
-////        	
-////        	}
-//			((RCaller) this.rEngine).runAndReturnResultOnline(obj);
-//        	
-//
-//        	try {
-//        		
-//	        	if (type == RCallerResultType.DOUBLE_ARRAY) {
-//	        		return ((RCaller) this.rEngine).getParser().getAsDoubleArray(obj);
-//	        	} else if (type == RCallerResultType.DOUBLE_MATRIX) {
-//	        		System.out.println(((RCaller) this.rEngine).getParser().getType(obj));
-//	        		System.out.println(((RCaller) this.rEngine).getParser().getXMLFileAsString());
-//	        		System.out.println(((RCaller) this.rEngine).getParser().getDimensions(obj));
-//	        		return ((RCaller) this.rEngine).getParser().getAsDoubleMatrix(obj);
-//	        	} else if (type == RCallerResultType.INT_ARRAY) {
-//	        		return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
-//	        	} else if (type == RCallerResultType.BOOL_ARRAY) {
-//	        		return ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj);
-//	        	} else if (type == RCallerResultType.STRING_ARRAY) {
-//	        		return ((RCaller) this.rEngine).getParser().getAsStringArray(obj);
-//	        	} else {
-//	        		String msg = this.rEngineType + ": Wrong type passed: '" + type + "' for object: '" + obj + "'!";
-//	        		throw new RSessionWrapperException(msg);
-//	        	}
-//	        	
-//    		} catch (ParseException pe) { // RCaller exception
-//
-//    			if (stopOnError)
-//    				throw new RSessionWrapperException(pe.getMessage());
-//    			else {
-//    				pe.printStackTrace();
-//    				return null;
-//    			}
-//    		} catch (Exception e) { // RCaller exception
-//
-////    			if (stopOnError)
-////    				throw new RSessionWrapperException(e.getMessage());
-////    			else
-//				e.printStackTrace();
-////				throw new RSessionWrapperException(e.getMessage());
-//				return null;
-//    		}
-//
-////        		//return ((RCallerScriptEngine2) this.rEngine).get(obj);
-////				Object ret = null;
-////				if (type == RCallerResultType.DOUBLE_ARRAY) {
-////					ret = ((RCallerScriptEngine2) this.rEngine).get(obj);
-////					if (ret instanceof double[])
-////						return ret;
-////				} else if (type == RCallerResultType.DOUBLE_MATRIX) {
-////					ret = ((RCallerScriptEngine2) this.rEngine).get(obj);
-////					System.out.println("? array >>> " + ret);
-////					if (ret instanceof double[]/*[]*/) {
-////						System.out.println("Failure array >>> " + Arrays.toString((double[]) ret));
-////						return ret;
-////					} else if (ret instanceof String[])
-////						System.out.println("Failure array >>> " + Arrays.toString((String[]) ret));
-////				} else if (type == RCallerResultType.INT_ARRAY) {
-////					ret = (double[]) ((RCallerScriptEngine2) this.rEngine).get(obj);
-////					if (ret instanceof double[]) {
-////						double[] d_arr = (double[]) ret;
-////						int[] i_arr = new int[d_arr.length];
-////						for (int i=0; i < d_arr.length; ++i) {
-////							i_arr[i] = (int) Math.round(d_arr[i]);
-////						}
-////						//return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
-////						return i_arr;
-////					}
-////				} else if (type == RCallerResultType.BOOL_ARRAY) {
-////					//return ((RCaller) this.rEngine).getParser().getAsLogicalArray(obj);
-////					ret = (double[]) ((RCallerScriptEngine2) this.rEngine).get(obj);
-////					if (ret instanceof double[]) {
-////						double[] d_arr = (double[]) ret;
-////						boolean[] b_arr = new boolean[d_arr.length];
-////						for (int i=0; i < d_arr.length; ++i) {
-////							b_arr[i] = (d_arr[i] == 0);
-////						}
-////						//return ((RCaller) this.rEngine).getParser().getAsIntArray(obj);
-////						return b_arr;
-////					}
-////				} else if (type == RCallerResultType.STRING_ARRAY) {
-////					ret = ((RCallerScriptEngine2) this.rEngine).get(obj);
-////					if (ret instanceof String[])
-////						return ret;
-////				} else {
-////					String msg = this.rEngineType + ": Wrong type passed: '" + type + "' for object: '" + obj + "'!";
-////					throw new RSessionWrapperException(msg);
-////				}
-////				
-////				return null;
-////
-//        		
-//    		} catch (/*ScriptException |*/ ParseException e) {
-//    			
-//				//e.printStackTrace();
-//    			if (stopOnError)
-//    				throw new RSessionWrapperException(e.getMessage());
-//    			else {
-//    				System.out.println("Failure Parsing >>> \n");
-//    				e.printStackTrace();
-//    				return null;
-//    			}
-//    		}
-//        }
-//    }
-
-//	//
-//	public Object[] collectSeveral(String[] objs, RCallerResultType[] types) throws RSessionWrapperException {
-//		return collectSeveral(objs, types, true);
-//	}
-//	//
-//	public Object[] collectSeveral(String[] objs, RCallerResultType[] types, boolean stopOnError) throws RSessionWrapperException {
-//    	
-//    	if ((objs != null && types != null) && (objs.length != types.length && objs.length > 0)) {
-//    		throw new RSessionWrapperException("Collecting multiple objects: Wrong parameters... "
-//    				+ "objs.length != types.length!");
-//    	}
-//    	
-//    	System.out.println("collectSeveral 1 => ?" + (this.rEngineType == REngineType.RCALLER));
-//    	System.out.println("collectSeveral 2 => ?" + (!this.wasRunAndReturned));
-//    	    	
-//    	// Run code if not done already
-//    	if (this.rEngineType == REngineType.RCALLER 
-//    			&& !this.wasRunAndReturned) {
-//    		
-//    		// Need a single resulting object with RCaller, so 
-//    		// put all object to collect in a common list!
-//    		String code = "";
-//    		for (int i = 0; i < objs.length; i++) {
-//        		code += objs[i] + "=" + objs[i] + ",";
-//        	}
-//    		code = code.substring(0, code.length() - 1);
-//    		String unid_var_name = "result" + UUID.randomUUID().toString().replace("-", "");
-//    		code = unid_var_name + " <- list(" + code + ")";
-//    		((RCaller) this.rEngine).getRCode().addRCode(code);
-//    		//System.out.println("Rcode => " + ((RCaller) this.rEngine).getRCode().toString());
-//    		//
-//        	try {
-//
-//        		((RCaller) this.rEngine).runAndReturnResultOnline(unid_var_name);
-//        	} catch (ExecutionException ee) { // RCaller exception
-//
-//        		if (stopOnError)
-//        			throw new RSessionWrapperException(ee.getMessage());
-//        		else
-//        			return null;
-//        	}
-//        	//
-//			this.wasRunAndReturned = true;
-//		}
-//
-//    	
-//    	Object[] collected = new Object[objs.length];
-//    	for (int i = 0; i < objs.length; i++) {
-//    		collected[i] = this.collect(objs[i], types[i], stopOnError);
-//    	}
-//    	
-//    	return collected;
-//    }
-	// Latest eval of a serie of evals, and no need for collecting!
-    // (collect was never called)
+	// Latest eval of a serie of evals, and no need for collecting
+    // (collect was never called) => Just run the Rcode!
 	private void runOnlyOnline() {
 		
 		if (this.rEngineType == REngineType.RCALLER) {
@@ -1375,14 +1108,12 @@ public class RSessionWrapper {
         // Do nothing if session was canceled.
         if (!this.userCanceled) {
 
-
             // Load R engine.
             getRengineInstance();
 
             // Load & check required R packages.
             loadAndCheckRequiredPackages();
             
-
         }
     }
 
