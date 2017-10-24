@@ -26,7 +26,6 @@ import net.sf.mzmine.modules.rawdatamethods.filtering.baselinecorrection.Baselin
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
-import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
 
 /**
  * @description Rolling Ball baseline corrector. Estimates a trend based on
@@ -61,15 +60,12 @@ public class RollingBallCorrector extends BaselineCorrector {
 
         // Set chromatogram.
         rSession.assign("chromatogram", chromatogram);
-//        code.addDoubleArray("chromatogram", chromatogram);
         
         // Transform chromatogram.
         rSession.eval("mat <- matrix(chromatogram, nrow=1)");
-//        code.addRCode("mat <- matrix(chromatogram, nrow=1)");
 
         // Calculate baseline.
         rSession.eval("bl <- NULL");
-//        code.addRCode("bl <- NULL");
         // This method can fail for some bins when "useBins" is enabled, or more
         // generally speaking for
         // abusive parameter set
@@ -82,15 +78,14 @@ public class RollingBallCorrector extends BaselineCorrector {
                 // "" +
                 "})";
         rSession.eval(cmd);
-//        code.addRCode(cmd);
         // Return a flat baseline (passing by the lowest intensity scan -
         // "min(chromatogram)") in case of failure
         // Anyway, this usually happens when "chromatogram" is fully flat and
         // zeroed.
         rSession.eval("if (!is.null(bl)) { baseline <- getBaseline(bl); } else { baseline <- matrix(rep(min(chromatogram), length(chromatogram)), nrow=1); }");
-        baseline = ((double[][]) rSession.collect("baseline"/*, RCallerResultType.DOUBLE_MATRIX*/))[0];
-		// Done: Refresh R code stack
-		rSession.clearCode();
+        baseline = ((double[][]) rSession.collect("baseline"))[0];
+        // Done: Refresh R code stack
+        rSession.clearCode();
 
         return baseline;
     }

@@ -26,7 +26,6 @@ import net.sf.mzmine.modules.rawdatamethods.filtering.baselinecorrection.Baselin
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
-import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
 
 /**
  * @description Local Minima + LOESS (smoothed low-percentile intensity)
@@ -37,6 +36,8 @@ import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
  * 
  */
 public class LocMinLoessCorrector extends BaselineCorrector {
+
+    private static final double BW_MIN_VAL = 0.001d;
 
     @Override
     public String[] getRequiredRPackages() {
@@ -75,12 +76,16 @@ public class LocMinLoessCorrector extends BaselineCorrector {
                 + ((breaks_width > 0) ? (int) Math.round((double) (maxi - mini)
                         / (double) breaks_width) : breaks));
         // Calculate baseline.
-        rSession.eval("bseoff <- bslnoff(mat, method=\"" + method + "\", bw="
-                + bw + ", breaks=breaks, qntl=" + qntl + ")");
+        // + Seems like "loess" method doesn't support "bw=0.0"
+        rSession.eval("bseoff <- bslnoff(mat, method=\""
+                + method
+                + "\", bw="
+                + ((method.equals("approx") || bw >= BW_MIN_VAL) ? bw
+                        : BW_MIN_VAL) + ", breaks=breaks, qntl=" + qntl + ")");
         rSession.eval("baseline <- mat[,2] - bseoff[,2]");
-        baseline = (double[]) rSession.collect("baseline"/*, RCallerResultType.DOUBLE_ARRAY*/);
-		// Done: Refresh R code stack
-		rSession.clearCode();
+        baseline = (double[]) rSession.collect("baseline");
+        // Done: Refresh R code stack
+        rSession.clearCode();
 
         return baseline;
     }

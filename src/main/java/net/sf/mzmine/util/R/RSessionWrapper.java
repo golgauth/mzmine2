@@ -49,7 +49,7 @@ import com.github.rcaller.exception.ExecutionException;
 import com.github.rcaller.exception.ParseException;
 import com.github.rcaller.rstuff.RCaller;
 import com.github.rcaller.rstuff.RCode;
-import com.github.rcaller.rstuff.ROutputParser;
+//import com.github.rcaller.rstuff.ROutputParser;
 //import com.github.rcaller.scriptengine.RCallerScriptEngine;
 import com.github.rcaller.util.Globals;
 
@@ -507,7 +507,7 @@ public class RSessionWrapper {
         String checkVersionCode = "packageVersion('" + packageName + "') >= '"
                 + version + "\'";
 
-        if (TRY_MODE && this.rEngineType == REngineType.RSESSION)
+        if (TRY_MODE)
             checkVersionCode = "try(" + checkVersionCode + ", silent=TRUE)";
 
         String errorMsg = "The \"" + this.callerFeatureName + "\" requires "
@@ -515,11 +515,11 @@ public class RSessionWrapper {
                 + "\" R package, which was found, but is too old? - please update '"
                 + packageName + "' to version " + version + " or later.";
 
+        LOG.log(logLvl, "Checking package version: '" + packageName
+                + "' for version '" + version + "'...");
         if (this.rEngineType == REngineType.RSESSION) {
 
         	if (this.session != null && !this.userCanceled) {
-	            LOG.log(logLvl, "Checking package version: '" + packageName
-	                    + "' for version '" + version + "'...");
 	            int version_ok = 0;
 	            try {
 	                version_ok = ((RConnection) this.rEngine).eval(checkVersionCode)
@@ -535,15 +535,11 @@ public class RSessionWrapper {
 	                if (!this.userCanceled)
 	                    throw new RSessionWrapperException(errorMsg);
 	
-	            LOG.log(logLvl, "Checked package version: '" + packageName
-	                    + "' for version '" + version + "'.");
 	        }
         	
         } else { // RCaller
         	
         	if (!this.userCanceled) {
-	            LOG.log(logLvl, "Checking package version: '" + packageName
-	                    + "' for version '" + version + "'...");
 				boolean version_ok = false;
 				try {
 					this.eval("version_ok <- " + checkVersionCode);
@@ -557,11 +553,11 @@ public class RSessionWrapper {
 	                if (!this.userCanceled)
 	                    throw new RSessionWrapperException(errorMsg);
 	
-	            LOG.log(logLvl, "Checked package version: '" + packageName
-	                    + "' for version '" + version + "'.");
 	        }
 
         }
+        LOG.log(logLvl, "Checked package version: '" + packageName
+                + "' for version '" + version + "'.");
     }
 
     public void loadAndCheckRequiredPackages() throws RSessionWrapperException {
@@ -592,9 +588,6 @@ public class RSessionWrapper {
             // Load.
             this.loadPackage(this.reqPackages[i]);
 
-            // Do have to skip version (contains a 'collect' call) check with RCaller!
-            if (this.rEngineType == REngineType.RCALLER) { continue; }
-            
             // Check version.
             // - Pass null as a version array to skip all version checks.
             // - Pass null as a version to skip version check for given 'i'
@@ -1081,23 +1074,23 @@ public class RSessionWrapper {
 	    return type;
     }
 
-	// Latest eval of a serie of evals, and no need for collecting
+    // Latest eval of a serie of evals, and no need for collecting
     // (collect was never called) => Just run the Rcode!
-	private void runOnlyOnline() {
-		
-		if (this.rEngineType == REngineType.RCALLER) {
-//			// Cannot 'runOnly()', all the stuff being run 'online'
-//			((RCaller) this.rEngine).runAndReturnResultOnline("TRUE");
-			((RCaller) this.rEngine).runOnly();
-		}
-	}
-	//
-	public void clearCode() {
-		
-		if (this.rEngineType == REngineType.RCALLER) {
-			((RCaller) this.rEngine).getRCode().clearOnline();
-		}
-	}
+    public void runOnlyOnline() {
+
+        if (this.rEngineType == REngineType.RCALLER) {
+            // Cannot 'runOnly()', all the stuff being run 'online'
+            ((RCaller) this.rEngine).runAndReturnResultOnline("TRUE");
+//            ((RCaller) this.rEngine).runOnly();
+        }
+    }
+    //
+    public void clearCode() {
+
+        if (this.rEngineType == REngineType.RCALLER) {
+            ((RCaller) this.rEngine).getRCode().clearOnline();
+        }
+    }
 
     public void open() throws RSessionWrapperException {
 
@@ -1198,15 +1191,15 @@ public class RSessionWrapper {
         
         } else { // RCaller
 
-        	if (this.wasRunAndReturned) {
-				// TODO: do nothing for now, see if a special treatment is required
-				// when 'user canceling' a task or else !!!
-	        	((RCaller) this.rEngine).StopRCallerOnline();
-        	} else {
-        		this.runOnlyOnline();
-        	}
-//        	((RCallerScriptEngine2) this.rEngine).close();
-		}
+//            if (this.wasRunAndReturned) {
+                // TODO: do nothing for now, see if a special treatment is required
+                // when 'user canceling' a task or else !!!
+                ((RCaller) this.rEngine).StopRCallerOnline();
+//            } else {
+//                this.runOnlyOnline();
+//            }
+            //((RCallerScriptEngine2) this.rEngine).close();
+        }
     }
 
     private void register() {
@@ -1331,7 +1324,11 @@ public class RSessionWrapper {
     }
 
     public boolean isSessionRunning() {
-        return (this.session != null && !this.userCanceled);
+    	
+    	if (this.rEngineType == REngineType.RSESSION)
+    		return (this.session != null && !this.userCanceled);
+    	else
+    		return (!this.userCanceled);
     }
 
     public static void CleanAll() {

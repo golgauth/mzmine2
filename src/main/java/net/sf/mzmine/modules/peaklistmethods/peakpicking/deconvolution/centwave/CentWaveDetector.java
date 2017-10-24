@@ -42,12 +42,8 @@ import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.PeakResol
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.ResolvedPeak;
 import net.sf.mzmine.modules.peaklistmethods.peakpicking.deconvolution.centwave.CentWaveDetectorParameters.PeakIntegrationMethod;
 import net.sf.mzmine.parameters.ParameterSet;
-import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
-import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
-
-import com.github.rcaller.rstuff.RCaller;
 import com.google.common.collect.Range;
 
 /**
@@ -118,6 +114,7 @@ public class CentWaveDetector implements PeakResolver {
                 intensities[i] = 0.0;
         }
         
+        // Call findPeaks.centWave.
         double[][] peakMatrix = null;
 
         peakMatrix = centWave(rSession, retentionTimes, intensities,
@@ -213,7 +210,6 @@ public class CentWaveDetector implements PeakResolver {
 
         final double[][] peaks;
 
-        
         // Set vectors.
         rSession.assign("scantime", scanTime);
         rSession.assign("intensity", intensity);
@@ -257,6 +253,7 @@ public class CentWaveDetector implements PeakResolver {
             }
         }
 
+        // Do peak picking.
         rSession.eval("mtx <- findPeaks.centWave(xRaw, ppm=0, mzdiff=0, verbose=TRUE"
                 + ", peakwidth=c(" + peakWidth.lowerEndpoint()
                 * SECONDS_PER_MINUTE + ", "
@@ -271,18 +268,13 @@ public class CentWaveDetector implements PeakResolver {
         
         
         final Object centWave = roi <= 1 ? null : (double[][]) rSession
-    		  .collect("mtx", 
-    				  /*RCallerResultType.DOUBLE_MATRIX,*/
-    				  false);
-       
+    		  .collect("mtx", false);
         
-		// Done: Refresh R code stack
-		rSession.clearCode();
+        // Done: Refresh R code stack
+        rSession.clearCode();
         
         peaks = (centWave == null) ? null : (double[][]) centWave;
-        
-//        rSession.close(false);
-        
+
         return peaks;
     }
 }

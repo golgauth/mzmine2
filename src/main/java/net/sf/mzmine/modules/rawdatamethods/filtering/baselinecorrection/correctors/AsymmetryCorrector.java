@@ -26,7 +26,6 @@ import net.sf.mzmine.modules.rawdatamethods.filtering.baselinecorrection.Baselin
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
-import net.sf.mzmine.util.R.Rcaller.RCallerResultType;
 
 /**
  * @description Asymmetric baseline corrector. Estimates a trend based on
@@ -63,11 +62,9 @@ public class AsymmetryCorrector extends BaselineCorrector {
         rSession.eval("baseline <- asysm(chromatogram," + smoothing + ','
                 + asymmetry + ')');
         // baseline = rSession.collectDoubleArray("baseline");
-//        baseline = (double[]) rSession.collect("baseline");
-        
-        baseline = (double[]) rSession.collect("baseline"/*, RCallerResultType.DOUBLE_ARRAY*/);
-		// Done: Refresh R code stack
-		rSession.clearCode();
+        baseline = (double[]) rSession.collect("baseline");
+        // Done: Refresh R code stack
+        rSession.clearCode();
         
         // }
         // catch (Throwable t) {
