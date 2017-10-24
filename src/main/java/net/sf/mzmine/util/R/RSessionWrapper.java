@@ -233,7 +233,7 @@ public class RSessionWrapper {
     public RSessionWrapper(String callerFeatureName, String[] reqPackages,
             String[] reqPackagesVersions) {
 
-    	this(REngineType.RSESSION, callerFeatureName, reqPackages, reqPackagesVersions);
+    	this(REngineType.RCALLER, callerFeatureName, reqPackages, reqPackagesVersions);
     }
 
     private void getRengineInstance() throws RSessionWrapperException {
@@ -991,7 +991,8 @@ public class RSessionWrapper {
         		((RCaller) this.rEngine).getRCode().addRCode(code);
         		//
         		((RCaller) this.rEngine).runAndReturnResultOnline("obj_lst");
-
+        		// 
+        		this.wasRunAndReturned = true;
         		
 //        		try {
 //        			System.out.println("Parser XML: " + ((RCaller) this.rEngine).getParser().getXMLFileAsString());
@@ -1352,13 +1353,13 @@ public class RSessionWrapper {
 //    	return collected;
 //    }
 	// Latest eval of a serie of evals, and no need for collecting!
-	public void ultimateEval() {
+    // (collect was never called)
+	private void runOnlyOnline() {
 		
 		if (this.rEngineType == REngineType.RCALLER) {
-			//((RCaller) this.rEngine).runOnly();
-			// Cannot 'runOnly()', all the stuff being run 'online'
-			// => this would collide with "this.close()"
-			((RCaller) this.rEngine).runAndReturnResultOnline("TRUE");
+//			// Cannot 'runOnly()', all the stuff being run 'online'
+//			((RCaller) this.rEngine).runAndReturnResultOnline("TRUE");
+			((RCaller) this.rEngine).runOnly();
 		}
 	}
 	//
@@ -1470,9 +1471,13 @@ public class RSessionWrapper {
         
         } else { // RCaller
 
-			// TODO: do nothing for now, see if a special treatment is required
-			// when 'user canceling' a task or else !!!
-        	((RCaller) this.rEngine).StopRCallerOnline();
+        	if (this.wasRunAndReturned) {
+				// TODO: do nothing for now, see if a special treatment is required
+				// when 'user canceling' a task or else !!!
+	        	((RCaller) this.rEngine).StopRCallerOnline();
+        	} else {
+        		this.runOnlyOnline();
+        	}
 //        	((RCallerScriptEngine2) this.rEngine).close();
 		}
     }

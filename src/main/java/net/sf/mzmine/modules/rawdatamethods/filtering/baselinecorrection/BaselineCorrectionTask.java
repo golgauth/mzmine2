@@ -119,7 +119,7 @@ public class BaselineCorrectionTask extends AbstractTask {
                     .getRequiredRPackages();
             String callerFeatureName = this.baselineCorrectorProcStep
                     .getModule().getName();
-            this.rSession = new RSessionWrapper(REngineType.RCALLER, 
+            this.rSession = new RSessionWrapper( 
             		callerFeatureName, reqPackages, null);
 
             this.rSession.open();

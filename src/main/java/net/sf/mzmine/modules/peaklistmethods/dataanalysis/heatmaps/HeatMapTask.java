@@ -147,7 +147,7 @@ public class HeatMapTask extends AbstractTask {
 
             // Load gplots library
             String[] reqPackages = { "gplots" };
-            rSession = new RSessionWrapper(REngineType.RCALLER,
+            rSession = new RSessionWrapper(
             		"HeatMap analysis module", reqPackages, null);
             rSession.open();
 
@@ -271,8 +271,7 @@ public class HeatMapTask extends AbstractTask {
             }
 
             rSession.eval("dev.off()", false);
-            
-            rSession.ultimateEval();
+
             
 			// Done: Refresh R code stack
 			this.rSession.clearCode();

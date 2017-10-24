@@ -247,9 +247,8 @@ public class PeakResolverSetupDialog extends ParameterSetupDialog {
                             String[] reqPackagesVersions = peakResolver
                                     .getRequiredRPackagesVersions();
                             String callerFeatureName = peakResolver.getName();
-                            rSession = new RSessionWrapper(REngineType.RCALLER, 
-                            		callerFeatureName,
-                                    reqPackages, reqPackagesVersions);
+                            rSession = new RSessionWrapper( 
+                            		callerFeatureName, reqPackages, reqPackagesVersions);
                             rSession.open();
                         } else {
                             rSession = null;

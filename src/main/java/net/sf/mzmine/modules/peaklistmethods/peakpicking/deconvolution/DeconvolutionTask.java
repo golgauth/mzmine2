@@ -132,9 +132,8 @@ public class DeconvolutionTask extends AbstractTask {
                                 .getRequiredRPackagesVersions();
                         String callerFeatureName = resolver.getModule()
                                 .getName();
-                        this.rSession = new RSessionWrapper(REngineType.RCALLER, 
-                        		callerFeatureName,
-                                reqPackages, reqPackagesVersions);
+                        this.rSession = new RSessionWrapper( 
+                        		callerFeatureName, reqPackages, reqPackagesVersions);
                         this.rSession.open();
                     } else {
                         this.rSession = null;

@@ -195,7 +195,7 @@ public class CameraSearchTask extends AbstractTask {
 
 			String[] reqPackages = { "CAMERA" };
 			String[] reqPackagesVersions = { CAMERA_VERSION };
-			this.rSession = new RSessionWrapper(REngineType.RCALLER, 
+			this.rSession = new RSessionWrapper( 
 					"Camera search feature", reqPackages, reqPackagesVersions);
 			this.rSession.open();	
 

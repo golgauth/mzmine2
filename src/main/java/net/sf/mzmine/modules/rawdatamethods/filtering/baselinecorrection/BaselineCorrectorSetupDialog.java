@@ -217,7 +217,7 @@ public class BaselineCorrectorSetupDialog extends
             try {
                 String[] reqPackages = baselineCorrector.getRequiredRPackages();
                 this.rSession = new RSessionWrapper(
-                        REngineType.RCALLER, baselineCorrector.getName(), reqPackages, null);
+                        baselineCorrector.getName(), reqPackages, null);
                 this.rSession.open();
             } catch (RSessionWrapperException e) {
                 errorMsg = e.getMessage();
