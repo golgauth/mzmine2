@@ -49,6 +49,7 @@ import net.sf.mzmine.modules.visualization.tic.TICToolBar;
 import net.sf.mzmine.parameters.ParameterSet;
 import net.sf.mzmine.parameters.dialogs.ParameterSetupDialog;
 import net.sf.mzmine.util.GUIUtils;
+import net.sf.mzmine.util.R.REngineType;
 import net.sf.mzmine.util.R.RSessionWrapper;
 import net.sf.mzmine.util.R.RSessionWrapperException;
 
@@ -244,7 +245,8 @@ public class PeakResolverSetupDialog extends ParameterSetupDialog {
                             String[] reqPackagesVersions = peakResolver
                                     .getRequiredRPackagesVersions();
                             String callerFeatureName = peakResolver.getName();
-                            rSession = new RSessionWrapper( 
+                            REngineType rEngineType = peakResolver.getREngineType(parameters);
+                            rSession = new RSessionWrapper(rEngineType,
                             		callerFeatureName, reqPackages, reqPackagesVersions);
                             rSession.open();
                         } else {
