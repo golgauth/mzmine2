@@ -258,7 +258,8 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			RTTolerance, RTWeight,
         			minScore,
         			//		IDWeight,
-        			useApex, useKnownCompoundsAsRef, 
+//        			useApex, 
+        			useKnownCompoundsAsRef, 
         			useDetectedMzOnly,
         			RTToleranceAfter, 
         			/*SameChargeRequired, SameIDRequired, compareIsotopePattern*/ 
