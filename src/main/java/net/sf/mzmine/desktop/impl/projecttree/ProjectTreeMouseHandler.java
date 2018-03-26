@@ -120,7 +120,7 @@ public class ProjectTreeMouseHandler extends MouseAdapter implements
 
         GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list table", this,
                 "SHOW_PEAKLIST_TABLES");
-        GUIUtils.addMenuItem(peakListPopupMenu, "Show peak list a'la Jul", this,
+        GUIUtils.addMenuItem(peakListPopupMenu, "Show transposed peak list", this,
                 "SHOW_PEAKLIST_TABLES_ALA_JUL");
         
 //        GUIUtils.addMenuItem(peakListPopupMenu, "Clear peak list identites", this,

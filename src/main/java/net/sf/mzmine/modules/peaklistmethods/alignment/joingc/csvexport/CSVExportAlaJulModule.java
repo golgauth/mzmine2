@@ -32,7 +32,7 @@ import net.sf.mzmine.util.ExitCode;
 
 public class CSVExportAlaJulModule implements MZmineProcessingModule {
 
-    private static final String MODULE_NAME = "Export to CSV file(s) a'la JUL";
+    private static final String MODULE_NAME = "Export to CSV file(s) (transposed table)";
     private static final String MODULE_DESCRIPTION = "This method exports the peak list contents into a CSV (comma-separated values) file.";
 
     @Override
