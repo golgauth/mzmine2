@@ -3,7 +3,8 @@ package net.sf.mzmine.modules.peaklistmethods.alignment.joingc;
 public enum DendrogramFormatType {
 
     RAW("Raw"),
-    NEWICK("Newick");
+    NEWICK("Newick"),
+    CDT("Cdt");
 
     private final String name;
 

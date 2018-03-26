@@ -61,10 +61,10 @@ public class TICVisualizerParameters extends SimpleParameterSet {
             TICPlotType.values(),
             TICPlotType.BASEPEAK);
     
-    public static final BooleanParameter preferRTlabels = new BooleanParameter(
-            "Prefer RT labels",
-            "Display 'RT' rather than 'MZ' values in TIC plots on top of the peaks",
-            true);
+//    public static final BooleanParameter preferRTlabels = new BooleanParameter(
+//            "Prefer RT labels",
+//            "Display 'RT' rather than 'MZ' values in TIC plots on top of the peaks",
+//            true);
 
     /**
      * m/z range.
@@ -91,7 +91,7 @@ public class TICVisualizerParameters extends SimpleParameterSet {
      */
     public TICVisualizerParameters() {
         super(new Parameter[] { DATA_FILES, scanSelection, PLOT_TYPE, 
-                preferRTlabels,
+//                preferRTlabels,
                 MZ_RANGE,
                 PEAKS, WINDOWSETTINGSPARAMETER });
         peakLabelMap = null;

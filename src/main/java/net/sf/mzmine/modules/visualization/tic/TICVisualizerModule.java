@@ -71,8 +71,9 @@ public class TICVisualizerModule implements MZmineRunnableModule {
         final TICPlotType plotType = parameters
                 .getParameter(TICVisualizerParameters.PLOT_TYPE).getValue();
 
-        final boolean preferRTlabels = parameters
-                .getParameter(TICVisualizerParameters.preferRTlabels).getValue();
+//      final boolean preferRTlabels = parameters
+//      .getParameter(TICVisualizerParameters.preferRTlabels).getValue();
+        final boolean preferRTlabels = MZmineCore.getConfiguration().getPreferRTlabels();
 
         final Feature[] selectionPeaks = parameters
                 .getParameter(TICVisualizerParameters.PEAKS).getValue();

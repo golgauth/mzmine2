@@ -869,8 +869,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		Map<String, PeakListRow> row_names_dict = new HashMap<>();
 		full_rows_list = new ArrayList<>();
-		Map<String, String> dendro_names_dict = new HashMap<>();
-		List<String> rows_list = new ArrayList<>();
 
 		
 		/**
@@ -894,52 +892,52 @@ public class JoinAlignerGCTask extends AbstractTask {
 //		Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
 //				.getBestPeak().getRT());
 
-//		RowVsRowScoreGC score;
-		//BigInteger short_names_unid = BigInteger.ZERO;
-		long short_names_unid = 0;
-		String long_name;
+//		Map<String, String> dendro_names_dict = new HashMap<>();
+//		List<String> rows_list = new ArrayList<>();
+//		long short_names_unid = 0;
+//		String long_name;
 		for (int i = 0; i < newIds.length; ++i) {
 
-			PeakList peakList = peakLists[newIds[i]];
+		    PeakList peakList = peakLists[newIds[i]];
 
-			PeakListRow allRows[] = peakList.getRows();
-			for (int j = 0; j < allRows.length; ++j) {
+		    PeakListRow allRows[] = peakList.getRows();
+		    for (int j = 0; j < allRows.length; ++j) {
 
-				PeakListRow row = allRows[j];
-				
-				if (exportDendrogramAsTxt) {
-					
-					int x = full_rows_list.size();
-	
-					// Each name HAS to be unique
-					//short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-					short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-	
-					// Produce human readable names
-					RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
-					// Avoid exception if ancestor RDFs have been removed...
-					String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
-					long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
-					dendro_names_dict.put(short_names[x], long_name);
-					//short_names_unid.add(BigInteger.ONE);
-					short_names_unid++;
-	
-					row_names_dict.put(short_names[x], row);
-					rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
-				}
-				
-				full_rows_list.add(row);
-			}
+		        PeakListRow row = allRows[j];
+
+//		        if (exportDendrogramAsTxt) {
+//
+//		            int x = full_rows_list.size();
+//
+//		            // Each name HAS to be unique
+//		            //short_names[x] = String.valueOf(short_names_unid); //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+//		            short_names[x] = "" + short_names_unid; //"x" + short_names_id; //"[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+//
+//		            // Produce human readable names
+//		            RawDataFile ancestorRDF = DataFileUtils.getAncestorDataFile(project, peakList.getRawDataFile(0), true);
+//		            // Avoid exception if ancestor RDFs have been removed...
+//		            String suitableRdfName = (ancestorRDF == null) ? peakList.getRawDataFile(0).getName() : ancestorRDF.getName();
+//		            long_name = "[" + suitableRdfName + "], #" + row.getID() + ", @" + rtFormat.format(row.getBestPeak().getRT());
+//		            dendro_names_dict.put(short_names[x], long_name);
+//		            //short_names_unid.add(BigInteger.ONE);
+//		            short_names_unid++;
+//
+//		            row_names_dict.put(short_names[x], row);
+//		            rows_list.add(row.getBestPeak().getDataFile() + ", @" + row.getBestPeak().getRT());
+//		        }
+
+		        full_rows_list.add(row);
+		    }
 		}
 		RowVsRowDistanceProvider distProvider = new RowVsRowDistanceProvider(
-				project, useOldestRDFAncestor,
-				rtAdjustementMapping, full_rows_list, 
-				mzWeight, rtWeight,
-				useApex,
-				useKnownCompoundsAsRef,
-				useDetectedMzOnly,
-				rtToleranceAfter,
-				maximumScore);
+		        project, useOldestRDFAncestor,
+		        rtAdjustementMapping, full_rows_list, 
+		        mzWeight, rtWeight,
+		        useApex,
+		        useKnownCompoundsAsRef,
+		        useDetectedMzOnly,
+		        rtToleranceAfter,
+		        maximumScore);
 
 
 //		// Go build matrix if required!
@@ -2151,31 +2149,31 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
 
-		//        if (DEBUG) {
-		int finalNbPeaks2 = 0;
-
-		for (PeakListRow plr: alignedPeakList.getRows()) {
-			finalNbPeaks2 += plr.getNumberOfPeaks();
-
-			for (int i=0; i <  plr.getNumberOfPeaks(); i++) {
-
-				Feature peak = plr.getPeaks()[i];
-
-				String str = peak.getDataFile() + ", @" + peak.getRT();
-
-				//if (!rows_list.contains(str))
-				//logger.info("# MISSING Peak: " + str);
-				rows_list.remove(str);
-				//                else
-				//                    logger.info("> OK Peak: " + str);
-			}
-		}
-		for (String str: rows_list)
-			logger.info("# MISSING Peak: " + str);
+//		//        if (DEBUG) {
+//		int finalNbPeaks2 = 0;
+//
+//		for (PeakListRow plr: alignedPeakList.getRows()) {
+//			finalNbPeaks2 += plr.getNumberOfPeaks();
+//
+//			for (int i=0; i <  plr.getNumberOfPeaks(); i++) {
+//
+//				Feature peak = plr.getPeaks()[i];
+//
+//				String str = peak.getDataFile() + ", @" + peak.getRT();
+//
+//				//if (!rows_list.contains(str))
+//				//logger.info("# MISSING Peak: " + str);
+//				rows_list.remove(str);
+//				//                else
+//				//                    logger.info("> OK Peak: " + str);
+//			}
+//		}
+//		for (String str: rows_list)
+//			logger.info("# MISSING Peak: " + str);
 
 		logger.info("Nb peaks ...: " + finalNbPeaks_0 + " / " + leaf_names.size() + " | " + nbAddedRows + " / " + alignedPeakList.getNumberOfRows());
 		//logger.info("Nb peaks ...: bip = " + bip);
-		logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + " | " + finalNbPeaks2 + " | >>> " + nbUniquePeaks);
+		logger.info("Nb peaks treated: " + short_names.length + " | " + full_rows_list.size() + " | " + row_names_dict.size() + " | " + finalNbPeaks + " | " + nbAddedPeaks + /*" | " + finalNbPeaks2 +*/ " | >>> " + nbUniquePeaks);
 
 		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 			
@@ -2215,13 +2213,13 @@ public class JoinAlignerGCTask extends AbstractTask {
 					String output_str = (dendrogramFormatType == DendrogramFormatType.NEWICK) 
 							? newickCluster_clean : recursive_print(tree_1, 0, 0);
 
-					if (USE_EXPLICIT_NAMES) {
-						for (String short_n : dendro_names_dict.keySet()) {
-							String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
-							String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
-							output_str = output_str.replaceAll(short_nn + ":", ((SHOW_NODE_KEY) ? short_nn + "-" : "") + long_nn + ":");
-						}
-					}
+//					if (USE_EXPLICIT_NAMES) {
+//						for (String short_n : dendro_names_dict.keySet()) {
+//							String short_nn = HierarClusterer.NEWICK_LEAF_NAME_PREFIX + short_n;
+//							String long_nn = dendro_names_dict.get(short_n).replaceAll(", ", "_");
+//							output_str = output_str.replaceAll(short_nn + ":", ((SHOW_NODE_KEY) ? short_nn + "-" : "") + long_nn + ":");
+//						}
+//					}
 
 					out.println(output_str);
 
