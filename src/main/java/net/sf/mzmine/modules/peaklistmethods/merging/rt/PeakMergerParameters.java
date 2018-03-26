@@ -84,6 +84,7 @@ public class PeakMergerParameters extends SimpleParameterSet {
 //                        new MZmineModule[] {}
 //                        );
         
+        // TODO: Implement other 'FilterShapeModel' (Gaussian, EMG)
         public static final ComboParameter<FilterShapeModel> shapeFilterModel = new ComboParameter<FilterShapeModel>(
                 "Shape filter", "Used to filter peaks to be merged by shape (ie. \"Triangular\" would exclude all peak not fitting the riquirements for a triangle).",
                 FilterShapeModel.values(), FilterShapeModel.Triangle);
@@ -96,7 +97,7 @@ public class PeakMergerParameters extends SimpleParameterSet {
 	public PeakMergerParameters() {
 		super(new Parameter[] { 
 				peakLists, suffix, mzTolerance, /*rtTolerance,*/nbScansTolerance,
-				shapeFilterModel,
+//				shapeFilterModel,
 				useOldestRDFAncestor, detectedMZSearchWidth, useOnlyDetectedPeaks, cumulativeComputing,
 				autoRemove });
 	}
