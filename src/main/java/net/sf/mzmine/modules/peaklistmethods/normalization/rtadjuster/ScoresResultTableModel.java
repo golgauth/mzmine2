@@ -456,7 +456,7 @@ public class ScoresResultTableModel extends DefaultTableModel {
 			// Build related Combobox
 			JComboBox<ComboboxPeak> comboBox = new JComboBox<ComboboxPeak>();
 			for (int j=0; j < mtx.length; ++j) {
-				if (j < 20) LOG.info("Row mtx at " + (i+1) + ": " + mtx[j][0] + ", " + mtx[j][1] + ", " + mtx[j][2]);
+				//if (j < 20) LOG.info("Row mtx at " + (i+1) + ": " + mtx[j][0] + ", " + mtx[j][1] + ", " + mtx[j][2]);
 				PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[j][0]));
 				// Keep only scoring rows.
 				//if (mtx[j][i+1] > 0.0)

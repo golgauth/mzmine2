@@ -115,6 +115,8 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
     
     private boolean useOldestRDFAncestor;
+
+    private boolean singleCompoundSearch;
     
 
     /**
@@ -153,6 +155,7 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
         blastOutputFilename = parameters.getParameter(JDXCompoundsIdentificationParameters.BLAST_OUTPUT_FILENAME).getValue();
         fieldSeparator = parameters.getParameter(JDXCompoundsIdentificationParameters.FIELD_SEPARATOR).getValue();
 
+        singleCompoundSearch = (!jdxFileC2.exists() || jdxFileC2.isDirectory());
     }
 
     @Override
@@ -169,6 +172,10 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
             return "Identification of standard peaks in "
                     + "selected peak lists"
                     + " using " + " standards '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'";
+        } else if (jdxComp1 != null && singleCompoundSearch) {
+            return "Identification of standard peaks in "
+                    + "selected peak lists"
+                    + " using " + " single standard '" + jdxComp1.getName() + "'";
         } else {
             return "Identification of standard peaks in selected peak lists"
                     + " using the 'Two standard compounds finder'";            
@@ -180,8 +187,15 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
 
         if (!isCanceled()) {
             try {
+                
                 jdxComp1 = JDXCompound.parseJDXfile(jdxFileC1);
-                jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
+                
+                // If "jdxFileC2" exists, try to parse it
+                if (!singleCompoundSearch) {
+                    jdxComp2 = JDXCompound.parseJDXfile(jdxFileC2);
+                }
+                
+                
             } catch (JCAMPException e) {
                 String msg = "Could not search standard compounds";
                 LOG.log(Level.WARNING, msg, e);
@@ -198,13 +212,26 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                 setStatus(TaskStatus.PROCESSING);
                 finishedItemsTotal = 0;
 
-                final JDXCompound[] findCompounds = { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
-                final Range[] rtSearchRanges = { rtSearchRangeC1, rtSearchRangeC2 };
-
-                String[] columnNames = { "Data file", 
-                        jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
-                        jdxComp2.getName(), /*jdxComp2.getName() +*/ " score" , /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
-                };
+                
+                final JDXCompound[] findCompounds;// = { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
+                final Range[] rtSearchRanges;// = { rtSearchRangeC1, rtSearchRangeC2 };
+                String[] columnNames;
+                
+                if (!singleCompoundSearch) {
+                    findCompounds = new JDXCompound[] { (JDXCompound) jdxComp1/*.clone()*/, (JDXCompound) jdxComp2/*.clone()*/ };
+                    rtSearchRanges = new Range[] { rtSearchRangeC1, rtSearchRangeC2 };
+                    columnNames = new String[] { "Data file", 
+                            jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+                            jdxComp2.getName(), /*jdxComp2.getName() +*/ " score" , /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area", 
+                    };
+                } else {
+                    findCompounds = new JDXCompound[] { (JDXCompound) jdxComp1};
+                    rtSearchRanges = new Range[] { rtSearchRangeC1 };
+                    columnNames = new String[] { "Data file", 
+                            jdxComp1.getName(), /*jdxComp1.getName() +*/ " score", /*jdxComp1.getName() +*/ " rt", /*jdxComp1.getName() +*/ " area"
+                    };
+                }
+                
                 ScoresResultWindow window = null;
 
                 // Show result window only if no manual check is expected
@@ -227,9 +254,14 @@ public class JDXCompoundsIdentificationSingleTask extends AbstractTask {
                     PeakList peakList = peakLists[j];
 
                     // Update window title.
-                    if (!applyWithoutCheck)
-                        window.setTitle(peakList.getName() + ": Searching for compounds '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'");
-
+                    if (!applyWithoutCheck) {
+                        
+                        String title = peakList.getName() + ": "
+                                + ((singleCompoundSearch) ? "Searching for compound '" + jdxComp1.getName() + "'"
+                                        : "Searching for compounds '" + jdxComp1.getName() + "' and '" + jdxComp2.getName() + "'");
+                        window.setTitle(title);
+                    }
+                    
                     curPeakList = peakList;
                     curRefRDF = curPeakList.getRawDataFile(0);
 

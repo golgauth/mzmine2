@@ -88,6 +88,8 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
     private FormattedCellRenderer scoreRenderer, rtRenderer, areaRenderer, dfltRenderer;
     private static final Icon widthIcon = new ImageIcon("icons/widthicon.png");
 
+    private boolean singleCompoundSearch;
+
 
     //	public ScoresResultWindow(ArrayList<LinkedHashMap<PeakListRow, LinkedHashMap<JDXCompound, Double>>> piafsRowScores, 
     //			PeakListRow peakListRow, double searchedMass, Task searchTask) {
@@ -129,7 +131,10 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         //		piafsScoresTable.setModel(listElementModel);
         //		piafsScoresTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         //		piafsScoresTable.getTableHeader().setReorderingAllowed(false);
+        
+        singleCompoundSearch = (piafsScoresTable.getColumnModel().getColumnCount() <= 5);
 
+        
         //RtDecimalFormatRenderer rtFormatRenderer = new RtDecimalFormatRenderer();
         NumberFormat scoreFormat = new DecimalFormat("0.0000");
         NumberFormat rtFormat = MZmineCore.getConfiguration().getRTFormat();
@@ -141,15 +146,9 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         dfltRenderer = new FormattedCellRenderer(null);
         piafsScoresTable.getColumnModel().getColumn(2).setCellRenderer(
                 scoreRenderer );
-        piafsScoresTable.getColumnModel().getColumn(6).setCellRenderer(
-                scoreRenderer );
         piafsScoresTable.getColumnModel().getColumn(3).setCellRenderer(
                 rtRenderer );
-        piafsScoresTable.getColumnModel().getColumn(7).setCellRenderer(
-                rtRenderer );
         piafsScoresTable.getColumnModel().getColumn(4).setCellRenderer(
-                areaRenderer );
-        piafsScoresTable.getColumnModel().getColumn(8).setCellRenderer(
                 areaRenderer );
         //--- Non-number columns
         //                piafsScoresTable.getColumnModel().getColumn(0).setCellRenderer(
@@ -158,6 +157,15 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
         //                        dfltRenderer );
         //                piafsScoresTable.getColumnModel().getColumn(5).setCellRenderer(
         //                        dfltRenderer );
+        if (!singleCompoundSearch) {
+            piafsScoresTable.getColumnModel().getColumn(6).setCellRenderer(
+                    scoreRenderer );
+            piafsScoresTable.getColumnModel().getColumn(7).setCellRenderer(
+                    rtRenderer );
+            piafsScoresTable.getColumnModel().getColumn(8).setCellRenderer(
+                    areaRenderer );
+        }
+        
 
         piafsScoresTable.setRowHeight(25);
 
@@ -494,17 +502,18 @@ public class ScoresResultWindow extends JFrame implements ActionListener {
             logger.info("Apply identities to list: " + pl.getName());
 
             JComboBox<ComboboxPeak> cb1 = (JComboBox<ComboboxPeak>) tableRow.get(1);
-            JComboBox<ComboboxPeak> cb5 = (JComboBox<ComboboxPeak>) tableRow.get(5);
-
             ComboboxPeak peak1 = (ComboboxPeak) cb1.getSelectedItem();
-            ComboboxPeak peak2 = (ComboboxPeak) cb5.getSelectedItem();
-            
             double scorePeak1 = (double) tableRow.get(2);
-            double scorePeak2 = (double) tableRow.get(6);
-
             //applyIdentities(pl, peak1, peak2);
             CustomJDXSearchTask.applyIdentity(pl, peak1.getJDXCompound(), peak1.getRowID(), scorePeak1, /*false,*/ true);
-            CustomJDXSearchTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2, /*false,*/ true);
+            //
+            if (!singleCompoundSearch) {
+                JComboBox<ComboboxPeak> cb5 = (JComboBox<ComboboxPeak>) tableRow.get(5);
+                ComboboxPeak peak2 = (ComboboxPeak) cb5.getSelectedItem();
+                double scorePeak2 = (double) tableRow.get(6);
+                CustomJDXSearchTask.applyIdentity(pl, peak2.getJDXCompound(), peak2.getRowID(), scorePeak2, /*false,*/ true);
+            }
+            
         }
         
         // Repaint the window to reflect the change in the peak list

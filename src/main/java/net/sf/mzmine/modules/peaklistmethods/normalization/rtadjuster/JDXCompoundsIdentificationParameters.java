@@ -69,7 +69,7 @@ public class JDXCompoundsIdentificationParameters extends SimpleParameterSet {
 	public static final RTRangeParameter RT_SEARCH_WINDOW_C1 = new RTRangeParameter(
 			"Compound 1 search window", "Search window for standard compound 1", true, null);
 	public static final FileNameParameter JDX_FILE_C2 = new FileNameParameter(
-			"Compound 2 file (JDX)", "JDX file for standard compound 2", ".jdx");
+			"Compound 2 file (JDX)", "JDX file for standard compound 2"); //, ".jdx");
 	public static final RTRangeParameter RT_SEARCH_WINDOW_C2 = new RTRangeParameter(
 			"Compound 2 search window", "Search window for standard compound 2", true, null);
 

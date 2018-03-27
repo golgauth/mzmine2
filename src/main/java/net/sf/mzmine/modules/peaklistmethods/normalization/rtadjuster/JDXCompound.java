@@ -202,7 +202,7 @@ public class JDXCompound extends SimplePeakIdentity {
         name = msSpectrum.getTitle();
         
         //if (jcampSpectrum != null) {
-        	LOG.info("This f...g lib is working and can parse : " + name);
+        //      LOG.info("This f...g lib is working and can parse : " + name);
         //}
 //        spectrum = msSpectrum.getYData().toArray();
 //        LOG.info("spectrum: " + Arrays.toString(spectrum));
