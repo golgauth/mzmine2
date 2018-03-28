@@ -133,8 +133,8 @@ class PeakMergerTask extends AbstractTask {
         this.cumulativeComputing = parameters.getParameter(
                 PeakMergerParameters.cumulativeComputing).getValue();
         
-        this.shapeFilterModel = parameters.getParameter(
-                PeakMergerParameters.shapeFilterModel).getValue();
+//        this.shapeFilterModel = parameters.getParameter(
+//                PeakMergerParameters.shapeFilterModel).getValue();
         
         
         removeOriginal = parameters.getParameter(
