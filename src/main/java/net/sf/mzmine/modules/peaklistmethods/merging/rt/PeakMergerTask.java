@@ -135,7 +135,7 @@ class PeakMergerTask extends AbstractTask {
         
 //        this.shapeFilterModel = parameters.getParameter(
 //                PeakMergerParameters.shapeFilterModel).getValue();
-        
+        this.shapeFilterModel = FilterShapeModel.Triangle;
         
         removeOriginal = parameters.getParameter(
                 PeakMergerParameters.autoRemove).getValue();

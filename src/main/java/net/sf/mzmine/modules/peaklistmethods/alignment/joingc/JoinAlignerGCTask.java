@@ -299,8 +299,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 
 		//***
-		useApex = parameters.getParameter(
-				JoinAlignerGCParameters.useApex).getValue();
+//                useApex = parameters.getParameter(
+//                        JoinAlignerGCParameters.useApex).getValue();
+                useApex = true;
+                
 		useKnownCompoundsAsRef = parameters.getParameter(
 				JoinAlignerGCParameters.useKnownCompoundsAsRef).getValue();
 		useDetectedMzOnly = parameters.getParameter(
