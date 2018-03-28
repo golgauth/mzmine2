@@ -233,7 +233,16 @@ public class CustomJDXSearchTask extends AbstractTask {
                     columnNames[1 + col + 4] = " ri";
                     
                     // Try getting related ranges
-                    String rtFilename = jdxFiles[i_f].getPath() + ".rts";
+                    String rtFilename;
+                    // Try form '.jdx.rts'
+                    rtFilename = jdxFiles[i_f].getPath() + ".rts";
+                    // Try without '.jdx" (form '.rts')
+                    if (!(new File(rtFilename).isFile())) {
+                        logger.info("!! rtFilename NOT found: " + rtFilename);
+                        rtFilename = jdxFiles[i_f].getPath().replaceAll("\\.jdx", "") + ".rts";
+                        logger.info("!! Trying with rtFilename: " + rtFilename);
+                    }
+                    
                     String line;
                     try (
                     		InputStream fis = new FileInputStream(rtFilename);
@@ -255,14 +264,15 @@ public class CustomJDXSearchTask extends AbstractTask {
                     			ri = Integer.valueOf(line.split("=")[1]);
                     		}
                     	}
-                    	logger.info("Range file found: " + jdxFiles[i_f].getName() + ".rts" + " ([" + min + ", " + max + "])");
+                    	logger.info("Range file found: " + rtFilename + " ([" + min + ", " + max + "])");
                     	if (ri > 0)
-                    		logger.info("RI file found: " + jdxFiles[i_f].getName() + ".rts" + " (Kovats RI = '" + ri + "')");
+                    		logger.info("RI file found: " + rtFilename + " (Kovats RI = '" + ri + "')");
                     	
                     	rtSearchRanges[i_f] = Range.closed(min, max);
                     	riArr[i_f] = ri;
                     	
                     } catch (/*FileNotFoundException |*/ IOException e) {
+//                        logger.info("!! Range file NOT found: " + rtFilename);
                     	rtSearchRanges[i_f] = Range.closed(Double.MIN_VALUE, Double.MAX_VALUE);
                     }
                 }
@@ -350,6 +360,8 @@ public class CustomJDXSearchTask extends AbstractTask {
                             
                             // Ignore range or inside range.
                             if (ignoreRanges || rtSearchRanges[i].contains(a_row.getBestPeak().getRT())) {
+                                
+                                logger.info("### SCORED ### > " + a_row.getBestPeak().getRT() + " is in range: " + rtSearchRanges[i]);
                                 
                                 RawDataFile rdf = DataFileUtils.getAncestorDataFile(this.project, curRefRDF, false);
                                 // If finding the ancestor file failed, just keep working on the current one 
