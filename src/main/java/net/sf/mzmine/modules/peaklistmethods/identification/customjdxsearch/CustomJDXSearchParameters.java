@@ -103,9 +103,6 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
     public static final BooleanParameter CLEAR_ALL = new BooleanParameter(
             "Clear previous identities",
             "Clear all previous identification operations", true);
-    public static final BooleanParameter NO_ERASE = new BooleanParameter(
-            "NO_ERASE",
-            "NO_ERASE", true);
 
     public static final BooleanParameter USE_AS_STD_COMPOUND = new BooleanParameter(
             "Tag as standard compound",
@@ -116,7 +113,7 @@ public class CustomJDXSearchParameters extends SimpleParameterSet {
                 // RI_SEARCH_WINDOW
                 JDX_DIR, 
 //                BRUTE_FORCE_ERASE, 
-                CLEAR_ALL, NO_ERASE, USE_AS_STD_COMPOUND,
+                CLEAR_ALL, USE_AS_STD_COMPOUND,
                 SIMILARITY_METHOD, 
                 RI_MIX_FACTOR, AREA_MIX_FACTOR,
                 MIN_SCORE, useDetectedMzOnly, 

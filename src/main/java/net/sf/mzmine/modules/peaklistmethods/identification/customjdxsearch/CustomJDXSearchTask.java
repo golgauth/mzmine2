@@ -108,7 +108,6 @@ public class CustomJDXSearchTask extends AbstractTask {
     private File searchDir;
     private boolean bruteForceErase;
     private boolean clearAll;
-    private boolean NOERASE;
     private boolean useAsStdCompound;
 //    private File jdxFileC1, jdxFileC2;
 //    private JDXCompound jdxComp1, jdxComp2;
@@ -158,7 +157,6 @@ public class CustomJDXSearchTask extends AbstractTask {
         searchDir = parameters.getParameter(CustomJDXSearchParameters.JDX_DIR).getValue();
 //        bruteForceErase = parameters.getParameter(CustomJDXSearchParameters.BRUTE_FORCE_ERASE).getValue();
         clearAll = parameters.getParameter(CustomJDXSearchParameters.CLEAR_ALL).getValue();
-        NOERASE = parameters.getParameter(CustomJDXSearchParameters.NO_ERASE).getValue();
         useAsStdCompound = parameters.getParameter(CustomJDXSearchParameters.USE_AS_STD_COMPOUND).getValue();
         simMethodType = parameters.getParameter(CustomJDXSearchParameters.SIMILARITY_METHOD).getValue();
         riMixFactor = parameters.getParameter(CustomJDXSearchParameters.RI_MIX_FACTOR).getValue();
@@ -417,25 +415,24 @@ public class CustomJDXSearchTask extends AbstractTask {
 
                             PeakListRow bestRow = peakList.getRow((int) Math.round(mtx[0][0]));
                             double bestScore = mtx[0][i+1];
-                            
-                            if (NOERASE) {
-                                int id_index = 0;
-                                while (treated_ids.contains(bestRow.getID())) {
-                                    
-                                    // Try next best scoring candidate peak
-                                    id_index++;
-                                    // Previous try
-                                    int old_id = bestRow.getID();
-                                    double old_score = bestScore;
-                                    // Current try
-                                    bestRow = peakList.getRow((int) Math.round(mtx[id_index][0]));
-                                    bestScore = mtx[id_index][i+1];
-                                    // Warn
-                                    logger.info("### " + findCompounds[i] + ": " 
-                                                    + " using peak '" + old_id + " # " + old_score + "'"
-                                                    + " (instead of peak '" + bestRow.getID() + " # " + bestScore + "')!"
-                                        );
-                                }
+
+                            // Avoid current search to identify previously/already identified peak 
+                            int id_index = 0;
+                            while (treated_ids.contains(bestRow.getID())) {
+                                
+                                // Try next best scoring candidate peak
+                                id_index++;
+                                // Previous try
+                                int old_id = bestRow.getID();
+                                double old_score = bestScore;
+                                // Current try
+                                bestRow = peakList.getRow((int) Math.round(mtx[id_index][0]));
+                                bestScore = mtx[id_index][i+1];
+                                // Warn
+                                logger.info("### " + findCompounds[i] + ": " 
+                                                + " using peak '" + old_id + " # " + old_score + "'"
+                                                + " (instead of peak '" + bestRow.getID() + " # " + bestScore + "')!"
+                                    );
                             }
                             
                             

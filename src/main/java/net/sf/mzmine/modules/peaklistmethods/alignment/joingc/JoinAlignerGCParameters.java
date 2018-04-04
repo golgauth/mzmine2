@@ -249,10 +249,10 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
     		return new Parameter[] { peakLists, 
         			useOldestRDFAncestor, 
         			/*comparisonOrder,*/
-        			clusterer_type,
-        			saveRAMratherThanCPU_1, saveRAMratherThanCPU_2,
+//        			clusterer_type,
+//        			saveRAMratherThanCPU_1, saveRAMratherThanCPU_2,
         			linkageStartegyType_0, 
-        			/*use_hybrid_K,*/ hybrid_K_value,
+//        			/*use_hybrid_K,*/ hybrid_K_value,
         			peakListName, 
         			MZTolerance, MZWeight,
         			RTTolerance, RTWeight,
@@ -266,7 +266,7 @@ public class JoinAlignerGCParameters extends SimpleParameterSet {
         			
         			// Removed: used only for CLUST_METHOD == 0
 //        			exportDendrogramNewickTxt, dendrogramNewickTxtFilename
-        			dendrogramFormatType,
+//        			dendrogramFormatType,
         			exportDendrogramTxt, dendrogramTxtFilename,
         			
         			//clusterer_type//, clusterer_k, clusterer_minClusterSize, clusterer_useConstraints, clusterer_selfEdges

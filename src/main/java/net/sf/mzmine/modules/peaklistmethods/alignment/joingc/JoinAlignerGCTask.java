@@ -74,6 +74,7 @@ import org.gnf.clustering.FloatSource1D;
 import org.gnf.clustering.FloatSource2D;
 import org.gnf.clustering.HierarchicalClustering;
 import org.gnf.clustering.LinkageMode;
+import org.gnf.clustering.classic.ClassicClustering;
 import org.gnf.clustering.hybrid.CentroidsCalculator;
 import org.gnf.clustering.hybrid.DefaultCentroidsCalculator;
 import org.gnf.clustering.hybrid.HybridClustering;
@@ -178,13 +179,13 @@ public class JoinAlignerGCTask extends AbstractTask {
 	//private ClusteringLinkageStrategyType linkageStartegyType_0;
 	private LinkType linkageStartegyType_12;
 	private LinkageMode linkageStartegyType_20;
-	
-	//private boolean use_hybrid_K;
-	private int hybrid_K_value;
+//	
+//	//private boolean use_hybrid_K;
+	private int hybrid_K_value = 0;
 
 	
-	private boolean saveRAMratherThanCPU_1;
-	private boolean saveRAMratherThanCPU_2;
+	private boolean saveRAMratherThanCPU_1 = false;
+	private boolean saveRAMratherThanCPU_2 = false;
 	//
 	private boolean useOldestRDFAncestor;
 	private MZTolerance mzTolerance;
@@ -201,7 +202,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 	private File dendrogramPngFilename;
 	private boolean exportDendrogramAsTxt;
 	private File dendrogramTxtFilename;
-	DendrogramFormatType dendrogramFormatType;
+	DendrogramFormatType dendrogramFormatType = DendrogramFormatType.NEWICK;
 	private boolean exportDendrogramNewickTxt;
 	private File dendrogramNewickTxtFilename;
 
@@ -233,7 +234,7 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 	//private int clustering_method;
 
-	private ClustererType CLUSTERER_TYPE; // = 5; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
+	private ClustererType CLUSTERER_TYPE = ClustererType.CACHED; // = 5; //0:Hierar, 1:KMeans, 2:XMeans, 3:Cobweb, 4:OPTICS/DBSCAN, 5:HDBSCAN (Star/ELKI)
 	//    private static int K;
 	//    private static int MIN_CLUSTER_SIZE;
 	//    
@@ -262,6 +263,10 @@ public class JoinAlignerGCTask extends AbstractTask {
         comparisonOrder = parameters.getParameter(
                 JoinAlignerGCParameters.comparisonOrder).getValue();
 		 */
+//              saveRAMratherThanCPU_1 = parameters.getParameter(
+//              JoinAlignerGCParameters.saveRAMratherThanCPU_1).getValue();
+//saveRAMratherThanCPU_2 = parameters.getParameter(
+//              JoinAlignerGCParameters.saveRAMratherThanCPU_2).getValue();
 
 		//        if (JoinAlignerGCParameters.CLUST_METHOD == 0) {
 		//        	linkageStartegyType_0 = parameters.getParameter(
@@ -271,10 +276,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 		//        			JoinAlignerGCParameters.linkageStartegyType_12).getValue();
 		//        }
 
-		saveRAMratherThanCPU_1 = parameters.getParameter(
-				JoinAlignerGCParameters.saveRAMratherThanCPU_1).getValue();
-		saveRAMratherThanCPU_2 = parameters.getParameter(
-				JoinAlignerGCParameters.saveRAMratherThanCPU_2).getValue();
+//		saveRAMratherThanCPU_1 = parameters.getParameter(
+//				JoinAlignerGCParameters.saveRAMratherThanCPU_1).getValue();
+//		saveRAMratherThanCPU_2 = parameters.getParameter(
+//				JoinAlignerGCParameters.saveRAMratherThanCPU_2).getValue();
 		
 		useOldestRDFAncestor = parameters.getParameter(
 				JoinAlignerGCParameters.useOldestRDFAncestor).getValue();
@@ -342,15 +347,15 @@ public class JoinAlignerGCTask extends AbstractTask {
 		dendrogramTxtFilename = parameters.getParameter(
 				JoinAlignerGCParameters.dendrogramTxtFilename).getValue();
 		//
-		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
-			dendrogramFormatType = parameters.getParameter(
-					JoinAlignerGCParameters.dendrogramFormatType).getValue();
-		}
+//		if (JoinAlignerGCParameters.CLUST_METHOD >= 1) {
+//			dendrogramFormatType = parameters.getParameter(
+//					JoinAlignerGCParameters.dendrogramFormatType).getValue();
+//		}
 
 		//
 
-		CLUSTERER_TYPE = parameters.getParameter(
-				JoinAlignerGCParameters.clusterer_type).getValue();//.ordinal();
+//		CLUSTERER_TYPE = parameters.getParameter(
+//				JoinAlignerGCParameters.clusterer_type).getValue();//.ordinal();
 		//        K = parameters.getParameter(
 		//                JoinAlignerGCParameters.clusterer_k).getValue();
 		//        MIN_CLUSTER_SIZE = parameters.getParameter(
@@ -394,8 +399,8 @@ public class JoinAlignerGCTask extends AbstractTask {
 			}
 		}
 		
-		this.hybrid_K_value = parameters.getParameter(
-				JoinAlignerGCParameters.hybrid_K_value).getValue();
+//		this.hybrid_K_value = parameters.getParameter(
+//				JoinAlignerGCParameters.hybrid_K_value).getValue();
 
 		//
 		maximumScore = mzWeight + rtWeight;
@@ -1314,6 +1319,19 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		String newickCluster;
 		List<List<Integer>> gnfClusters = null;
+		
+                org.gnf.clustering.Node[] arNodes = null;
+                //int nRowCount = distancesGNF_Tri.getRowCount();
+                int nRowCount = full_rows_list.size();
+                String[] rowNames = null;
+                int[] rowOrder = new int[nRowCount];
+                String outputPrefix = null;
+                //
+                boolean do_verbose = true;
+                boolean do_cluster = true;
+                boolean do_print = (exportDendrogramAsTxt);
+                boolean do_data = false;
+
 
 		if (CLUSTERER_TYPE == ClustererType.CLASSIC_OLD) {
 
@@ -1408,30 +1426,82 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		} else { 
 			
-			boolean do_verbose = true;
-			boolean do_cluster = true;
-			boolean do_print = true;
-			boolean do_data = false;
-
-
-			org.gnf.clustering.Node[] arNodes = null;
-			//int nRowCount = distancesGNF_Tri.getRowCount();
-			int nRowCount = full_rows_list.size();
 			
-			String[] rowNames = null;
 			if (do_print) {
 				rowNames = new String [nRowCount];
 				for (int i = 0; i < nRowCount; i++) {
-					rowNames[i] = "ID_" + i + "_" + full_rows_list.get(i).getID();//full_rows_list.get(i).getAverageRT();
+                                    //rowNames[i] = "ID_" + i + "_" + full_rows_list.get(i).getID();
+				    Feature peak = full_rows_list.get(i).getBestPeak();
+				    double rt = peak.getRT();
+				    int end = peak.getDataFile().getName().indexOf(" ");
+				    String short_fname = peak.getDataFile().getName().substring(0, end);
+				    rowNames[i] = "@" + rtFormat.format(rt) + "^[" + short_fname + "]";
 				}
 			}
-			String outputPrefix = null;
 			
 			if (CLUSTERER_TYPE == ClustererType.CLASSIC) { // Pure Hierar!
 				
+                            int nColCount = 1;
+                            
 				outputPrefix = "hierar_0";
 				
 				throw new IllegalStateException("'" + ClustererType.CLASSIC.toString() + "' algorithm not yet implemented!");
+
+//				
+//	                        // TODO: ...!
+//                                if (DEBUG_2)
+//                                        System.out.println(distancesGNF_Tri.toString());
+//                                
+//                                if (saveRAMratherThanCPU_2) { // Requires: distances values will be recomputed on demand during "getValidatedClusters_3()"
+//                                        distancesGNF_Tri_Bkp = null; // No duplicate backup storage!
+//                                } else { // Otherwise, backing up the distance matrix (matrix being deeply changed during "clusterDM()", then no more exploitable)
+//                                        distancesGNF_Tri_Bkp = new DistanceMatrixTriangular1D2D(distancesGNF_Tri);
+//                                        printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER BACKUP MATRIX");
+//                                }
+//                                
+//                                System.out.println("Clustering...");
+////                                if(distancesGNF_Tri != null)                            
+////                                    arNodes = org.gnf.clustering.sequentialcache
+////                                    .SequentialCacheClustering.clusterDM(distancesGNF_Tri, linkageStartegyType_20, null, nRowCount);
+//                                
+//                                float[] arFloats = new float[nRowCount*nColCount];
+//                                for (int i=0; i < arFloats.length; i++) {
+//                                        arFloats[i] = (float) Math.random(); // i;
+//                                }
+//                                DataSource source = new FloatSource1D(arFloats, nRowCount, nColCount);
+//
+//                                DistanceCalculator calculator = new HybridDistanceCalculator();
+//                                //-
+////                              PeakListRow any_row = full_rows_list.get(0);
+////                              Range<Double> mzRange = mzTolerance.getToleranceRange(any_row
+////                                              .getBestPeak().getMZ());
+////                              Range<Double> rtRange = rtTolerance.getToleranceRange(any_row
+////                                              .getBestPeak().getRT());
+////                              double mzMaxDiff = RangeUtils.rangeLength(mzRange) / 2.0;
+////                              double rtMaxDiff = RangeUtils.rangeLength(rtRange) / 2.0;
+//                                double mzMaxDiff = mzTolerance.getMzTolerance();
+//                                double rtMaxDiff = rtTolerance.getTolerance();
+//                                ((HybridDistanceCalculator) calculator).setDistanceProvider(distProvider, mzMaxDiff, rtMaxDiff, minScore);
+//
+//                                if(distancesGNF_Tri != null) {
+//                                    ClassicClustering classicClust = new ClassicClustering(calculator, linkageStartegyType_20);
+//                                    arNodes = org.gnf.clustering.classic
+//                                    .ClassicClustering.pmlcluster(distancesGNF_Tri, linkageStartegyType_20, null, nRowCount);
+//                                }
+//                                
+//                                distancesGNF_Tri = null;
+//                                System.gc();
+//
+//                                printMemoryUsage(run_time, prevTotal, prevFree, "GNF CLUSTERER DONE");
+//
+//                                if (DEBUG_2)
+//                                        System.out.println(distancesGNF_Tri.toString());
+//
+//                                if (DEBUG_2)
+//                                        for (int i = 0; i < arNodes.length; i++) {
+//                                                System.out.println("Node " + i + ": " + arNodes[i]);
+//                                        }
+
 				
 			} else if (CLUSTERER_TYPE == ClustererType.CACHED) { // Pure Hierar!
 				
@@ -1546,7 +1616,6 @@ public class JoinAlignerGCTask extends AbstractTask {
 			
 			
 			// Sort Nodes by correlation score (Required in 'getValidatedClusters_3')
-			int[] rowOrder = new int[nRowCount];
 			System.out.println("Sorting tree nodes...");
 			org.gnf.clustering.Utils.NodeSort(arNodes, nRowCount - 2, 0,  rowOrder);
 
@@ -1577,9 +1646,10 @@ public class JoinAlignerGCTask extends AbstractTask {
 			}
 			
 			// File output
-
-			String outGtr = outputPrefix + ".gtr";
-			String outCdt = outputPrefix + ".cdt";
+			int ext_pos = dendrogramTxtFilename.getAbsolutePath().lastIndexOf(".");
+		        outputPrefix = dendrogramTxtFilename.getAbsolutePath().substring(0, ext_pos);
+		        String outGtr = outputPrefix + ".gtr";
+		        String outCdt = outputPrefix + ".cdt";
 
 			
 			System.out.println("Writing output to file...");
@@ -2234,7 +2304,47 @@ public class JoinAlignerGCTask extends AbstractTask {
 
 		} else { //if (CLUSTERER_TYPE == 1 || CLUSTERER_TYPE == 2) { // CDT + GTR => TreeView!
 			
-			// TODO: ...!
+		        int ext_pos = dendrogramTxtFilename.getAbsolutePath().lastIndexOf(".");
+		        outputPrefix = dendrogramTxtFilename.getAbsolutePath().substring(0,
+		                ext_pos);
+		        String outGtr = outputPrefix + ".gtr";
+		        String outCdt = outputPrefix + ".cdt";
+
+		        if (DEBUG)
+		            logger.info("Writing output to file...");
+
+		        int nColCount = 1;
+		        String[] colNames = new String[nColCount];
+		        colNames[nColCount - 1] = "Id";
+		        String sep = "\t";
+
+		        if (do_print) {
+		            try {
+
+		                float[] arFloats = new float[nRowCount];
+		                for (int i = 0; i < arFloats.length; i++) {
+		                    arFloats[i] = i / 2.0f;
+		                }
+		                DataSource source = (do_data)
+		                        ? new FloatSource1D(arFloats, nRowCount, nColCount)
+		                        : null;
+
+		                /* org.gnf.clustering.Utils. */JoinAlignerGCTask.GenerateCDT(
+		                        outCdt, source/* null */, nRowCount, nColCount, sep,
+		                        rowNames, colNames, rowOrder);
+		            } catch (IOException e) {
+		                // TODO Auto-generated catch block
+		                e.printStackTrace();
+		            }
+
+		            org.gnf.clustering.Utils./* JoinAlignerGCTask. */WriteTreeToFile(
+		                    outGtr, nRowCount - 1, arNodes, true);
+
+		            if (DEBUG)
+		                printMemoryUsage(run_time, prevTotal, prevFree,
+		                        "GNF CLUSTERER FILES PRINTED");
+
+		        }
 			
 		}
 
